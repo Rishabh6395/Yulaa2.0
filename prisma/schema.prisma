@@ -80,6 +80,9 @@ model UserRole {
   school    School?  @relation(fields: [schoolId], references: [id])
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([roleId])
+  @@index([schoolId])
   @@map("user_roles")
 }
 
@@ -102,6 +105,8 @@ model Teacher {
   user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, schoolId])
+  @@index([schoolId])
+  @@index([status])
   @@map("teachers")
 }
 
@@ -130,6 +135,9 @@ model Student {
   school              School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, admissionNo])
+  @@index([schoolId])
+  @@index([classId])
+  @@index([status])
   @@map("students")
 }
 
@@ -198,6 +206,9 @@ model Attendance {
   teacher      Teacher? @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, date])
+  @@index([schoolId, date])
+  @@index([classId])
+  @@index([teacherId])
   @@map("attendance")
 }
 
@@ -236,6 +247,10 @@ model FeeInvoice {
   payments       FeePayment[]
 
   @@unique([schoolId, invoiceNo])
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([status])
+  @@index([dueDate])
   @@map("fee_invoices")
 }
 
@@ -270,6 +285,10 @@ model Homework {
   teacher     Teacher              @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   submissions HomeworkSubmission[]
 
+  @@index([schoolId])
+  @@index([classId])
+  @@index([teacherId])
+  @@index([dueDate])
   @@map("homework")
 }
 
@@ -286,6 +305,7 @@ model HomeworkSubmission {
   student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([homeworkId, studentId])
+  @@index([studentId])
   @@map("homework_submissions")
 }
 
@@ -303,6 +323,8 @@ model Announcement {
   createdByUser User?     @relation("CreatedBy", fields: [createdBy], references: [id])
   school        School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
+  @@index([schoolId, status])
+  @@index([createdAt])
   @@map("announcements")
 }
 
@@ -322,6 +344,8 @@ model LeaveRequest {
   school         School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([schoolId, status])
+  @@index([userId])
   @@map("leave_requests")
 }
 
@@ -342,6 +366,8 @@ model StudentQuery {
   school          School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   student         Student?  @relation(fields: [studentId], references: [id])
 
+  @@index([schoolId, status])
+  @@index([parentId])
   @@map("queries")
 }
 

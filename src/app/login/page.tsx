@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -68,7 +69,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex relative">
+      {/* Theme toggle — top right corner */}
+      <div className="absolute top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
       {/* Left panel - branding */}
       <div className="hidden lg:flex lg:w-[45%] bg-gradient-to-br from-brand-700 via-brand-600 to-brand-500 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
@@ -120,7 +125,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right panel - login form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-8 bg-white dark:bg-gray-950">
         <div className="w-full max-w-[400px] space-y-8">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-4">
@@ -130,12 +135,12 @@ export default function LoginPage() {
                 <path d="M6 12v5c3 3 9 3 12 0v-5"/>
               </svg>
             </div>
-            <span className="text-xl font-display font-bold text-brand-800">Yulaa</span>
+            <span className="text-xl font-display font-bold text-brand-800 dark:text-brand-300">Yulaa</span>
           </div>
 
           <div>
-            <h2 className="text-2xl font-display font-bold text-gray-900">Welcome back</h2>
-            <p className="text-surface-400 mt-1">Sign in to your account to continue</p>
+            <h2 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Welcome back</h2>
+            <p className="text-surface-400 dark:text-gray-500 mt-1">Sign in to your account to continue</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
@@ -187,9 +192,9 @@ export default function LoginPage() {
           {/* Demo accounts */}
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-surface-200"/>
-              <span className="text-xs text-surface-400 font-medium">Quick demo access</span>
-              <div className="flex-1 h-px bg-surface-200"/>
+              <div className="flex-1 h-px bg-surface-200 dark:bg-gray-800"/>
+              <span className="text-xs text-surface-400 dark:text-gray-500 font-medium">Quick demo access</span>
+              <div className="flex-1 h-px bg-surface-200 dark:bg-gray-800"/>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {[

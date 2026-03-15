@@ -1,4 +1,5 @@
 import './globals.css';
+import { ThemeProvider } from '@/components/providers/theme-provider';
 
 export const metadata = {
   title: 'Yulaa - Student Management System',
@@ -7,8 +8,12 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="font-body antialiased">{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body className="font-body antialiased">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

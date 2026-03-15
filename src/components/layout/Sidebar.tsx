@@ -12,6 +12,8 @@ interface MenuItem {
 const menuItems: Record<string, MenuItem[]> = {
   super_admin: [
     { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard' },
+    { label: 'Schools',        href: '/dashboard/schools',       icon: 'Building' },
+    { label: 'Users & Roles',  href: '/dashboard/users',         icon: 'UserCog' },
     { label: 'Students',       href: '/dashboard/students',      icon: 'Users' },
     { label: 'Teachers',       href: '/dashboard/teachers',      icon: 'GraduationCap' },
     { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck' },
@@ -51,13 +53,13 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Queries',    href: '/dashboard/queries',    icon: 'MessageSquare' },
   ],
   vendor: [
-    { label: 'Dashboard', href: '/dashboard',          icon: 'LayoutDashboard' },
-    { label: 'Inventory', href: '/dashboard/inventory',icon: 'ShoppingBag' },
+    { label: 'Dashboard', href: '/dashboard',           icon: 'LayoutDashboard' },
+    { label: 'Inventory', href: '/dashboard/inventory', icon: 'ShoppingBag' },
   ],
   consultant: [
-    { label: 'Dashboard',      href: '/dashboard',          icon: 'LayoutDashboard' },
-    { label: 'Career Sessions',href: '/dashboard/sessions', icon: 'Briefcase' },
-    { label: 'My Contract',    href: '/dashboard/contracts',icon: 'FileText' },
+    { label: 'Dashboard',      href: '/dashboard',           icon: 'LayoutDashboard' },
+    { label: 'Career Sessions',href: '/dashboard/sessions',  icon: 'Briefcase' },
+    { label: 'My Contract',    href: '/dashboard/contracts', icon: 'FileText' },
   ],
 };
 
@@ -112,30 +114,40 @@ const icons: Record<string, React.ReactNode> = {
   ),
   Settings: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
     </svg>
   ),
   ShoppingBag: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-      <line x1="3" y1="6" x2="21" y2="6"/>
-      <path d="M16 10a4 4 0 0 1-8 0"/>
+      <line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
     </svg>
   ),
   Briefcase: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="7" width="20" height="14" rx="2"/>
       <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-      <line x1="12" y1="12" x2="12" y2="12"/>
     </svg>
   ),
   FileText: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
       <polyline points="14,2 14,8 20,8"/>
-      <line x1="16" y1="13" x2="8" y2="13"/>
-      <line x1="16" y1="17" x2="8" y2="17"/>
-      <polyline points="10,9 9,9 8,9"/>
+      <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+  ),
+  Building: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+      <path d="M9 22V12h6v10M3 9h18M9 3v6M15 3v6"/>
+    </svg>
+  ),
+  UserCog: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4"/>
+      <circle cx="19" cy="19" r="2"/>
+      <path d="M19 15v2M19 21v2M15.5 17.27l1.73 1M20.77 15.73l1.73 1M15.5 20.73l1.73-1M20.77 22.27l1.73-1"/>
     </svg>
   ),
 };
@@ -146,52 +158,72 @@ interface SidebarProps {
   onToggle: () => void;
 }
 
-export default function Sidebar({ user, collapsed, onToggle }: SidebarProps) {
+const roleLabels: Record<string, string> = {
+  super_admin:  'Super Admin',
+  school_admin: 'School Admin',
+  teacher:      'Teacher',
+  parent:       'Parent',
+  vendor:       'Vendor',
+  consultant:   'Consultant',
+};
+
+export default function Sidebar({ user, collapsed }: SidebarProps) {
   const pathname = usePathname();
-  const role = user?.primaryRole || 'school_admin';
+  const role  = user?.primaryRole || 'school_admin';
   const items = menuItems[role] || menuItems.school_admin;
 
-  const roleLabels: Record<string, string> = {
-    super_admin: 'Super Admin',
-    school_admin: 'School Admin',
-    teacher: 'Teacher',
-    parent: 'Parent',
-    vendor: 'Vendor',
-    consultant: 'Consultant',
-  };
-
   return (
-    <aside className={`fixed top-0 left-0 h-screen bg-white border-r border-surface-200 z-30 transition-all duration-300 ${collapsed ? 'w-[68px]' : 'w-[240px]'}`}>
+    <aside
+      className={`
+        fixed top-0 left-0 h-screen z-30
+        bg-white dark:bg-gray-950
+        border-r border-surface-200 dark:border-gray-800
+        transition-all duration-300
+        ${collapsed ? 'w-[68px]' : 'w-[240px]'}
+      `}
+    >
       {/* Logo */}
-      <div className="h-16 flex items-center px-4 border-b border-surface-100">
+      <div className="h-16 flex items-center px-4 border-b border-surface-100 dark:border-gray-800">
         <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center text-white flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center text-white flex-shrink-0 shadow-glow-brand">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+              <path d="M6 12v5c3 3 9 3 12 0v-5"/>
             </svg>
           </div>
-          {!collapsed && <span className="font-display font-bold text-lg text-brand-800 whitespace-nowrap">Yulaa</span>}
+          {!collapsed && (
+            <span className="font-display font-bold text-lg text-brand-800 dark:text-brand-300 whitespace-nowrap">
+              Yulaa
+            </span>
+          )}
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="p-3 space-y-0.5 overflow-y-auto" style={{ height: 'calc(100vh - 64px - 80px)' }}>
+      <nav
+        className="p-3 space-y-0.5 overflow-y-auto"
+        style={{ height: 'calc(100vh - 64px - 80px)' }}
+      >
         {items.map((item) => {
-          const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+          const isActive =
+            pathname === item.href ||
+            (item.href !== '/dashboard' && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150
+              title={collapsed ? item.label : ''}
+              className={`
+                flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                transition-all duration-150
                 ${isActive
-                  ? 'bg-brand-50 text-brand-600'
-                  : 'text-surface-500 hover:bg-surface-50 hover:text-surface-500'
+                  ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400'
+                  : 'text-surface-500 dark:text-gray-500 hover:bg-surface-50 dark:hover:bg-gray-800/60 hover:text-gray-700 dark:hover:text-gray-300'
                 }
                 ${collapsed ? 'justify-center' : ''}
               `}
-              title={collapsed ? item.label : ''}
             >
-              <span className={`flex-shrink-0 ${isActive ? 'text-brand-500' : ''}`}>
+              <span className={`flex-shrink-0 ${isActive ? 'text-brand-500 dark:text-brand-400' : ''}`}>
                 {icons[item.icon]}
               </span>
               {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
@@ -201,15 +233,19 @@ export default function Sidebar({ user, collapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* User section */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-surface-100">
+      <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-surface-100 dark:border-gray-800">
         <div className={`flex items-center gap-2.5 ${collapsed ? 'justify-center' : ''}`}>
-          <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 text-xs font-bold flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-950 flex items-center justify-center text-brand-600 dark:text-brand-400 text-xs font-bold flex-shrink-0">
             {user?.firstName?.[0]}{user?.lastName?.[0]}
           </div>
           {!collapsed && (
             <div className="overflow-hidden">
-              <p className="text-sm font-medium text-gray-900 truncate">{user?.firstName} {user?.lastName}</p>
-              <p className="text-xs text-surface-400 truncate">{roleLabels[role] || role}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                {user?.firstName} {user?.lastName}
+              </p>
+              <p className="text-xs text-surface-400 dark:text-gray-600 truncate">
+                {roleLabels[role] || role}
+              </p>
             </div>
           )}
         </div>
