@@ -3,5 +3,6 @@ node_modules/
 .env.local
 .env*.local
 out/
+.env
 
 /src/generated/prisma
