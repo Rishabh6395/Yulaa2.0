@@ -1,5 +1,5 @@
 import { getUserFromRequest } from '@/lib/auth';
-import { getAdminDashboard, getParentDashboard } from '@/modules/dashboard/dashboard.service';
+import { getAdminDashboard, getParentDashboard, getSuperAdminDashboard } from '@/modules/dashboard/dashboard.service';
 import { handleError, UnauthorizedError } from '@/utils/errors';
 
 export async function GET(request: Request) {
@@ -16,6 +16,12 @@ export async function GET(request: Request) {
     }
 
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
-    return Response.json(await getAdminDashboard(primaryRole.school_id!));
+
+    // super_admin has no school_id — show platform-wide stats
+    if (!primaryRole.school_id) {
+      return Response.json(await getSuperAdminDashboard());
+    }
+
+    return Response.json(await getAdminDashboard(primaryRole.school_id));
   } catch (err) { return handleError(err); }
 }

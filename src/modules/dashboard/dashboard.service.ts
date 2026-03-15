@@ -2,6 +2,41 @@ import prisma from '@/lib/prisma';
 import { withCache, CacheTTL } from '@/services/cache.service';
 import { NotFoundError, ForbiddenError } from '@/utils/errors';
 
+/** Platform-wide stats for super_admin (not tied to any school) */
+export async function getSuperAdminDashboard() {
+  return withCache('dashboard:super_admin', CacheTTL.dashboard, async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [totalSchools, activeSchools, totalStudents, totalTeachers, totalClasses, todayAttendanceRows, feeInvoices] = await Promise.all([
+      prisma.school.count(),
+      prisma.school.count({ where: { status: 'active' } }),
+      prisma.student.count(),
+      prisma.teacher.count({ where: { status: 'active' } }),
+      prisma.class.count(),
+      prisma.attendance.findMany({ where: { date: today }, select: { status: true } }),
+      prisma.feeInvoice.findMany({ select: { amount: true, paidAmount: true, status: true } }),
+    ]);
+
+    const present = todayAttendanceRows.filter((a) => a.status === 'present').length;
+    const total   = todayAttendanceRows.length;
+
+    return {
+      isSuperAdmin: true,
+      stats: {
+        totalSchools, activeSchools,
+        totalStudents, totalTeachers, totalClasses,
+        todayAttendance: { present, total, rate: total > 0 ? Math.round((present / total) * 100) : 0 },
+        fees: {
+          totalFees:  feeInvoices.reduce((s, i) => s + Number(i.amount), 0),
+          collected:  feeInvoices.reduce((s, i) => s + Number(i.paidAmount), 0),
+          overdueCount: feeInvoices.filter((i) => i.status === 'overdue').length,
+        },
+      },
+    };
+  });
+}
+
 export async function getAdminDashboard(schoolId: string) {
   return withCache(`dashboard:admin:${schoolId}`, CacheTTL.dashboard, async () => {
     const today = new Date();

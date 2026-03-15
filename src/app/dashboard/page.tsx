@@ -375,6 +375,78 @@ function HomeworkCard({ homework }: { homework: any[] }) {
   );
 }
 
+// ── Super admin dashboard ─────────────────────────────────────────────────────
+
+function SuperAdminDashboard({ data }: { data: any }) {
+  const s = data?.stats;
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Platform Overview</h1>
+          <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">Live stats across all schools.</p>
+        </div>
+        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-brand-50 to-purple-50 dark:from-brand-950/50 dark:to-purple-950/50 border border-brand-100 dark:border-brand-900 text-xs font-medium text-brand-600 dark:text-brand-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
+          Super Admin
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
+        <StatCard
+          title="Total Schools"    value={s?.totalSchools || 0}
+          subtext={`${s?.activeSchools || 0} active`}
+          iconBg="bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 22V12h6v10M3 9h18M9 3v6M15 3v6"/></svg>}
+        />
+        <StatCard
+          title="Total Students"   value={s?.totalStudents || 0}
+          iconBg="bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+        />
+        <StatCard
+          title="Today's Attendance" value={`${s?.todayAttendance?.rate || 0}%`}
+          subtext={`${s?.todayAttendance?.present || 0} / ${s?.todayAttendance?.total || 0} present`}
+          iconBg="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>}
+        />
+        <StatCard
+          title="Fee Collected"    value={`₹${((s?.fees?.collected || 0) / 1000).toFixed(0)}K`}
+          subtext={`${s?.fees?.overdueCount || 0} overdue`}
+          iconBg="bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-surface-400 dark:text-gray-500 uppercase tracking-wider mb-1">Teachers</p>
+          <p className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">{s?.totalTeachers || 0}</p>
+        </div>
+        <div className="card p-5">
+          <p className="text-xs font-semibold text-surface-400 dark:text-gray-500 uppercase tracking-wider mb-1">Classes</p>
+          <p className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">{s?.totalClasses || 0}</p>
+        </div>
+      </div>
+
+      <div className="card p-5">
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Quick Links</p>
+        <div className="flex flex-wrap gap-3">
+          {[
+            { label: 'Manage Schools', href: '/dashboard/schools' },
+            { label: 'Users & Roles',  href: '/dashboard/users' },
+          ].map(l => (
+            <a key={l.href} href={l.href}
+              className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline">
+              {l.label} →
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── No child prompt ───────────────────────────────────────────────────────────
 
 function NoChildPrompt() {
@@ -471,6 +543,8 @@ export default function DashboardPage() {
     const childName = `${activeChild.first_name} ${activeChild.last_name}`;
     return <ParentDashboard data={data || {}} childName={childName} />;
   }
+
+  if (data?.isSuperAdmin) return <SuperAdminDashboard data={data} />;
 
   return <AdminDashboard data={data || {}} />;
 }
