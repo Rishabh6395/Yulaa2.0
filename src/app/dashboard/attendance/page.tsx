@@ -167,9 +167,64 @@ function AdminAttendancePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [uploadResult, setUploadResult] = useState<{ saved: number; skipped: number; errors: string[] } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [refreshKey] = useState(0);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+  // ── Bulk CSV helpers ──────────────────────────────────────────────────────
+
+  const downloadCSV = (action: 'template' | 'export') => {
+    const url = `/api/attendance/bulk?action=${action}&class_id=${selectedClass}&date=${date}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.setAttribute('download', '');
+    // Attach auth header by fetching and creating an object URL
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.blob())
+      .then(blob => {
+        a.href = URL.createObjectURL(blob);
+        a.download = action === 'template' ? `attendance-template-${date}.csv` : `attendance-${date}.csv`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadResult(null);
+    const form = new FormData();
+    form.append('file', file);
+    form.append('class_id', selectedClass);
+    const res = await fetch('/api/attendance/bulk', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    const data = await res.json();
+    setUploadResult(data);
+    setUploading(false);
+    e.target.value = '';
+
+    if (data.saved > 0) {
+      // Fetch fresh data directly — avoids any stale-closure / effect-scheduler issues
+      const [classRes, overviewRes] = await Promise.all([
+        fetch(`/api/attendance?class_id=${selectedClass}&date=${date}`, {
+          headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
+        }),
+        fetch(`/api/attendance?date=${date}`, {
+          headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
+        }),
+      ]);
+      const [classData, overviewData] = await Promise.all([classRes.json(), overviewRes.json()]);
+      setStudents((classData.students || []).map((s: any) => ({ ...s, status: s.status || 'present' })));
+      setOverview(overviewData.classes || []);
+    }
+  };
 
   useEffect(() => {
     fetch('/api/classes', { headers: { Authorization: `Bearer ${token}` } })
@@ -179,22 +234,28 @@ function AdminAttendancePage() {
 
   const fetchOverview = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/attendance?date=${date}`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`/api/attendance?date=${date}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
     const data = await res.json();
     setOverview(data.classes || []);
     setLoading(false);
   }, [date, token]);
 
-  useEffect(() => { fetchOverview(); }, [fetchOverview]);
+  useEffect(() => { fetchOverview(); }, [fetchOverview, refreshKey]);
 
   const fetchClassAttendance = useCallback(async () => {
     if (!selectedClass) return;
-    const res = await fetch(`/api/attendance?class_id=${selectedClass}&date=${date}`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`/api/attendance?class_id=${selectedClass}&date=${date}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
     const data = await res.json();
     setStudents((data.students || []).map((s: any) => ({ ...s, status: s.status || 'present' })));
   }, [selectedClass, date, token]);
 
-  useEffect(() => { fetchClassAttendance(); }, [fetchClassAttendance]);
+  useEffect(() => { fetchClassAttendance(); }, [fetchClassAttendance, refreshKey]);
 
   const markAll = (status: string) => setStudents(prev => prev.map(s => ({ ...s, status })));
 
@@ -262,18 +323,71 @@ function AdminAttendancePage() {
 
       {selectedClass && (
         <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
               <h3 className="text-sm font-semibold text-gray-900">Mark Attendance</h3>
               <p className="text-xs text-surface-400 mt-0.5">
                 {classes.find(c => c.id === selectedClass)?.grade} - {classes.find(c => c.id === selectedClass)?.section} · {date}
               </p>
             </div>
-            <div className="flex gap-2">
-              <button onClick={() => markAll('present')} className="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-100 font-medium transition-colors">Mark All Present</button>
-              <button onClick={() => markAll('absent')}  className="text-xs bg-red-50 text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-100 font-medium transition-colors">Mark All Absent</button>
+
+            {/* Action buttons row */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Manual quick-mark */}
+              <button onClick={() => markAll('present')} className="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-100 font-medium transition-colors">All Present</button>
+              <button onClick={() => markAll('absent')}  className="text-xs bg-red-50    text-red-700    px-3 py-1.5 rounded-lg hover:bg-red-100    font-medium transition-colors">All Absent</button>
+
+              {/* Divider */}
+              <span className="w-px h-5 bg-surface-200 hidden sm:block"/>
+
+              {/* CSV actions */}
+              <button
+                onClick={() => downloadCSV('template')}
+                title="Download blank CSV with student list"
+                className="text-xs flex items-center gap-1.5 bg-surface-50 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg hover:bg-surface-100 font-medium transition-colors"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Template
+              </button>
+
+              <button
+                onClick={() => downloadCSV('export')}
+                title="Export current attendance as CSV"
+                className="text-xs flex items-center gap-1.5 bg-surface-50 border border-surface-200 text-surface-600 px-3 py-1.5 rounded-lg hover:bg-surface-100 font-medium transition-colors"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export
+              </button>
+
+              {/* Upload */}
+              <label className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-medium transition-colors cursor-pointer
+                ${uploading ? 'bg-surface-100 text-surface-400 border-surface-200' : 'bg-brand-50 border-brand-200 text-brand-700 hover:bg-brand-100'}`}>
+                {uploading ? (
+                  <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Uploading…</>
+                ) : (
+                  <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Upload CSV</>
+                )}
+                <input type="file" accept=".csv" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+              </label>
             </div>
           </div>
+
+          {/* Upload result banner */}
+          {uploadResult && (
+            <div className={`mb-4 p-3 rounded-xl text-xs ${uploadResult.errors.length > 0 ? 'bg-amber-50 border border-amber-200' : 'bg-emerald-50 border border-emerald-200'}`}>
+              <p className={`font-semibold ${uploadResult.saved === 0 ? 'text-red-700' : uploadResult.errors.length > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                {uploadResult.saved === 0
+                  ? `Nothing saved — ${uploadResult.skipped} row${uploadResult.skipped !== 1 ? 's' : ''} failed validation`
+                  : `${uploadResult.saved} records saved${uploadResult.skipped > 0 ? `, ${uploadResult.skipped} skipped` : ''}`}
+              </p>
+              {uploadResult.errors.length > 0 && (
+                <ul className="mt-1.5 space-y-0.5 text-amber-600 max-h-24 overflow-y-auto">
+                  {uploadResult.errors.map((e, i) => <li key={i}>• {e}</li>)}
+                </ul>
+              )}
+              <button onClick={() => setUploadResult(null)} className="mt-1.5 text-surface-400 hover:text-surface-600 underline">dismiss</button>
+            </div>
+          )}
           {students.length === 0 ? (
             <p className="text-sm text-surface-400 py-8 text-center">No approved students in this class.</p>
           ) : (

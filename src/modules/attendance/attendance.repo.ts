@@ -34,6 +34,31 @@ export async function findSchoolAttendanceSummary(schoolId: string, date: Date) 
   });
 }
 
+export async function findClassStudentsForTemplate(classId: string) {
+  return prisma.student.findMany({
+    where: { classId, status: 'active' },
+    select: { id: true, firstName: true, lastName: true, admissionNo: true },
+    orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+  });
+}
+
+export async function bulkUpsertAttendance(
+  schoolId: string,
+  classId: string,
+  markedBy: string,
+  records: Array<{ student_id: string; status: string; remarks?: string; date: Date }>,
+) {
+  return Promise.all(
+    records.map((r) =>
+      prisma.attendance.upsert({
+        where:  { studentId_date: { studentId: r.student_id, date: r.date } },
+        create: { schoolId, studentId: r.student_id, classId, date: r.date, status: r.status, markedBy, updatedBy: markedBy, remarks: r.remarks ?? null },
+        update: { status: r.status, updatedBy: markedBy, remarks: r.remarks ?? null },
+      })
+    )
+  );
+}
+
 export async function upsertAttendanceRecords(input: MarkAttendanceInput) {
   return Promise.all(
     input.records.map((r) =>
@@ -46,12 +71,13 @@ export async function upsertAttendanceRecords(input: MarkAttendanceInput) {
           date:      input.date,
           status:    r.status,
           markedBy:  input.markedBy,
+          updatedBy: input.markedBy,
           remarks:   r.remarks || null,
         },
         update: {
-          status:   r.status,
-          markedBy: input.markedBy,
-          remarks:  r.remarks || null,
+          status:    r.status,
+          updatedBy: input.markedBy,
+          remarks:   r.remarks || null,
         },
       })
     )
