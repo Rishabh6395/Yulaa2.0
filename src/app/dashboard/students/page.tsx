@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useApi } from '@/hooks/useApi';
 
@@ -22,6 +22,12 @@ export default function StudentsPage() {
   const [showAddModal,  setShowAddModal]  = useState(false);
   const [form,          setForm]          = useState({ admission_no: '', first_name: '', last_name: '', dob: '', gender: '', class_id: '', address: '' });
   const [saving,        setSaving]        = useState(false);
+
+  // Bulk upload state
+  const fileInputRef                        = useRef<HTMLInputElement>(null);
+  const [uploading,     setUploading]       = useState(false);
+  const [uploadResult,  setUploadResult]    = useState<{ created: number; errors: string[]; total: number } | null>(null);
+  const [showResultModal, setShowResultModal] = useState(false);
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -56,6 +62,38 @@ export default function StudentsPage() {
     setSaving(false);
   };
 
+  const downloadTemplate = async () => {
+    const res = await fetch('/api/students/bulk', { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'students-template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/students/bulk', {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body:    formData,
+    });
+    const data = await res.json();
+    setUploadResult(data);
+    setShowResultModal(true);
+    if (data.created > 0) mutate();
+    setUploading(false);
+    // reset file input so the same file can be re-uploaded if needed
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -63,10 +101,41 @@ export default function StudentsPage() {
           <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Students</h1>
           <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">{total} students total</p>
         </div>
-        <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Add Student
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+          <button
+            onClick={downloadTemplate}
+            className="btn-secondary flex items-center gap-2 text-sm"
+            title="Download CSV template"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Template
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="btn-secondary flex items-center gap-2 text-sm"
+            title="Upload CSV of students"
+          >
+            {uploading ? (
+              <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            )}
+            {uploading ? 'Uploading...' : 'Import CSV'}
+          </button>
+          <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Student
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -147,6 +216,39 @@ export default function StudentsPage() {
           </div>
         )}
       </div>
+
+      {/* Upload result modal */}
+      <Modal open={showResultModal} onClose={() => setShowResultModal(false)} title="Import Results">
+        {uploadResult && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="bg-surface-50 dark:bg-gray-800 rounded-xl p-3">
+                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{uploadResult.total}</p>
+                <p className="text-xs text-surface-400 mt-0.5">Total rows</p>
+              </div>
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 rounded-xl p-3">
+                <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">{uploadResult.created}</p>
+                <p className="text-xs text-emerald-600/70 mt-0.5">Created</p>
+              </div>
+              <div className="bg-red-50 dark:bg-red-950/40 rounded-xl p-3">
+                <p className="text-2xl font-bold text-red-700 dark:text-red-400">{uploadResult.errors.length}</p>
+                <p className="text-xs text-red-600/70 mt-0.5">Errors</p>
+              </div>
+            </div>
+            {uploadResult.errors.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-surface-500 uppercase tracking-wide mb-2">Error details</p>
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {uploadResult.errors.map((err, i) => (
+                    <p key={i} className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-3 py-1.5 rounded-lg">{err}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+            <button onClick={() => setShowResultModal(false)} className="btn-primary w-full">Done</button>
+          </div>
+        )}
+      </Modal>
 
       <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Student">
         <form onSubmit={handleAdd} className="space-y-4">
