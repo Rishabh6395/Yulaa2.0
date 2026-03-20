@@ -22,6 +22,8 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone' },
     { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar' },
     { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare' },
+    { label: 'Compliance',     href: '/dashboard/compliance',    icon: 'ShieldCheck' },
+    { label: 'Reports',        href: '/dashboard/reports',       icon: 'BarChart' },
     { label: 'Settings',       href: '/dashboard/settings',      icon: 'Settings' },
   ],
   school_admin: [
@@ -34,23 +36,36 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone' },
     { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar' },
     { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare' },
+    { label: 'Compliance',     href: '/dashboard/compliance',    icon: 'ShieldCheck' },
+    { label: 'Reports',        href: '/dashboard/reports',       icon: 'BarChart' },
     { label: 'Inventory',      href: '/dashboard/inventory',     icon: 'ShoppingBag' },
     { label: 'Career Sessions',href: '/dashboard/sessions',      icon: 'Briefcase' },
     { label: 'Settings',       href: '/dashboard/settings',      icon: 'Settings' },
   ],
   teacher: [
-    { label: 'Dashboard',  href: '/dashboard',            icon: 'LayoutDashboard' },
-    { label: 'Attendance', href: '/dashboard/attendance', icon: 'CalendarCheck' },
-    { label: 'Homework',   href: '/dashboard/homework',   icon: 'BookOpen' },
-    { label: 'Leave',      href: '/dashboard/leave',      icon: 'Calendar' },
+    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard' },
+    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck' },
+    { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen' },
+    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar' },
+  ],
+  student: [
+    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard' },
+    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck' },
+    { label: 'Fees',           href: '/dashboard/fees',          icon: 'CreditCard' },
+    { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen' },
+    { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone' },
+    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare' },
   ],
   parent: [
-    { label: 'Dashboard',  href: '/dashboard',            icon: 'LayoutDashboard' },
-    { label: 'Attendance', href: '/dashboard/attendance', icon: 'CalendarCheck' },
-    { label: 'Fees',       href: '/dashboard/fees',       icon: 'CreditCard' },
-    { label: 'Homework',   href: '/dashboard/homework',   icon: 'BookOpen' },
-    { label: 'Leave',      href: '/dashboard/leave',      icon: 'Calendar' },
-    { label: 'Queries',    href: '/dashboard/queries',    icon: 'MessageSquare' },
+    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard' },
+    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck' },
+    { label: 'Fees',           href: '/dashboard/fees',          icon: 'CreditCard' },
+    { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen' },
+    { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone' },
+    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar' },
+    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare' },
+    { label: 'Career Sessions',href: '/dashboard/sessions',      icon: 'Briefcase' },
+    { label: 'Inventory',      href: '/dashboard/inventory',     icon: 'ShoppingBag' },
   ],
   vendor: [
     { label: 'Dashboard', href: '/dashboard',           icon: 'LayoutDashboard' },
@@ -148,6 +163,18 @@ const icons: Record<string, React.ReactNode> = {
       <circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4"/>
       <circle cx="19" cy="19" r="2"/>
       <path d="M19 15v2M19 21v2M15.5 17.27l1.73 1M20.77 15.73l1.73 1M15.5 20.73l1.73-1M20.77 22.27l1.73-1"/>
+    </svg>
+  ),
+  ShieldCheck: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <path d="m9 12 2 2 4-4"/>
+    </svg>
+  ),
+  BarChart: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>
     </svg>
   ),
 };

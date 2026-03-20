@@ -19,6 +19,7 @@ model School {
   announcements       Announcement[]
   attendance          Attendance[]
   classes             Class[]
+  complianceItems     ComplianceItem[]
   consultantContracts ConsultantContract[]
   consultantSessions  ConsultantSession[]
   feeInvoices         FeeInvoice[]
@@ -473,4 +474,42 @@ model ConsultantSession {
   school          School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@map("consultant_sessions")
+}
+
+// ── Compliance ────────────────────────────────────────────────────────────────
+
+model ComplianceItem {
+  id          String               @id @default(uuid())
+  schoolId    String               @map("school_id")
+  category    String               @db.VarChar(50)
+  title       String               @db.VarChar(200)
+  description String?
+  status      String               @default("pending") @db.VarChar(20)
+  dueDate     DateTime?            @map("due_date") @db.Date
+  notes       String?
+  assignedTo  String?              @map("assigned_to")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @default(now()) @updatedAt @map("updated_at")
+  updatedBy   String?              @map("updated_by")
+  school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  documents   ComplianceDocument[]
+
+  @@index([schoolId, category])
+  @@index([schoolId, status])
+  @@map("compliance_items")
+}
+
+model ComplianceDocument {
+  id         String         @id @default(uuid())
+  itemId     String         @map("item_id")
+  schoolId   String         @map("school_id")
+  name       String         @db.VarChar(200)
+  fileUrl    String         @map("file_url")
+  fileType   String?        @map("file_type") @db.VarChar(50)
+  uploadedBy String         @map("uploaded_by")
+  uploadedAt DateTime       @default(now()) @map("uploaded_at")
+  item       ComplianceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@map("compliance_documents")
 }
