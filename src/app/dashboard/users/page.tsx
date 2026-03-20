@@ -247,8 +247,9 @@ export default function UsersPage() {
 
       {/* Create User modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="card w-full max-w-lg p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm" onClick={() => setShowCreate(false)}>
+          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="card w-full max-w-lg p-6 space-y-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-display font-bold text-gray-900 dark:text-gray-100">Add User</h2>
               <button onClick={() => setShowCreate(false)} className="text-surface-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
@@ -309,13 +310,15 @@ export default function UsersPage() {
               </div>
             </form>
           </div>
+          </div>
         </div>
       )}
 
       {/* Add Role modal */}
       {showAddRole && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="card w-full max-w-md p-6 space-y-5">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm" onClick={() => setShowAddRole(null)}>
+          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="card w-full max-w-md p-6 space-y-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-display font-bold text-gray-900 dark:text-gray-100">Assign Role</h2>
@@ -367,6 +370,7 @@ export default function UsersPage() {
                 </button>
               </div>
             </form>
+          </div>
           </div>
         </div>
       )}

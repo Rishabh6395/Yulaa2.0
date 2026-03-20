@@ -219,8 +219,9 @@ export default function SchoolsPage() {
 
       {/* Modal form */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="card w-full max-w-lg p-6 space-y-5">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm" onClick={() => setShowForm(false)}>
+          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="card w-full max-w-lg p-6 space-y-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-display font-bold text-gray-900 dark:text-gray-100">
                 {editSchool ? 'Edit School' : 'Register School'}
@@ -296,6 +297,7 @@ export default function SchoolsPage() {
                 </button>
               </div>
             </form>
+          </div>
           </div>
         </div>
       )}

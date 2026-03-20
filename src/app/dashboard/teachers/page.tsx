@@ -17,8 +17,8 @@ export default function TeachersPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-display font-bold text-gray-900">Teachers</h1>
-        <p className="text-sm text-surface-400 mt-0.5">{teachers.length} teaching staff members</p>
+        <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Teachers</h1>
+        <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">{teachers.length} teaching staff members</p>
       </div>
 
       {loading ? (
@@ -36,7 +36,7 @@ export default function TeachersPage() {
                   {t.first_name[0]}{t.last_name[0]}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-semibold text-gray-900">{t.first_name} {t.last_name}</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.first_name} {t.last_name}</h3>
                   <p className="text-xs text-surface-400 mt-0.5">{t.employee_id}</p>
                   <div className="flex flex-wrap gap-1 mt-2">
                     {t.subjects?.map((s: string, i: number) => (

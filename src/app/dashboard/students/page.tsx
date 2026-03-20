@@ -81,8 +81,8 @@ export default function StudentsPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold text-gray-900">Students</h1>
-          <p className="text-sm text-surface-400 mt-0.5">{total} students total</p>
+          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Students</h1>
+          <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">{total} students total</p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -147,7 +147,7 @@ export default function StudentsPage() {
                         <div className="w-8 h-8 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 text-xs font-bold">
                           {s.first_name[0]}{s.last_name[0]}
                         </div>
-                        <span className="font-medium text-gray-900">{s.first_name} {s.last_name}</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{s.first_name} {s.last_name}</span>
                       </div>
                     </td>
                     <td><span className="font-mono text-xs bg-surface-50 px-2 py-1 rounded">{s.admission_no}</span></td>
@@ -188,9 +188,10 @@ export default function StudentsPage() {
 
       {/* Add Student Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
+          <div className="flex min-h-full items-center justify-center p-4">
           <div className="card p-6 w-full max-w-lg shadow-modal animate-fade-in" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-display font-bold text-gray-900 mb-4">Add New Student</h2>
+            <h2 className="text-lg font-display font-bold text-gray-900 dark:text-gray-100 mb-4">Add New Student</h2>
             <form onSubmit={handleAdd} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -239,6 +240,7 @@ export default function StudentsPage() {
                 <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving...' : 'Add Student'}</button>
               </div>
             </form>
+          </div>
           </div>
         </div>
       )}
