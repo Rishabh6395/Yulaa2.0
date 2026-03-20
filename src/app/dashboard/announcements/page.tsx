@@ -1,36 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
+import { useApi } from '@/hooks/useApi';
 
 const typeConfig: Record<string, { bg: string; text: string; icon: string }> = {
-  general: { bg: 'bg-surface-100', text: 'text-surface-600', icon: '📢' },
-  urgent: { bg: 'bg-red-50', text: 'text-red-700', icon: '🚨' },
-  event: { bg: 'bg-blue-50', text: 'text-blue-700', icon: '🎉' },
-  holiday: { bg: 'bg-emerald-50', text: 'text-emerald-700', icon: '🏖️' },
-  exam: { bg: 'bg-purple-50', text: 'text-purple-700', icon: '📝' },
-  fee_reminder: { bg: 'bg-amber-50', text: 'text-amber-700', icon: '💰' },
+  general:     { bg: 'bg-surface-100', text: 'text-surface-600', icon: '📢' },
+  urgent:      { bg: 'bg-red-50',      text: 'text-red-700',     icon: '🚨' },
+  event:       { bg: 'bg-blue-50',     text: 'text-blue-700',    icon: '🎉' },
+  holiday:     { bg: 'bg-emerald-50',  text: 'text-emerald-700', icon: '🏖️' },
+  exam:        { bg: 'bg-purple-50',   text: 'text-purple-700',  icon: '📝' },
+  fee_reminder:{ bg: 'bg-amber-50',    text: 'text-amber-700',   icon: '💰' },
 };
 
 export default function AnnouncementsPage() {
-  const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [form, setForm] = useState({ title: '', message: '', type: 'general', audience: 'all' });
+  const [form, setForm]   = useState({ title: '', message: '', type: 'general', audience: 'all' });
   const [saving, setSaving] = useState(false);
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+  const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-  const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+  const user    = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
   const isAdmin = ['school_admin', 'super_admin'].includes(user.primaryRole);
 
-  const fetchData = () => {
-    fetch('/api/announcements', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(d => { setAnnouncements(d.announcements || []); setLoading(false); });
-  };
-
-  useEffect(() => { fetchData(); }, [token]);
+  const { data, isLoading, mutate } = useApi<{ announcements: any[] }>('/api/announcements');
+  const announcements = data?.announcements ?? [];
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -39,7 +33,7 @@ export default function AnnouncementsPage() {
     if (res.ok) {
       setShowAddModal(false);
       setForm({ title: '', message: '', type: 'general', audience: 'all' });
-      fetchData();
+      mutate();
     }
     setSaving(false);
   };
@@ -59,7 +53,7 @@ export default function AnnouncementsPage() {
         )}
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="space-y-4">{[1,2,3].map(i => <div key={i} className="card p-5 h-24 animate-pulse bg-surface-100"/>)}</div>
       ) : announcements.length === 0 ? (
         <div className="card p-12 text-center"><p className="text-surface-400">No announcements yet.</p></div>

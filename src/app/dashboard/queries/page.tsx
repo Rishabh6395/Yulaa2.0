@@ -1,25 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
+import { useApi } from '@/hooks/useApi';
 
 export default function QueriesPage() {
-  const [queries, setQueries] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [form, setForm] = useState({ subject: '', message: '', priority: 'normal' });
+  const [form, setForm]   = useState({ subject: '', message: '', priority: 'normal' });
   const [saving, setSaving] = useState(false);
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+  const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-  const fetchData = () => {
-    fetch('/api/queries', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(d => { setQueries(d.queries || []); setLoading(false); });
-  };
-
-  useEffect(() => { fetchData(); }, [token]);
+  const { data, isLoading, mutate } = useApi<{ queries: any[] }>('/api/queries');
+  const queries = data?.queries ?? [];
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -28,12 +22,12 @@ export default function QueriesPage() {
     if (res.ok) {
       setShowAddModal(false);
       setForm({ subject: '', message: '', priority: 'normal' });
-      fetchData();
+      mutate();
     }
     setSaving(false);
   };
 
-  const statusMap: Record<string, string> = { open: 'badge-warning', in_progress: 'badge-info', resolved: 'badge-success', closed: 'badge-neutral' };
+  const statusMap:   Record<string, string> = { open: 'badge-warning', in_progress: 'badge-info', resolved: 'badge-success', closed: 'badge-neutral' };
   const priorityMap: Record<string, string> = { low: 'text-surface-400', normal: 'text-blue-600', high: 'text-amber-600', urgent: 'text-red-600' };
 
   return (
@@ -49,7 +43,7 @@ export default function QueriesPage() {
         </button>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="card p-5 h-20 animate-pulse bg-surface-100"/>)}</div>
       ) : queries.length === 0 ? (
         <div className="card p-12 text-center"><p className="text-surface-400">No queries yet.</p></div>

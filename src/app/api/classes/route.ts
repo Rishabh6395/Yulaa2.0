@@ -19,20 +19,18 @@ export async function POST(request: Request) {
     if (!user) throw new UnauthorizedError();
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
     if (!ADMIN_ROLES.includes(primaryRole.role_code)) throw new ForbiddenError('Admin access required');
-
-    const cls = await createClass(primaryRole.school_id!, await request.json());
+    const cls         = await createClass(primaryRole.school_id!, await request.json());
     return Response.json({ class: cls }, { status: 201 });
   } catch (err) { return handleError(err); }
 }
 
 export async function PATCH(request: Request) {
   try {
-    const user = await getUserFromRequest(request);
+    const user        = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
     if (!ADMIN_ROLES.includes(primaryRole.role_code)) throw new ForbiddenError('Admin access required');
-
-    const cls = await updateClass(await request.json());
+    const cls         = await updateClass(await request.json());
     return Response.json({ class: cls });
   } catch (err) { return handleError(err); }
 }

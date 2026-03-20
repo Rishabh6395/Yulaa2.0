@@ -34,9 +34,9 @@ export async function PATCH(request: Request) {
 
     if (!userId) throw new ForbiddenError('userId is required');
 
-    if (status)       return Response.json({ user:     await setUserStatus(userId, status) });
-    if (removeRoleId) return Response.json({ success:  !!(await removeRole(userId, removeRoleId)) });
-    const userRole    = await assignRole({ userId, roleId, schoolId });
+    if (status)        return Response.json({ user:     await setUserStatus(userId, status) });
+    if (removeRoleId)  return Response.json({ success:  !!(await removeRole(userId, removeRoleId)) });
+    const userRole   = await assignRole({ userId, roleId, schoolId });
     return Response.json({ userRole }, { status: 201 });
   } catch (err) { return handleError(err); }
 }

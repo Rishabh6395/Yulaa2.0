@@ -4,7 +4,7 @@ import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 
 export async function GET(request: Request) {
   try {
-    const user     = await getUserFromRequest(request);
+    const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     if (!user.roles.some((r) => r.role_code === 'parent')) throw new ForbiddenError();
     return Response.json(await getChildren(user.id));

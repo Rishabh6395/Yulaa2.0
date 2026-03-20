@@ -61,7 +61,6 @@ export async function POST(request: Request) {
 
     const csvText = await file.text();
     const result  = await bulkUploadAttendance(schoolId, classId, user.id, csvText);
-
     return Response.json(result);
   } catch (err) { return handleError(err); }
 }

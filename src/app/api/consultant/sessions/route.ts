@@ -9,9 +9,9 @@ export async function GET(request: Request) {
   const user = await getUserFromRequest(request);
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
+  const primaryRole  = user.roles.find((r) => r.is_primary) ?? user.roles[0];
   const isConsultant = primaryRole.role_code === 'consultant';
-  const isAdmin = ['super_admin', 'school_admin'].includes(primaryRole.role_code);
+  const isAdmin      = ['super_admin', 'school_admin'].includes(primaryRole.role_code);
 
   if (!isConsultant && !isAdmin) {
     return Response.json({ error: 'Forbidden' }, { status: 403 });
@@ -25,9 +25,7 @@ export async function GET(request: Request) {
 
     if (isConsultant) {
       const consultant = await getConsultant(user.id);
-      if (!consultant) {
-        return Response.json({ error: 'Consultant profile not found' }, { status: 404 });
-      }
+      if (!consultant) return Response.json({ error: 'Consultant profile not found' }, { status: 404 });
       consultantId = consultant.id;
     }
 
@@ -38,11 +36,7 @@ export async function GET(request: Request) {
         ...(statusFilter && { status: statusFilter }),
       },
       include: {
-        consultant: {
-          include: {
-            user: { select: { firstName: true, lastName: true } },
-          },
-        },
+        consultant: { include: { user: { select: { firstName: true, lastName: true } } } },
         school: { select: { name: true } },
       },
       orderBy: { sessionDate: 'desc' },
@@ -82,37 +76,19 @@ export async function POST(request: Request) {
   }
 
   const consultant = await getConsultant(user.id);
-  if (!consultant) {
-    return Response.json({ error: 'Consultant profile not found' }, { status: 404 });
-  }
+  if (!consultant) return Response.json({ error: 'Consultant profile not found' }, { status: 404 });
 
   try {
     const body = await request.json();
-    const {
-      title,
-      description,
-      session_type,
-      target_grades,
-      session_date,
-      duration_minutes,
-      max_participants,
-      meeting_link,
-    } = body;
+    const { title, description, session_type, target_grades, session_date, duration_minutes, max_participants, meeting_link } = body;
 
     if (!title || !session_type) {
       return Response.json({ error: 'title and session_type are required' }, { status: 400 });
     }
 
-    // Verify consultant has an active contract with this school
     const activeContract = await prisma.consultantContract.findFirst({
-      where: {
-        consultantId: consultant.id,
-        schoolId: primaryRole.school_id!,
-        status: 'active',
-        endDate: { gte: new Date() },
-      },
+      where: { consultantId: consultant.id, schoolId: primaryRole.school_id!, status: 'active', endDate: { gte: new Date() } },
     });
-
     if (!activeContract) {
       return Response.json({ error: 'No active contract with this school' }, { status: 403 });
     }
@@ -150,34 +126,16 @@ export async function PATCH(request: Request) {
   }
 
   const consultant = await getConsultant(user.id);
-  if (!consultant) {
-    return Response.json({ error: 'Consultant profile not found' }, { status: 404 });
-  }
+  if (!consultant) return Response.json({ error: 'Consultant profile not found' }, { status: 404 });
 
   try {
     const body = await request.json();
-    const {
-      id,
-      title,
-      description,
-      session_type,
-      target_grades,
-      session_date,
-      duration_minutes,
-      max_participants,
-      meeting_link,
-      status,
-    } = body;
+    const { id, title, description, session_type, target_grades, session_date, duration_minutes, max_participants, meeting_link, status } = body;
 
     if (!id) return Response.json({ error: 'id is required' }, { status: 400 });
 
-    // Verify ownership
-    const existing = await prisma.consultantSession.findFirst({
-      where: { id, consultantId: consultant.id },
-    });
-    if (!existing) {
-      return Response.json({ error: 'Session not found or access denied' }, { status: 404 });
-    }
+    const existing = await prisma.consultantSession.findFirst({ where: { id, consultantId: consultant.id } });
+    if (!existing) return Response.json({ error: 'Session not found or access denied' }, { status: 404 });
 
     const session = await prisma.consultantSession.update({
       where: { id },
@@ -196,9 +154,7 @@ export async function PATCH(request: Request) {
 
     return Response.json({ session });
   } catch (err: any) {
-    if (err.code === 'P2025') {
-      return Response.json({ error: 'Session not found' }, { status: 404 });
-    }
+    if (err.code === 'P2025') return Response.json({ error: 'Session not found' }, { status: 404 });
     console.error('Sessions PATCH error:', err);
     return Response.json({ error: 'Internal server error' }, { status: 500 });
   }

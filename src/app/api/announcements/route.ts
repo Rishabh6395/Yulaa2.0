@@ -17,7 +17,6 @@ export async function POST(request: Request) {
     if (!user) throw new UnauthorizedError();
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
     if (!['super_admin', 'school_admin'].includes(primaryRole.role_code)) throw new ForbiddenError('Admin access required');
-
     const announcement = await createAnnouncement(primaryRole.school_id!, user.id, await request.json());
     return Response.json({ announcement }, { status: 201 });
   } catch (err) { return handleError(err); }

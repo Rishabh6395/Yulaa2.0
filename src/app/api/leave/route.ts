@@ -30,8 +30,7 @@ export async function PATCH(request: Request) {
     if (!user) throw new UnauthorizedError();
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
     if (!ADMIN_ROLES.includes(primaryRole.role_code)) throw new ForbiddenError('Admin access required');
-
-    const leave = await reviewLeaveRequest(user.id, await request.json());
+    const leave       = await reviewLeaveRequest(user.id, await request.json());
     return Response.json({ leave });
   } catch (err) { return handleError(err); }
 }

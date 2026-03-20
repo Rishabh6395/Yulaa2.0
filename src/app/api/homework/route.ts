@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const user = await getUserFromRequest(request);
+    const user     = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const homework = await updateHomework(await request.json());
     return Response.json({ homework });

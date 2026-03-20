@@ -1,29 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
+import { useApi } from '@/hooks/useApi';
 
 export default function HomeworkPage() {
-  const [homework, setHomework] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [classes, setClasses] = useState<any[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [form, setForm] = useState({ class_id: '', subject: '', title: '', description: '', due_date: '' });
+  const [form, setForm]   = useState({ class_id: '', subject: '', title: '', description: '', due_date: '' });
   const [saving, setSaving] = useState(false);
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+  const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-  const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+  const user    = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
   const isTeacherOrAdmin = ['teacher', 'school_admin', 'super_admin'].includes(user.primaryRole);
 
-  useEffect(() => {
-    fetch('/api/homework', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(d => { setHomework(d.homework || []); setLoading(false); });
-    fetch('/api/classes', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(d => setClasses(d.classes || []));
-  }, [token]);
+  const { data,         isLoading, mutate } = useApi<{ homework: any[] }>('/api/homework');
+  const { data: clsData }                   = useApi<{ classes: any[] }>('/api/classes');
+  const homework = data?.homework ?? [];
+  const classes  = clsData?.classes ?? [];
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -32,8 +26,7 @@ export default function HomeworkPage() {
     if (res.ok) {
       setShowAddModal(false);
       setForm({ class_id: '', subject: '', title: '', description: '', due_date: '' });
-      const d = await fetch('/api/homework', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json());
-      setHomework(d.homework || []);
+      mutate();
     }
     setSaving(false);
   };
@@ -55,7 +48,7 @@ export default function HomeworkPage() {
         )}
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1,2,3].map(i => <div key={i} className="card p-5 h-40 animate-pulse bg-surface-100"/>)}
         </div>
@@ -76,9 +69,7 @@ export default function HomeworkPage() {
                 )}
               </div>
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">{hw.title}</h3>
-              {hw.description && (
-                <p className="text-xs text-surface-400 line-clamp-2 mb-3">{hw.description}</p>
-              )}
+              {hw.description && <p className="text-xs text-surface-400 line-clamp-2 mb-3">{hw.description}</p>}
               <div className="mt-auto pt-3 border-t border-surface-100 flex items-center justify-between text-xs text-surface-400">
                 <span>{hw.grade} {hw.section}</span>
                 <span>Due: {new Date(hw.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>

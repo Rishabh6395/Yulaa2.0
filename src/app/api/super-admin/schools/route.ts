@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await getUserFromRequest(request);
+    const user   = await getUserFromRequest(request);
     assertSuperAdmin(user);
     const school = await createSchool(await request.json());
     return Response.json({ school }, { status: 201 });
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const user = await getUserFromRequest(request);
+    const user   = await getUserFromRequest(request);
     assertSuperAdmin(user);
     const school = await updateSchool(await request.json());
     return Response.json({ school });

@@ -10,7 +10,7 @@ async function getUser(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const user       = await getUser(request);
+    const user        = await getUser(request);
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
     const { searchParams } = new URL(request.url);
     return Response.json(await listStudents(primaryRole.school_id!, searchParams));
@@ -19,10 +19,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user       = await getUser(request);
+    const user        = await getUser(request);
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
-    const body       = await request.json();
-    const student    = await createStudent(primaryRole.school_id!, body);
+    const student     = await createStudent(primaryRole.school_id!, await request.json());
     return Response.json({ student }, { status: 201 });
   } catch (err) { return handleError(err); }
 }
@@ -30,8 +29,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     await getUser(request);
-    const body    = await request.json();
-    const student = await updateStudent(body);
+    const student = await updateStudent(await request.json());
     return Response.json({ student });
   } catch (err) { return handleError(err); }
 }

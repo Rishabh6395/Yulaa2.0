@@ -1,31 +1,25 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
+import { useApi } from '@/hooks/useApi';
 
 export default function LeavePage() {
-  const [leaves, setLeaves] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [form, setForm] = useState({ leave_type: 'sick', start_date: '', end_date: '', reason: '' });
+  const [form, setForm]   = useState({ leave_type: 'sick', start_date: '', end_date: '', reason: '' });
   const [saving, setSaving] = useState(false);
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+  const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-  const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+  const user    = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
   const isAdmin = ['school_admin', 'super_admin'].includes(user.primaryRole);
 
-  const fetchData = () => {
-    fetch('/api/leave', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(d => { setLeaves(d.leaves || []); setLoading(false); });
-  };
-
-  useEffect(() => { fetchData(); }, [token]);
+  const { data, isLoading, mutate } = useApi<{ leaves: any[] }>('/api/leave');
+  const leaves = data?.leaves ?? [];
 
   const handleApproval = async (id: string, status: string) => {
     await fetch('/api/leave', { method: 'PATCH', headers, body: JSON.stringify({ id, status }) });
-    fetchData();
+    mutate();
   };
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -35,13 +29,13 @@ export default function LeavePage() {
     if (res.ok) {
       setShowAddModal(false);
       setForm({ leave_type: 'sick', start_date: '', end_date: '', reason: '' });
-      fetchData();
+      mutate();
     }
     setSaving(false);
   };
 
   const statusMap: Record<string, string> = { pending: 'badge-warning', approved: 'badge-success', rejected: 'badge-danger' };
-  const typeMap: Record<string, string> = { sick: '🤒', personal: '👤', family: '👨‍👩‍👧', vacation: '✈️', other: '📋' };
+  const typeMap:   Record<string, string> = { sick: '🤒', personal: '👤', family: '👨‍👩‍👧', vacation: '✈️', other: '📋' };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -71,7 +65,7 @@ export default function LeavePage() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {isLoading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i}>{Array.from({ length: isAdmin ? 7 : 6 }).map((_, j) => (
                     <td key={j}><div className="h-4 bg-surface-100 rounded animate-pulse w-16"/></td>

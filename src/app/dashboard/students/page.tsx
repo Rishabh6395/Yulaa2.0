@@ -1,79 +1,57 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
+import { useApi } from '@/hooks/useApi';
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     approved: 'badge-success',
-    pending: 'badge-warning',
+    pending:  'badge-warning',
     rejected: 'badge-danger',
-    withdrawn: 'badge-neutral',
+    withdrawn:'badge-neutral',
   };
   return <span className={map[status] || 'badge-neutral'}>{status}</span>;
 }
 
 export default function StudentsPage() {
-  const [students, setStudents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [classes, setClasses] = useState<any[]>([]);
-  const [classFilter, setClassFilter] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [form, setForm] = useState({ admission_no: '', first_name: '', last_name: '', dob: '', gender: '', class_id: '', address: '' });
-  const [saving, setSaving] = useState(false);
+  const [page,          setPage]          = useState(1);
+  const [search,        setSearch]        = useState('');
+  const [statusFilter,  setStatusFilter]  = useState('');
+  const [classFilter,   setClassFilter]   = useState('');
+  const [showAddModal,  setShowAddModal]  = useState(false);
+  const [form,          setForm]          = useState({ admission_no: '', first_name: '', last_name: '', dob: '', gender: '', class_id: '', address: '' });
+  const [saving,        setSaving]        = useState(false);
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+  const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-  const fetchStudents = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams({ page: page.toString(), limit: '15' });
-    if (search) params.set('search', search);
-    if (statusFilter) params.set('status', statusFilter);
-    if (classFilter) params.set('class_id', classFilter);
+  // Build URL — SWR uses this as the cache key, so each unique filter combo is cached separately
+  const params = new URLSearchParams({ page: page.toString(), limit: '15' });
+  if (search)       params.set('search',   search);
+  if (statusFilter) params.set('status',   statusFilter);
+  if (classFilter)  params.set('class_id', classFilter);
 
-    const res = await fetch(`/api/students?${params}`, { headers: { Authorization: `Bearer ${token}` } });
-    const data = await res.json();
-    setStudents(data.students || []);
-    setTotal(data.total || 0);
-    setLoading(false);
-  }, [page, search, statusFilter, classFilter, token]);
+  const { data,         isLoading, mutate } = useApi<{ students: any[]; total: number }>(`/api/students?${params}`);
+  const { data: clsData }                   = useApi<{ classes:  any[] }>('/api/classes');
 
-  useEffect(() => {
-    fetchStudents();
-  }, [fetchStudents]);
-
-  useEffect(() => {
-    fetch('/api/classes', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(d => setClasses(d.classes || []));
-  }, [token]);
+  const students = data?.students ?? [];
+  const total    = data?.total    ?? 0;
+  const classes  = clsData?.classes ?? [];
 
   const handleApproval = async (id: string, status: string) => {
-    await fetch('/api/students', {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify({ id, admission_status: status }),
-    });
-    fetchStudents();
+    await fetch('/api/students', { method: 'PATCH', headers, body: JSON.stringify({ id, admission_status: status }) });
+    mutate();
   };
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
-    const res = await fetch('/api/students', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(form),
-    });
+    const res = await fetch('/api/students', { method: 'POST', headers, body: JSON.stringify(form) });
     if (res.ok) {
       setShowAddModal(false);
       setForm({ admission_no: '', first_name: '', last_name: '', dob: '', gender: '', class_id: '', address: '' });
-      fetchStudents();
+      mutate();
     }
     setSaving(false);
   };
@@ -93,13 +71,8 @@ export default function StudentsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <input
-          type="text"
-          placeholder="Search by name or admission no..."
-          className="input-field max-w-xs"
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-        />
+        <input type="text" placeholder="Search by name or admission no..." className="input-field max-w-xs"
+          value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}/>
         <select className="input-field max-w-[160px]" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
           <option value="">All Status</option>
           <option value="approved">Approved</option>
@@ -108,9 +81,7 @@ export default function StudentsPage() {
         </select>
         <select className="input-field max-w-[180px]" value={classFilter} onChange={(e) => { setClassFilter(e.target.value); setPage(1); }}>
           <option value="">All Classes</option>
-          {classes.map(c => (
-            <option key={c.id} value={c.id}>{c.grade} - {c.section}</option>
-          ))}
+          {classes.map(c => <option key={c.id} value={c.id}>{c.grade} - {c.section}</option>)}
         </select>
       </div>
 
@@ -120,57 +91,47 @@ export default function StudentsPage() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Student</th>
-                <th>Admission No</th>
-                <th>Class</th>
-                <th>Gender</th>
-                <th>Status</th>
-                <th>Parents</th>
-                <th>Actions</th>
+                <th>Student</th><th>Admission No</th><th>Class</th><th>Gender</th><th>Status</th><th>Parents</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}>
-                    {Array.from({ length: 7 }).map((_, j) => (
-                      <td key={j}><div className="h-4 bg-surface-100 rounded animate-pulse w-20"/></td>
-                    ))}
-                  </tr>
+                  <tr key={i}>{Array.from({ length: 7 }).map((_, j) => (
+                    <td key={j}><div className="h-4 bg-surface-100 rounded animate-pulse w-20"/></td>
+                  ))}</tr>
                 ))
               ) : students.length === 0 ? (
                 <tr><td colSpan={7} className="text-center py-8 text-surface-400">No students found</td></tr>
-              ) : (
-                students.map((s) => (
-                  <tr key={s.id}>
-                    <td>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 text-xs font-bold">
-                          {s.first_name[0]}{s.last_name[0]}
-                        </div>
-                        <span className="font-medium text-gray-900 dark:text-gray-100">{s.first_name} {s.last_name}</span>
+              ) : students.map((s) => (
+                <tr key={s.id}>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 text-xs font-bold">
+                        {s.first_name[0]}{s.last_name[0]}
                       </div>
-                    </td>
-                    <td><span className="font-mono text-xs bg-surface-50 px-2 py-1 rounded">{s.admission_no}</span></td>
-                    <td>{s.grade ? `${s.grade} - ${s.section}` : '—'}</td>
-                    <td className="capitalize">{s.gender || '—'}</td>
-                    <td><StatusBadge status={s.admission_status} /></td>
-                    <td>
-                      {s.parents ? (
-                        <span className="text-xs text-surface-400">{s.parents.map((p: any) => p.name).join(', ')}</span>
-                      ) : '—'}
-                    </td>
-                    <td>
-                      {s.admission_status === 'pending' && (
-                        <div className="flex gap-1.5">
-                          <button onClick={() => handleApproval(s.id, 'approved')} className="text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg hover:bg-emerald-100 font-medium transition-colors">Approve</button>
-                          <button onClick={() => handleApproval(s.id, 'rejected')} className="text-xs bg-red-50 text-red-700 px-2.5 py-1 rounded-lg hover:bg-red-100 font-medium transition-colors">Reject</button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
+                      <span className="font-medium text-gray-900 dark:text-gray-100">{s.first_name} {s.last_name}</span>
+                    </div>
+                  </td>
+                  <td><span className="font-mono text-xs bg-surface-50 px-2 py-1 rounded">{s.admission_no}</span></td>
+                  <td>{s.grade ? `${s.grade} - ${s.section}` : '—'}</td>
+                  <td className="capitalize">{s.gender || '—'}</td>
+                  <td><StatusBadge status={s.admission_status} /></td>
+                  <td>
+                    {s.parents ? (
+                      <span className="text-xs text-surface-400">{s.parents.map((p: any) => p.name).join(', ')}</span>
+                    ) : '—'}
+                  </td>
+                  <td>
+                    {s.admission_status === 'pending' && (
+                      <div className="flex gap-1.5">
+                        <button onClick={() => handleApproval(s.id, 'approved')} className="text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg hover:bg-emerald-100 font-medium transition-colors">Approve</button>
+                        <button onClick={() => handleApproval(s.id, 'rejected')} className="text-xs bg-red-50 text-red-700 px-2.5 py-1 rounded-lg hover:bg-red-100 font-medium transition-colors">Reject</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
