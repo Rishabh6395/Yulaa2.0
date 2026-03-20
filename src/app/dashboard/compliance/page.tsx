@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { COMPLIANCE_CATEGORIES } from '@/modules/compliance/compliance.types';
+import { COMPLIANCE_CATEGORIES, type ComplianceCategoryKey } from '@/modules/compliance/compliance.types';
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
@@ -23,7 +23,10 @@ function categoryLabel(key: string) {
 // ── Add item modal ────────────────────────────────────────────────────────────
 
 function AddItemModal({ onClose, onSaved, token }: { onClose: () => void; onSaved: () => void; token: string }) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    category: ComplianceCategoryKey;
+    title: string; description: string; status: string; dueDate: string; notes: string;
+  }>({
     category: COMPLIANCE_CATEGORIES[0].key,
     title: '',
     description: '',
@@ -63,7 +66,7 @@ function AddItemModal({ onClose, onSaved, token }: { onClose: () => void; onSave
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">Category</label>
-              <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value as typeof COMPLIANCE_CATEGORIES[number]['key'] }))}
+              <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value as ComplianceCategoryKey }))}
                 className="w-full px-3 py-2 rounded-xl border border-surface-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-300">
                 {COMPLIANCE_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
               </select>
