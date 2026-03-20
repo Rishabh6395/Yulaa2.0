@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { signToken } from '@/lib/auth';
 import { AppError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
-import type { LoginInput, LoginResponse } from './auth.types';
+import type { LoginInput, LoginResponse, ChangePasswordInput } from './auth.types';
 
 export async function login({ email, password }: LoginInput): Promise<LoginResponse> {
   if (!email || !password) throw new AppError('Email and password are required');
@@ -62,14 +62,28 @@ export async function login({ email, password }: LoginInput): Promise<LoginRespo
   return {
     token,
     user: {
-      id:          user.id,
-      email:       user.email,
-      firstName:   user.firstName,
-      lastName:    user.lastName,
+      id:                user.id,
+      email:             user.email,
+      firstName:         user.firstName,
+      lastName:          user.lastName,
       roles,
-      primaryRole: primaryRole?.role_code,
-      schoolId:    primaryRole?.school_id ?? null,
-      schoolName:  primaryRole?.school_name ?? null,
+      primaryRole:       primaryRole?.role_code,
+      schoolId:          primaryRole?.school_id ?? null,
+      schoolName:        primaryRole?.school_name ?? null,
+      mustResetPassword: user.mustResetPassword,
     },
   };
+}
+
+export async function changePassword(userId: string, { currentPassword, newPassword }: ChangePasswordInput): Promise<void> {
+  if (!newPassword || newPassword.length < 8) throw new AppError('New password must be at least 8 characters');
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new AppError('User not found', 404);
+
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) throw new UnauthorizedError('Current password is incorrect');
+
+  const hash = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({ where: { id: userId }, data: { passwordHash: hash, mustResetPassword: false } });
 }

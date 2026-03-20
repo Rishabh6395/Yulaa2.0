@@ -32,7 +32,7 @@ export default function LoginPage() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       document.cookie = `token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}`;
-      router.push('/dashboard');
+      router.push(data.user.mustResetPassword ? '/change-password' : '/dashboard');
     } catch {
       setError('Network error. Please try again.');
     } finally {
@@ -57,7 +57,7 @@ export default function LoginPage() {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         document.cookie = `token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}`;
-        router.push('/dashboard');
+        router.push(data.user.mustResetPassword ? '/change-password' : '/dashboard');
       } else {
         setError(data.error);
       }

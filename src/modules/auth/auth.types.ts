@@ -14,13 +14,19 @@ export interface AuthUserRole {
 export interface LoginResponse {
   token: string;
   user: {
-    id:          string;
-    email:       string;
-    firstName:   string;
-    lastName:    string;
-    roles:       AuthUserRole[];
-    primaryRole: string;
-    schoolId:    string | null;
-    schoolName:  string | null;
+    id:                string;
+    email:             string;
+    firstName:         string;
+    lastName:          string;
+    roles:             AuthUserRole[];
+    primaryRole:       string;
+    schoolId:          string | null;
+    schoolName:        string | null;
+    mustResetPassword: boolean;
   };
+}
+
+export interface ChangePasswordInput {
+  currentPassword: string;
+  newPassword:     string;
 }

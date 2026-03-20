@@ -14,6 +14,7 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard' },
     { label: 'Schools',        href: '/dashboard/schools',       icon: 'Building' },
     { label: 'Users & Roles',  href: '/dashboard/users',         icon: 'UserCog' },
+    { label: 'Admissions',     href: '/dashboard/admissions',    icon: 'ClipboardList' },
     { label: 'Classes',        href: '/dashboard/classes',       icon: 'LayoutGrid' },
     { label: 'Students',       href: '/dashboard/students',      icon: 'Users' },
     { label: 'Teachers',       href: '/dashboard/teachers',      icon: 'GraduationCap' },
@@ -29,6 +30,7 @@ const menuItems: Record<string, MenuItem[]> = {
   ],
   school_admin: [
     { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard' },
+    { label: 'Admissions',     href: '/dashboard/admissions',    icon: 'ClipboardList' },
     { label: 'Classes',        href: '/dashboard/classes',       icon: 'LayoutGrid' },
     { label: 'Students',       href: '/dashboard/students',      icon: 'Users' },
     { label: 'Teachers',       href: '/dashboard/teachers',      icon: 'GraduationCap' },
@@ -81,6 +83,13 @@ const menuItems: Record<string, MenuItem[]> = {
 };
 
 const icons: Record<string, React.ReactNode> = {
+  ClipboardList: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+      <rect x="9" y="3" width="6" height="4" rx="1"/>
+      <line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
+    </svg>
+  ),
   LayoutGrid: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 3h7v5H3zM14 3h7v5h-7zM14 10h7v11h-7zM3 10h7v11H3z"/>

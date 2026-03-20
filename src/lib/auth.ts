@@ -28,8 +28,8 @@ export interface AuthUser {
   roles: UserRole[];
 }
 
-export function signToken(payload: object): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY });
+export function signToken(payload: object, expiresIn: string = JWT_EXPIRY): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn } as any);
 }
 
 export function verifyToken(token: string): JwtPayload | null {

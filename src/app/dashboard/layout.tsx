@@ -18,6 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!token || !userData) { router.push('/login'); return; }
     try {
       const parsed = JSON.parse(userData);
+      if (parsed.mustResetPassword) { router.push('/change-password'); return; }
       setUser(parsed);
 
       if (parsed.primaryRole === 'parent') {
