@@ -69,7 +69,7 @@ export default function StudentsPage() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = 'students-template.csv';
+    a.download = 'students-template.xlsx';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -106,7 +106,7 @@ export default function StudentsPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".csv"
+            accept=".csv,.xlsx"
             className="hidden"
             onChange={handleFileUpload}
           />

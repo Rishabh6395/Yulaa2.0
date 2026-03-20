@@ -72,43 +72,42 @@ export async function updateStudent(body: Record<string, any>) {
   return repo.updateStudentStatus(id, admission_status);
 }
 
-/** Returns an empty CSV template the admin can fill in and upload. */
-export function getStudentTemplate(): string {
-  return generateCSV([], [
-    { key: 'admission_no', header: 'admission_no' },
-    { key: 'first_name',   header: 'first_name' },
-    { key: 'last_name',    header: 'last_name' },
-    { key: 'dob',          header: 'dob' },
-    { key: 'gender',       header: 'gender' },
-    { key: 'class',        header: 'class' },
-    { key: 'address',      header: 'address' },
-    { key: 'blood_group',  header: 'blood_group' },
-  ]);
+/**
+ * Normalize a class label for fuzzy matching.
+ * "Grade 5 - A" | "5 - A" | "5 A" | "5A" all collapse to "5 a".
+ */
+function normalizeClassName(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/^grade\s+/i, '')   // strip leading "grade "
+    .replace(/\s*-\s*/g, ' ')    // " - " → " "
+    .replace(/\s+/g, ' ')        // collapse spaces
+    .trim();
 }
 
 /**
  * Parse a CSV of students and insert them in bulk.
- * The `class` column should be "Grade Section" e.g. "5 A" — matched against existing classes.
+ * Accepts pre-parsed rows (from CSV or xlsx) so the route controls parsing.
  */
 export async function bulkUploadStudents(
   schoolId: string,
-  csvText: string,
+  rows: Record<string, string>[],
   classes: { id: string; grade: string; section: string }[],
 ) {
-  const rows = parseCSV(csvText);
-  if (rows.length === 0) throw new AppError('CSV is empty or has no data rows');
+  if (rows.length === 0) throw new AppError('File is empty or has no data rows');
 
-  // Build a lookup: "grade section" → classId
+  // Build a lookup: normalised key → classId
   const classMap = new Map<string, string>();
   for (const c of classes) {
-    classMap.set(`${c.grade} ${c.section}`.toLowerCase(), c.id);
+    const key = normalizeClassName(`${c.grade} ${c.section}`);
+    classMap.set(key, c.id);
   }
 
   let created = 0;
   const errors: string[] = [];
 
   for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
+    const row    = rows[i];
     const rowNum = i + 2; // +2: header row + 1-indexed
 
     const admissionNo = row['admission_no']?.trim();
@@ -120,11 +119,11 @@ export async function bulkUploadStudents(
       continue;
     }
 
-    const classKey = row['class']?.trim().toLowerCase();
-    const classId  = classKey ? (classMap.get(classKey) ?? null) : null;
+    const rawClass = row['class']?.trim() ?? '';
+    const classId  = rawClass ? (classMap.get(normalizeClassName(rawClass)) ?? null) : null;
 
-    if (classKey && !classId) {
-      errors.push(`Row ${rowNum}: class "${row['class']}" not found — skipped`);
+    if (rawClass && !classId) {
+      errors.push(`Row ${rowNum}: class "${rawClass}" not found — skipped`);
       continue;
     }
 
@@ -134,7 +133,7 @@ export async function bulkUploadStudents(
         admissionNo,
         firstName,
         lastName,
-        classId:    classId    || null,
+        classId:    classId || null,
         dob:        row['dob']         || null,
         gender:     row['gender']      || null,
         address:    row['address']     || null,
@@ -147,4 +146,9 @@ export async function bulkUploadStudents(
   }
 
   return { created, errors, total: rows.length };
+}
+
+/** Parse a CSV string into rows for bulk upload. Re-exported for use in the route. */
+export function parseStudentCSV(csvText: string): Record<string, string>[] {
+  return parseCSV(csvText);
 }
