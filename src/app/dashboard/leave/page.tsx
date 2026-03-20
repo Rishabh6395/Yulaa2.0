@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Modal from '@/components/ui/Modal';
 
 export default function LeavePage() {
   const [leaves, setLeaves] = useState<any[]>([]);
@@ -46,8 +47,8 @@ export default function LeavePage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold text-gray-900">Leave Requests</h1>
-          <p className="text-sm text-surface-400 mt-0.5">Manage leave applications</p>
+          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Leave Requests</h1>
+          <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">Manage leave applications</p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -80,7 +81,7 @@ export default function LeavePage() {
                 <tr><td colSpan={isAdmin ? 7 : 6} className="text-center py-8 text-surface-400">No leave requests</td></tr>
               ) : leaves.map((l) => (
                 <tr key={l.id}>
-                  <td className="font-medium text-gray-900">{l.requester_name}</td>
+                  <td className="font-medium text-gray-900 dark:text-gray-100">{l.requester_name}</td>
                   <td>{l.student_name || '—'}</td>
                   <td>
                     <span className="flex items-center gap-1.5 text-sm">
@@ -109,43 +110,38 @@ export default function LeavePage() {
         </div>
       </div>
 
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
-          <div className="card p-6 w-full max-w-lg shadow-modal animate-fade-in" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-display font-bold text-gray-900 mb-4">Apply for Leave</h2>
-            <form onSubmit={handleAdd} className="space-y-4">
-              <div>
-                <label className="label">Leave Type</label>
-                <select className="input-field" value={form.leave_type} onChange={e => setForm({...form, leave_type: e.target.value})}>
-                  <option value="sick">Sick Leave</option>
-                  <option value="personal">Personal</option>
-                  <option value="family">Family</option>
-                  <option value="vacation">Vacation</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Start Date *</label>
-                  <input type="date" className="input-field" required value={form.start_date} onChange={e => setForm({...form, start_date: e.target.value})}/>
-                </div>
-                <div>
-                  <label className="label">End Date *</label>
-                  <input type="date" className="input-field" required value={form.end_date} onChange={e => setForm({...form, end_date: e.target.value})}/>
-                </div>
-              </div>
-              <div>
-                <label className="label">Reason</label>
-                <textarea className="input-field" rows={3} value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} placeholder="Reason for leave..."/>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Submitting...' : 'Submit'}</button>
-              </div>
-            </form>
+      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Apply for Leave">
+        <form onSubmit={handleAdd} className="space-y-4">
+          <div>
+            <label className="label">Leave Type</label>
+            <select className="input-field" value={form.leave_type} onChange={e => setForm({...form, leave_type: e.target.value})}>
+              <option value="sick">Sick Leave</option>
+              <option value="personal">Personal</option>
+              <option value="family">Family</option>
+              <option value="vacation">Vacation</option>
+              <option value="other">Other</option>
+            </select>
           </div>
-        </div>
-      )}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Start Date *</label>
+              <input type="date" className="input-field" required value={form.start_date} onChange={e => setForm({...form, start_date: e.target.value})}/>
+            </div>
+            <div>
+              <label className="label">End Date *</label>
+              <input type="date" className="input-field" required value={form.end_date} onChange={e => setForm({...form, end_date: e.target.value})}/>
+            </div>
+          </div>
+          <div>
+            <label className="label">Reason</label>
+            <textarea className="input-field" rows={3} value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} placeholder="Reason for leave..."/>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Submitting...' : 'Submit'}</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Modal from '@/components/ui/Modal';
 
 const SESSION_TYPES = [
   { value: '',           label: 'All Types' },
@@ -153,8 +154,8 @@ export default function SessionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold text-gray-900">Career Sessions</h1>
-          <p className="text-sm text-surface-400 mt-0.5">
+          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Career Sessions</h1>
+          <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">
             {isConsultant ? 'Schedule and manage your career guidance sessions' : 'Career counselling sessions for students'}
           </p>
         </div>
@@ -222,8 +223,8 @@ export default function SessionsPage() {
             <rect x="2" y="7" width="20" height="14" rx="2"/>
             <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
           </svg>
-          <p className="text-gray-900 font-semibold">No sessions found</p>
-          <p className="text-sm text-surface-400 mt-1">
+          <p className="text-gray-900 dark:text-gray-100 font-semibold">No sessions found</p>
+          <p className="text-sm text-surface-400 dark:text-gray-500 mt-1">
             {isConsultant ? 'Schedule your first career guidance session.' : 'No career sessions scheduled yet.'}
           </p>
         </div>
@@ -262,7 +263,7 @@ export default function SessionsPage() {
                         <span className="text-xs text-surface-400">by {s.consultant_name}</span>
                       )}
                     </div>
-                    <p className="text-sm font-semibold text-gray-900">{s.title}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{s.title}</p>
                     {s.description && (
                       <p className="text-xs text-surface-400 mt-1 line-clamp-2">{s.description}</p>
                     )}
@@ -328,119 +329,79 @@ export default function SessionsPage() {
         </div>
       )}
 
-      {/* Add / Edit modal */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowForm(false)}/>
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-surface-100 sticky top-0 bg-white z-10">
-              <h2 className="text-base font-display font-bold text-gray-900">
-                {editSession ? 'Edit Session' : 'Schedule New Session'}
-              </h2>
-              <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-surface-100 text-surface-400 transition-colors">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              {/* Title */}
-              <div>
-                <label className="block text-xs font-semibold text-surface-500 mb-1.5">Session Title *</label>
-                <input className="input-field" placeholder="e.g. Choosing the Right Stream After Grade 10"
-                  value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required />
-              </div>
-
-              {/* Type */}
-              <div>
-                <label className="block text-xs font-semibold text-surface-500 mb-1.5">Session Type *</label>
-                <select className="input-field" value={form.session_type} onChange={e => setForm(f => ({ ...f, session_type: e.target.value }))} required>
-                  {SESSION_TYPES.filter(t => t.value).map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Date + Duration */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-surface-500 mb-1.5">Date & Time</label>
-                  <input className="input-field" type="datetime-local"
-                    value={form.session_date} onChange={e => setForm(f => ({ ...f, session_date: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-surface-500 mb-1.5">Duration (min)</label>
-                  <input className="input-field" type="number" min="15" step="15" placeholder="60"
-                    value={form.duration_minutes} onChange={e => setForm(f => ({ ...f, duration_minutes: parseInt(e.target.value) }))} />
-                </div>
-              </div>
-
-              {/* Max participants + Meeting link */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-surface-500 mb-1.5">Max Participants</label>
-                  <input className="input-field" type="number" min="1" placeholder="Unlimited"
-                    value={form.max_participants} onChange={e => setForm(f => ({ ...f, max_participants: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-surface-500 mb-1.5">Meeting Link</label>
-                  <input className="input-field" type="url" placeholder="https://..."
-                    value={form.meeting_link} onChange={e => setForm(f => ({ ...f, meeting_link: e.target.value }))} />
-                </div>
-              </div>
-
-              {/* Target grades */}
-              <div>
-                <label className="block text-xs font-semibold text-surface-500 mb-2">Target Grades</label>
-                <div className="flex flex-wrap gap-2">
-                  {GRADE_OPTIONS.map(g => (
-                    <button key={g} type="button"
-                      onClick={() => setForm(f => ({
-                        ...f,
-                        target_grades: f.target_grades.includes(g)
-                          ? f.target_grades.filter(x => x !== g)
-                          : [...f.target_grades, g],
-                      }))}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                        form.target_grades.includes(g)
-                          ? 'bg-brand-500 text-white'
-                          : 'bg-surface-100 text-surface-500 hover:bg-surface-200'
-                      }`}
-                    >
-                      {g}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-xs font-semibold text-surface-500 mb-1.5">Description</label>
-                <textarea className="input-field resize-none" rows={3}
-                  placeholder="What will students learn in this session?"
-                  value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-              </div>
-
-              {message && (
-                <p className={`text-xs font-medium ${message.type === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>
-                  {message.text}
-                </p>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)}
-                  className="flex-1 px-4 py-2 rounded-xl border border-surface-200 text-sm font-medium text-surface-500 hover:bg-surface-50 transition-colors">
-                  Cancel
-                </button>
-                <button type="submit" disabled={saving} className="flex-1 btn-primary">
-                  {saving ? 'Saving...' : editSession ? 'Update Session' : 'Schedule Session'}
-                </button>
-              </div>
-            </form>
+      <Modal open={showForm} onClose={() => setShowForm(false)} title={editSession ? 'Edit Session' : 'Schedule New Session'}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="label">Session Title *</label>
+            <input className="input-field" placeholder="e.g. Choosing the Right Stream After Grade 10"
+              value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required />
           </div>
-        </div>
-      )}
+          <div>
+            <label className="label">Session Type *</label>
+            <select className="input-field" value={form.session_type} onChange={e => setForm(f => ({ ...f, session_type: e.target.value }))} required>
+              {SESSION_TYPES.filter(t => t.value).map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Date & Time</label>
+              <input className="input-field" type="datetime-local" value={form.session_date} onChange={e => setForm(f => ({ ...f, session_date: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Duration (min)</label>
+              <input className="input-field" type="number" min="15" step="15" placeholder="60"
+                value={form.duration_minutes} onChange={e => setForm(f => ({ ...f, duration_minutes: parseInt(e.target.value) }))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Max Participants</label>
+              <input className="input-field" type="number" min="1" placeholder="Unlimited"
+                value={form.max_participants} onChange={e => setForm(f => ({ ...f, max_participants: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Meeting Link</label>
+              <input className="input-field" type="url" placeholder="https://..." value={form.meeting_link} onChange={e => setForm(f => ({ ...f, meeting_link: e.target.value }))} />
+            </div>
+          </div>
+          <div>
+            <label className="label">Target Grades</label>
+            <div className="flex flex-wrap gap-2">
+              {GRADE_OPTIONS.map(g => (
+                <button key={g} type="button"
+                  onClick={() => setForm(f => ({
+                    ...f,
+                    target_grades: f.target_grades.includes(g)
+                      ? f.target_grades.filter(x => x !== g)
+                      : [...f.target_grades, g],
+                  }))}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                    form.target_grades.includes(g) ? 'bg-brand-500 text-white' : 'bg-surface-100 text-surface-500 hover:bg-surface-200'
+                  }`}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="label">Description</label>
+            <textarea className="input-field resize-none" rows={3} placeholder="What will students learn in this session?"
+              value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+          </div>
+          {message && (
+            <p className={`text-xs font-medium ${message.type === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>{message.text}</p>
+          )}
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={saving} className="btn-primary flex-1">
+              {saving ? 'Saving...' : editSession ? 'Update Session' : 'Schedule Session'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -74,10 +74,10 @@ export default function ContractsPage() {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-display font-bold text-gray-900">
+        <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">
           {isConsultant ? 'My Contract' : 'Consultant Contracts'}
         </h1>
-        <p className="text-sm text-surface-400 mt-0.5">
+        <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">
           {isConsultant ? 'Your active and past engagement contracts' : 'All consultant contracts for this school'}
         </p>
       </div>
@@ -132,8 +132,8 @@ export default function ContractsPage() {
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14,2 14,8 20,8"/>
           </svg>
-          <p className="text-gray-900 font-semibold">No contracts found</p>
-          <p className="text-sm text-surface-400 mt-1">Contact the school administrator to set up your contract.</p>
+          <p className="text-gray-900 dark:text-gray-100 font-semibold">No contracts found</p>
+          <p className="text-sm text-surface-400 dark:text-gray-500 mt-1">Contact the school administrator to set up your contract.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -158,7 +158,7 @@ export default function ContractsPage() {
                   {/* Details */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 flex-wrap mb-2">
-                      <p className="text-sm font-display font-bold text-gray-900">{c.contract_no}</p>
+                      <p className="text-sm font-display font-bold text-gray-900 dark:text-gray-100">{c.contract_no}</p>
                       <ContractStatusBadge status={c.status} />
                     </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Modal from '@/components/ui/Modal';
 
 export default function HomeworkPage() {
   const [homework, setHomework] = useState<any[]>([]);
@@ -43,8 +44,8 @@ export default function HomeworkPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold text-gray-900">Homework</h1>
-          <p className="text-sm text-surface-400 mt-0.5">Assignments and submissions</p>
+          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Homework</h1>
+          <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">Assignments and submissions</p>
         </div>
         {isTeacherOrAdmin && (
           <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
@@ -74,7 +75,7 @@ export default function HomeworkPage() {
                   <span className="badge-neutral text-[10px]">{hw.status}</span>
                 )}
               </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">{hw.title}</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">{hw.title}</h3>
               {hw.description && (
                 <p className="text-xs text-surface-400 line-clamp-2 mb-3">{hw.description}</p>
               )}
@@ -91,45 +92,39 @@ export default function HomeworkPage() {
         </div>
       )}
 
-      {/* Add Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
-          <div className="card p-6 w-full max-w-lg shadow-modal animate-fade-in" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-display font-bold text-gray-900 mb-4">Assign Homework</h2>
-            <form onSubmit={handleAdd} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Class *</label>
-                  <select className="input-field" required value={form.class_id} onChange={e => setForm({...form, class_id: e.target.value})}>
-                    <option value="">Select</option>
-                    {classes.map(c => <option key={c.id} value={c.id}>{c.grade} - {c.section}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Subject *</label>
-                  <input className="input-field" required placeholder="e.g. Mathematics" value={form.subject} onChange={e => setForm({...form, subject: e.target.value})}/>
-                </div>
-              </div>
-              <div>
-                <label className="label">Title *</label>
-                <input className="input-field" required placeholder="Homework title" value={form.title} onChange={e => setForm({...form, title: e.target.value})}/>
-              </div>
-              <div>
-                <label className="label">Description</label>
-                <textarea className="input-field" rows={3} placeholder="Instructions for students..." value={form.description} onChange={e => setForm({...form, description: e.target.value})}/>
-              </div>
-              <div>
-                <label className="label">Due Date *</label>
-                <input type="date" className="input-field" required value={form.due_date} onChange={e => setForm({...form, due_date: e.target.value})}/>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving...' : 'Assign'}</button>
-              </div>
-            </form>
+      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Assign Homework">
+        <form onSubmit={handleAdd} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Class *</label>
+              <select className="input-field" required value={form.class_id} onChange={e => setForm({...form, class_id: e.target.value})}>
+                <option value="">Select</option>
+                {classes.map(c => <option key={c.id} value={c.id}>{c.grade} - {c.section}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">Subject *</label>
+              <input className="input-field" required placeholder="e.g. Mathematics" value={form.subject} onChange={e => setForm({...form, subject: e.target.value})}/>
+            </div>
           </div>
-        </div>
-      )}
+          <div>
+            <label className="label">Title *</label>
+            <input className="input-field" required placeholder="Homework title" value={form.title} onChange={e => setForm({...form, title: e.target.value})}/>
+          </div>
+          <div>
+            <label className="label">Description</label>
+            <textarea className="input-field" rows={3} placeholder="Instructions for students..." value={form.description} onChange={e => setForm({...form, description: e.target.value})}/>
+          </div>
+          <div>
+            <label className="label">Due Date *</label>
+            <input type="date" className="input-field" required value={form.due_date} onChange={e => setForm({...form, due_date: e.target.value})}/>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving...' : 'Assign'}</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

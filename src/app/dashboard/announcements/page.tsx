@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Modal from '@/components/ui/Modal';
 
 const typeConfig: Record<string, { bg: string; text: string; icon: string }> = {
   general: { bg: 'bg-surface-100', text: 'text-surface-600', icon: '📢' },
@@ -47,8 +48,8 @@ export default function AnnouncementsPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold text-gray-900">Announcements</h1>
-          <p className="text-sm text-surface-400 mt-0.5">School-wide communications</p>
+          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Announcements</h1>
+          <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">School-wide communications</p>
         </div>
         {isAdmin && (
           <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
@@ -74,8 +75,8 @@ export default function AnnouncementsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-semibold text-gray-900">{a.title}</h3>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase ${config.bg} ${config.text}`}>{a.type.replace('_', ' ')}</span>
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{a.title}</h3>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase ${config.bg} ${config.text}`}>{(a.type ?? '').replace('_', ' ')}</span>
                       <span className="badge-neutral text-[10px]">{a.audience}</span>
                     </div>
                     <p className="text-sm text-surface-500 leading-relaxed">{a.message}</p>
@@ -91,50 +92,44 @@ export default function AnnouncementsPage() {
         </div>
       )}
 
-      {/* Add Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
-          <div className="card p-6 w-full max-w-lg shadow-modal animate-fade-in" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-display font-bold text-gray-900 mb-4">New Announcement</h2>
-            <form onSubmit={handleAdd} className="space-y-4">
-              <div>
-                <label className="label">Title *</label>
-                <input className="input-field" required value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="Announcement title"/>
-              </div>
-              <div>
-                <label className="label">Message *</label>
-                <textarea className="input-field" rows={4} required value={form.message} onChange={e => setForm({...form, message: e.target.value})} placeholder="Write your announcement..."/>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Type</label>
-                  <select className="input-field" value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
-                    <option value="general">General</option>
-                    <option value="urgent">Urgent</option>
-                    <option value="event">Event</option>
-                    <option value="holiday">Holiday</option>
-                    <option value="exam">Exam</option>
-                    <option value="fee_reminder">Fee Reminder</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Audience</label>
-                  <select className="input-field" value={form.audience} onChange={e => setForm({...form, audience: e.target.value})}>
-                    <option value="all">All</option>
-                    <option value="parents">Parents</option>
-                    <option value="teachers">Teachers</option>
-                    <option value="students">Students</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Publishing...' : 'Publish'}</button>
-              </div>
-            </form>
+      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="New Announcement">
+        <form onSubmit={handleAdd} className="space-y-4">
+          <div>
+            <label className="label">Title *</label>
+            <input className="input-field" required value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="Announcement title"/>
           </div>
-        </div>
-      )}
+          <div>
+            <label className="label">Message *</label>
+            <textarea className="input-field" rows={4} required value={form.message} onChange={e => setForm({...form, message: e.target.value})} placeholder="Write your announcement..."/>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Type</label>
+              <select className="input-field" value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
+                <option value="general">General</option>
+                <option value="urgent">Urgent</option>
+                <option value="event">Event</option>
+                <option value="holiday">Holiday</option>
+                <option value="exam">Exam</option>
+                <option value="fee_reminder">Fee Reminder</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Audience</label>
+              <select className="input-field" value={form.audience} onChange={e => setForm({...form, audience: e.target.value})}>
+                <option value="all">All</option>
+                <option value="parents">Parents</option>
+                <option value="teachers">Teachers</option>
+                <option value="students">Students</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Publishing...' : 'Publish'}</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

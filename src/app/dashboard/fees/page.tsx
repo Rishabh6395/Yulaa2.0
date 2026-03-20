@@ -27,15 +27,15 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-display font-bold text-gray-900">{title}</h1>
-        <p className="text-sm text-surface-400 mt-0.5">{subtitle}</p>
+        <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">{title}</h1>
+        <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">{subtitle}</p>
       </div>
 
       {summary && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="card p-5">
             <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Total Invoiced</p>
-            <p className="text-2xl font-display font-bold text-gray-900 mt-1">{fmt(summary.total)}</p>
+            <p className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100 mt-1">{fmt(summary.total)}</p>
           </div>
           <div className="card p-5">
             <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Collected</p>
@@ -92,7 +92,7 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
               ) : invoices.map(inv => (
                 <tr key={inv.id}>
                   <td><span className="font-mono text-xs bg-surface-50 px-2 py-1 rounded">{inv.invoice_no}</span></td>
-                  <td className="font-medium text-gray-900">{inv.student_name}</td>
+                  <td className="font-medium text-gray-900 dark:text-gray-100">{inv.student_name}</td>
                   <td>{inv.grade ? `${inv.grade} - ${inv.section}` : '—'}</td>
                   <td className="font-semibold">{fmt(inv.amount)}</td>
                   <td>{new Date(inv.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
@@ -162,7 +162,7 @@ export default function FeesPage() {
   if (role === 'parent' && !activeChild) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-3">
-        <p className="text-gray-900 font-semibold">No child selected</p>
+        <p className="text-gray-900 dark:text-gray-100 font-semibold">No child selected</p>
         <p className="text-sm text-surface-400">Select a child from the top bar to view fees.</p>
       </div>
     );

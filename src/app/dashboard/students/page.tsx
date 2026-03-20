@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Modal from '@/components/ui/Modal';
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -186,64 +187,56 @@ export default function StudentsPage() {
         )}
       </div>
 
-      {/* Add Student Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
-          <div className="flex min-h-full items-center justify-center p-4">
-          <div className="card p-6 w-full max-w-lg shadow-modal animate-fade-in" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-display font-bold text-gray-900 dark:text-gray-100 mb-4">Add New Student</h2>
-            <form onSubmit={handleAdd} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">First Name *</label>
-                  <input className="input-field" required value={form.first_name} onChange={e => setForm({...form, first_name: e.target.value})}/>
-                </div>
-                <div>
-                  <label className="label">Last Name *</label>
-                  <input className="input-field" required value={form.last_name} onChange={e => setForm({...form, last_name: e.target.value})}/>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Admission No *</label>
-                  <input className="input-field" required value={form.admission_no} onChange={e => setForm({...form, admission_no: e.target.value})}/>
-                </div>
-                <div>
-                  <label className="label">Date of Birth</label>
-                  <input type="date" className="input-field" value={form.dob} onChange={e => setForm({...form, dob: e.target.value})}/>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Gender</label>
-                  <select className="input-field" value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}>
-                    <option value="">Select</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Class</label>
-                  <select className="input-field" value={form.class_id} onChange={e => setForm({...form, class_id: e.target.value})}>
-                    <option value="">Select</option>
-                    {classes.map(c => <option key={c.id} value={c.id}>{c.grade} - {c.section}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="label">Address</label>
-                <textarea className="input-field" rows={2} value={form.address} onChange={e => setForm({...form, address: e.target.value})}/>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving...' : 'Add Student'}</button>
-              </div>
-            </form>
+      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Student">
+        <form onSubmit={handleAdd} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">First Name *</label>
+              <input className="input-field" required value={form.first_name} onChange={e => setForm({...form, first_name: e.target.value})}/>
+            </div>
+            <div>
+              <label className="label">Last Name *</label>
+              <input className="input-field" required value={form.last_name} onChange={e => setForm({...form, last_name: e.target.value})}/>
+            </div>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Admission No *</label>
+              <input className="input-field" required value={form.admission_no} onChange={e => setForm({...form, admission_no: e.target.value})}/>
+            </div>
+            <div>
+              <label className="label">Date of Birth</label>
+              <input type="date" className="input-field" value={form.dob} onChange={e => setForm({...form, dob: e.target.value})}/>
+            </div>
           </div>
-        </div>
-      )}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Gender</label>
+              <select className="input-field" value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}>
+                <option value="">Select</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Class</label>
+              <select className="input-field" value={form.class_id} onChange={e => setForm({...form, class_id: e.target.value})}>
+                <option value="">Select</option>
+                {classes.map(c => <option key={c.id} value={c.id}>{c.grade} - {c.section}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="label">Address</label>
+            <textarea className="input-field" rows={2} value={form.address} onChange={e => setForm({...form, address: e.target.value})}/>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving...' : 'Add Student'}</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

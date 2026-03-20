@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Modal from '@/components/ui/Modal';
 
 interface School {
   id: string;
@@ -217,90 +218,52 @@ export default function SchoolsPage() {
         )}
       </div>
 
-      {/* Modal form */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm" onClick={() => setShowForm(false)}>
-          <div className="flex min-h-full items-center justify-center p-4">
-          <div className="card w-full max-w-lg p-6 space-y-5" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-display font-bold text-gray-900 dark:text-gray-100">
-                {editSchool ? 'Edit School' : 'Register School'}
-              </h2>
-              <button onClick={() => setShowForm(false)} className="text-surface-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
+      <Modal open={showForm} onClose={() => setShowForm(false)} title={editSchool ? 'Edit School' : 'Register School'}>
+        {error && (
+          <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-3 py-2 rounded-lg mb-4">{error}</div>
+        )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="label">School Name *</label>
+            <input
+              className="input-field w-full"
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="e.g. Greenwood International School"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Email</label>
+              <input type="email" className="input-field w-full" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="admin@school.com" />
             </div>
-
-            {error && (
-              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-3 py-2 rounded-lg">{error}</div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-surface-500 dark:text-gray-400 mb-1">School Name *</label>
-                <input
-                  className="input-field w-full"
-                  value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Greenwood International School"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-surface-500 dark:text-gray-400 mb-1">Email</label>
-                  <input
-                    type="email"
-                    className="input-field w-full"
-                    value={form.email}
-                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                    placeholder="admin@school.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-surface-500 dark:text-gray-400 mb-1">Phone</label>
-                  <input
-                    className="input-field w-full"
-                    value={form.phone}
-                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                    placeholder="+91 98765 43210"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-surface-500 dark:text-gray-400 mb-1">Address</label>
-                <textarea
-                  className="input-field w-full resize-none"
-                  rows={2}
-                  value={form.address}
-                  onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                  placeholder="Full address..."
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-surface-500 dark:text-gray-400 mb-1">Subscription Plan</label>
-                <select
-                  className="input-field w-full"
-                  value={form.subscriptionPlan}
-                  onChange={e => setForm(f => ({ ...f, subscriptionPlan: e.target.value }))}
-                >
-                  <option value="basic">Basic</option>
-                  <option value="standard">Standard</option>
-                  <option value="premium">Premium</option>
-                  <option value="enterprise">Enterprise</option>
-                </select>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" disabled={saving} className="btn-primary flex-1">
-                  {saving ? 'Saving...' : editSchool ? 'Save Changes' : 'Register School'}
-                </button>
-              </div>
-            </form>
+            <div>
+              <label className="label">Phone</label>
+              <input className="input-field w-full" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+91 98765 43210" />
+            </div>
           </div>
+          <div>
+            <label className="label">Address</label>
+            <textarea className="input-field w-full resize-none" rows={2} value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Full address..." />
           </div>
-        </div>
-      )}
+          <div>
+            <label className="label">Subscription Plan</label>
+            <select className="input-field w-full" value={form.subscriptionPlan} onChange={e => setForm(f => ({ ...f, subscriptionPlan: e.target.value }))}>
+              <option value="basic">Basic</option>
+              <option value="standard">Standard</option>
+              <option value="premium">Premium</option>
+              <option value="enterprise">Enterprise</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={saving} className="btn-primary flex-1">
+              {saving ? 'Saving...' : editSchool ? 'Save Changes' : 'Register School'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

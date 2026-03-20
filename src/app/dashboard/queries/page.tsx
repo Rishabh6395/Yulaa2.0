@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Modal from '@/components/ui/Modal';
 
 export default function QueriesPage() {
   const [queries, setQueries] = useState<any[]>([]);
@@ -39,8 +40,8 @@ export default function QueriesPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold text-gray-900">Queries & Support</h1>
-          <p className="text-sm text-surface-400 mt-0.5">Communication with school administration</p>
+          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Queries & Support</h1>
+          <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">Communication with school administration</p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -59,7 +60,7 @@ export default function QueriesPage() {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-sm font-semibold text-gray-900">{q.subject}</h3>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{q.subject}</h3>
                     <span className={statusMap[q.status]}>{q.status.replace('_', ' ')}</span>
                     <span className={`text-[10px] font-bold uppercase ${priorityMap[q.priority]}`}>{q.priority}</span>
                   </div>
@@ -77,36 +78,31 @@ export default function QueriesPage() {
         </div>
       )}
 
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowAddModal(false)}>
-          <div className="card p-6 w-full max-w-lg shadow-modal animate-fade-in" onClick={e => e.stopPropagation()}>
-            <h2 className="text-lg font-display font-bold text-gray-900 mb-4">Raise a Query</h2>
-            <form onSubmit={handleAdd} className="space-y-4">
-              <div>
-                <label className="label">Subject *</label>
-                <input className="input-field" required value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} placeholder="What's this about?"/>
-              </div>
-              <div>
-                <label className="label">Message *</label>
-                <textarea className="input-field" rows={4} required value={form.message} onChange={e => setForm({...form, message: e.target.value})} placeholder="Describe your query in detail..."/>
-              </div>
-              <div>
-                <label className="label">Priority</label>
-                <select className="input-field" value={form.priority} onChange={e => setForm({...form, priority: e.target.value})}>
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Submitting...' : 'Submit Query'}</button>
-              </div>
-            </form>
+      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Raise a Query">
+        <form onSubmit={handleAdd} className="space-y-4">
+          <div>
+            <label className="label">Subject *</label>
+            <input className="input-field" required value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} placeholder="What's this about?"/>
           </div>
-        </div>
-      )}
+          <div>
+            <label className="label">Message *</label>
+            <textarea className="input-field" rows={4} required value={form.message} onChange={e => setForm({...form, message: e.target.value})} placeholder="Describe your query in detail..."/>
+          </div>
+          <div>
+            <label className="label">Priority</label>
+            <select className="input-field" value={form.priority} onChange={e => setForm({...form, priority: e.target.value})}>
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Submitting...' : 'Submit Query'}</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

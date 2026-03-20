@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Modal from '@/components/ui/Modal';
 
 interface Role   { id: string; code: string; displayName: string; description: string | null }
 interface School { id: string; name: string }
@@ -245,135 +246,84 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* Create User modal */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm" onClick={() => setShowCreate(false)}>
-          <div className="flex min-h-full items-center justify-center p-4">
-          <div className="card w-full max-w-lg p-6 space-y-5" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-display font-bold text-gray-900 dark:text-gray-100">Add User</h2>
-              <button onClick={() => setShowCreate(false)} className="text-surface-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Add User">
+        {error && (
+          <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-3 py-2 rounded-lg mb-4">{error}</div>
+        )}
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">First Name *</label>
+              <input className="input-field w-full" value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} required />
             </div>
-
-            {error && (
-              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-3 py-2 rounded-lg">{error}</div>
-            )}
-
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-surface-500 dark:text-gray-400 mb-1">First Name *</label>
-                  <input className="input-field w-full" value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} required />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-surface-500 dark:text-gray-400 mb-1">Last Name *</label>
-                  <input className="input-field w-full" value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} required />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-surface-500 dark:text-gray-400 mb-1">Email *</label>
-                <input type="email" className="input-field w-full" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-surface-500 dark:text-gray-400 mb-1">Phone</label>
-                <input className="input-field w-full" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-surface-500 dark:text-gray-400 mb-1">Password *</label>
-                <input type="password" className="input-field w-full" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} required minLength={8} placeholder="Min 8 characters" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-surface-500 dark:text-gray-400 mb-1">Role *</label>
-                <select className="input-field w-full" value={form.roleId} onChange={e => setForm(f => ({ ...f, roleId: e.target.value }))} required>
-                  <option value="">Select a role...</option>
-                  {roles.map(r => (
-                    <option key={r.id} value={r.id}>{r.displayName}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-surface-500 dark:text-gray-400 mb-1">School <span className="font-normal text-surface-300 dark:text-gray-600">(if role requires one)</span></label>
-                <select className="input-field w-full" value={form.schoolId} onChange={e => setForm(f => ({ ...f, schoolId: e.target.value }))}>
-                  <option value="">No school (platform-wide)</option>
-                  {schools.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowCreate(false)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" disabled={saving} className="btn-primary flex-1">
-                  {saving ? 'Creating...' : 'Create User'}
-                </button>
-              </div>
-            </form>
-          </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Role modal */}
-      {showAddRole && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm" onClick={() => setShowAddRole(null)}>
-          <div className="flex min-h-full items-center justify-center p-4">
-          <div className="card w-full max-w-md p-6 space-y-5" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-display font-bold text-gray-900 dark:text-gray-100">Assign Role</h2>
-                <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">
-                  {showAddRole.firstName} {showAddRole.lastName}
-                </p>
-              </div>
-              <button onClick={() => setShowAddRole(null)} className="text-surface-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
+            <div>
+              <label className="label">Last Name *</label>
+              <input className="input-field w-full" value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} required />
             </div>
+          </div>
+          <div>
+            <label className="label">Email *</label>
+            <input type="email" className="input-field w-full" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required />
+          </div>
+          <div>
+            <label className="label">Phone</label>
+            <input className="input-field w-full" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+          </div>
+          <div>
+            <label className="label">Password *</label>
+            <input type="password" className="input-field w-full" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} required minLength={8} placeholder="Min 8 characters" />
+          </div>
+          <div>
+            <label className="label">Role *</label>
+            <select className="input-field w-full" value={form.roleId} onChange={e => setForm(f => ({ ...f, roleId: e.target.value }))} required>
+              <option value="">Select a role...</option>
+              {roles.map(r => <option key={r.id} value={r.id}>{r.displayName}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">School <span className="font-normal text-surface-300 dark:text-gray-600">(if role requires one)</span></label>
+            <select className="input-field w-full" value={form.schoolId} onChange={e => setForm(f => ({ ...f, schoolId: e.target.value }))}>
+              <option value="">No school (platform-wide)</option>
+              {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={() => setShowCreate(false)} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Creating...' : 'Create User'}</button>
+          </div>
+        </form>
+      </Modal>
 
+      <Modal open={!!showAddRole} onClose={() => setShowAddRole(null)} title="Assign Role" maxWidth="max-w-md">
+        {showAddRole && (
+          <>
+            <p className="text-sm text-surface-400 dark:text-gray-500 -mt-2 mb-4">{showAddRole.firstName} {showAddRole.lastName}</p>
             {error && (
-              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-3 py-2 rounded-lg">{error}</div>
+              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-3 py-2 rounded-lg mb-4">{error}</div>
             )}
-
             <form onSubmit={handleAddRole} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-surface-500 dark:text-gray-400 mb-1">Role *</label>
-                <select
-                  className="input-field w-full"
-                  value={addRoleForm.roleId}
-                  onChange={e => setAddRoleForm(f => ({ ...f, roleId: e.target.value }))}
-                  required
-                >
+                <label className="label">Role *</label>
+                <select className="input-field w-full" value={addRoleForm.roleId} onChange={e => setAddRoleForm(f => ({ ...f, roleId: e.target.value }))} required>
                   <option value="">Select a role...</option>
-                  {roles.map(r => (
-                    <option key={r.id} value={r.id}>{r.displayName}</option>
-                  ))}
+                  {roles.map(r => <option key={r.id} value={r.id}>{r.displayName}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-surface-500 dark:text-gray-400 mb-1">School <span className="font-normal text-surface-300 dark:text-gray-600">(optional)</span></label>
-                <select
-                  className="input-field w-full"
-                  value={addRoleForm.schoolId}
-                  onChange={e => setAddRoleForm(f => ({ ...f, schoolId: e.target.value }))}
-                >
+                <label className="label">School <span className="font-normal text-surface-300 dark:text-gray-600">(optional)</span></label>
+                <select className="input-field w-full" value={addRoleForm.schoolId} onChange={e => setAddRoleForm(f => ({ ...f, schoolId: e.target.value }))}>
                   <option value="">No school (platform-wide)</option>
-                  {schools.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
+                  {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowAddRole(null)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" disabled={saving} className="btn-primary flex-1">
-                  {saving ? 'Assigning...' : 'Assign Role'}
-                </button>
+                <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Assigning...' : 'Assign Role'}</button>
               </div>
             </form>
-          </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

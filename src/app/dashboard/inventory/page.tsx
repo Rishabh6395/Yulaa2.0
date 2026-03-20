@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Modal from '@/components/ui/Modal';
 
 const CATEGORIES = [
   { value: '',           label: 'All Categories' },
@@ -137,10 +138,10 @@ export default function InventoryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold text-gray-900">
+          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">
             {isVendor ? 'My Inventory' : 'Vendor Inventory'}
           </h1>
-          <p className="text-sm text-surface-400 mt-0.5">
+          <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">
             {isVendor ? 'Manage your product catalogue for schools' : 'Browse items available from vendors'}
           </p>
         </div>
@@ -207,8 +208,8 @@ export default function InventoryPage() {
             <line x1="3" y1="6" x2="21" y2="6"/>
             <path d="M16 10a4 4 0 0 1-8 0"/>
           </svg>
-          <p className="text-gray-900 font-semibold">No items found</p>
-          <p className="text-sm text-surface-400 mt-1">
+          <p className="text-gray-900 dark:text-gray-100 font-semibold">No items found</p>
+          <p className="text-sm text-surface-400 dark:text-gray-500 mt-1">
             {isVendor ? 'Add your first item to get started.' : 'No vendor inventory available yet.'}
           </p>
         </div>
@@ -224,7 +225,7 @@ export default function InventoryPage() {
 
               {/* Name & description */}
               <div>
-                <p className="text-sm font-semibold text-gray-900 leading-snug">{item.name}</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug">{item.name}</p>
                 {item.description && (
                   <p className="text-xs text-surface-400 mt-1 line-clamp-2">{item.description}</p>
                 )}
@@ -233,7 +234,7 @@ export default function InventoryPage() {
               {/* Price & stock */}
               <div className="flex items-end justify-between mt-auto pt-3 border-t border-surface-100">
                 <div>
-                  <p className="text-lg font-display font-bold text-gray-900">
+                  <p className="text-lg font-display font-bold text-gray-900 dark:text-gray-100">
                     ₹{parseFloat(item.price).toLocaleString('en-IN')}
                   </p>
                   <p className="text-xs text-surface-400">per {item.unit}</p>
@@ -266,102 +267,69 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* Add / Edit modal */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowForm(false)}/>
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-surface-100">
-              <h2 className="text-base font-display font-bold text-gray-900">
-                {editItem ? 'Edit Item' : 'Add New Item'}
-              </h2>
-              <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-surface-100 text-surface-400 transition-colors">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              {/* Name */}
-              <div>
-                <label className="block text-xs font-semibold text-surface-500 mb-1.5">Item Name *</label>
-                <input className="input-field" placeholder="e.g. NCERT Mathematics Grade 5"
-                  value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
-              </div>
-
-              {/* Category + Unit */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-surface-500 mb-1.5">Category *</label>
-                  <select className="input-field" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} required>
-                    {CATEGORIES.filter(c => c.value).map(c => (
-                      <option key={c.value} value={c.value}>{c.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-surface-500 mb-1.5">Unit</label>
-                  <select className="input-field" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}>
-                    {['piece', 'set', 'pair', 'box', 'pack', 'kg', 'litre'].map(u => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Price + Quantity */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-surface-500 mb-1.5">Price (₹) *</label>
-                  <input className="input-field" type="number" min="0" step="0.01" placeholder="0.00"
-                    value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} required />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-surface-500 mb-1.5">Quantity</label>
-                  <input className="input-field" type="number" min="0" placeholder="0"
-                    value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} />
-                </div>
-              </div>
-
-              {/* Status (edit only) */}
-              {editItem && (
-                <div>
-                  <label className="block text-xs font-semibold text-surface-500 mb-1.5">Status</label>
-                  <select className="input-field" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                    <option value="available">Available</option>
-                    <option value="out_of_stock">Out of Stock</option>
-                    <option value="discontinued">Discontinued</option>
-                  </select>
-                </div>
-              )}
-
-              {/* Description */}
-              <div>
-                <label className="block text-xs font-semibold text-surface-500 mb-1.5">Description</label>
-                <textarea className="input-field resize-none" rows={3} placeholder="Item description, size details, etc."
-                  value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-              </div>
-
-              {message && (
-                <p className={`text-xs font-medium ${message.type === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>
-                  {message.text}
-                </p>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)}
-                  className="flex-1 px-4 py-2 rounded-xl border border-surface-200 text-sm font-medium text-surface-500 hover:bg-surface-50 transition-colors">
-                  Cancel
-                </button>
-                <button type="submit" disabled={saving} className="flex-1 btn-primary">
-                  {saving ? 'Saving...' : editItem ? 'Update Item' : 'Add Item'}
-                </button>
-              </div>
-            </form>
+      <Modal open={showForm} onClose={() => setShowForm(false)} title={editItem ? 'Edit Item' : 'Add New Item'}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="label">Item Name *</label>
+            <input className="input-field" placeholder="e.g. NCERT Mathematics Grade 5"
+              value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
           </div>
-        </div>
-      )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Category *</label>
+              <select className="input-field" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} required>
+                {CATEGORIES.filter(c => c.value).map(c => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">Unit</label>
+              <select className="input-field" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}>
+                {['piece', 'set', 'pair', 'box', 'pack', 'kg', 'litre'].map(u => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Price (₹) *</label>
+              <input className="input-field" type="number" min="0" step="0.01" placeholder="0.00"
+                value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} required />
+            </div>
+            <div>
+              <label className="label">Quantity</label>
+              <input className="input-field" type="number" min="0" placeholder="0"
+                value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} />
+            </div>
+          </div>
+          {editItem && (
+            <div>
+              <label className="label">Status</label>
+              <select className="input-field" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                <option value="available">Available</option>
+                <option value="out_of_stock">Out of Stock</option>
+                <option value="discontinued">Discontinued</option>
+              </select>
+            </div>
+          )}
+          <div>
+            <label className="label">Description</label>
+            <textarea className="input-field resize-none" rows={3} placeholder="Item description, size details, etc."
+              value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+          </div>
+          {message && (
+            <p className={`text-xs font-medium ${message.type === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>{message.text}</p>
+          )}
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={saving} className="btn-primary flex-1">
+              {saving ? 'Saving...' : editItem ? 'Update Item' : 'Add Item'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
