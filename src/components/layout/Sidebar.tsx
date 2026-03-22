@@ -11,22 +11,8 @@ interface MenuItem {
 
 const menuItems: Record<string, MenuItem[]> = {
   super_admin: [
-    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard' },
-    { label: 'Schools',        href: '/dashboard/schools',       icon: 'Building' },
-    { label: 'Users & Roles',  href: '/dashboard/users',         icon: 'UserCog' },
-    { label: 'Admissions',     href: '/dashboard/admissions',    icon: 'ClipboardList' },
-    { label: 'Classes',        href: '/dashboard/classes',       icon: 'LayoutGrid' },
-    { label: 'Students',       href: '/dashboard/students',      icon: 'Users' },
-    { label: 'Teachers',       href: '/dashboard/teachers',      icon: 'GraduationCap' },
-    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck' },
-    { label: 'Fees',           href: '/dashboard/fees',          icon: 'CreditCard' },
-    { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen' },
-    { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone' },
-    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar' },
-    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare' },
-    { label: 'Compliance',     href: '/dashboard/compliance',    icon: 'ShieldCheck' },
-    { label: 'Reports',        href: '/dashboard/reports',       icon: 'BarChart' },
-    { label: 'Settings',       href: '/dashboard/settings',      icon: 'Settings' },
+    { label: 'School Library',         href: '/dashboard/schools',         icon: 'Building' },
+    { label: 'Default School Settings', href: '/dashboard/schools/default', icon: 'Settings' },
   ],
   school_admin: [
     { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard' },

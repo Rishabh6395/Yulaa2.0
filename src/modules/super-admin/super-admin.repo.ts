@@ -5,22 +5,53 @@ import type { CreateSchoolInput, UpdateSchoolInput, CreateUserInput } from './su
 
 export async function findAllSchools() {
   return prisma.school.findMany({
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
     select: {
       id: true, name: true, email: true, phone: true, address: true,
-      status: true, subscriptionPlan: true, createdAt: true,
+      city: true, state: true, website: true,
+      status: true, subscriptionPlan: true, isDefault: true,
+      latitude: true, longitude: true, boardType: true, createdAt: true,
       _count: { select: { students: true, teachers: true } },
     },
   });
+}
+
+export async function findSchoolById(id: string) {
+  return prisma.school.findUnique({
+    where: { id },
+    select: {
+      id: true, name: true, email: true, phone: true, address: true,
+      city: true, state: true, website: true, description: true,
+      status: true, subscriptionPlan: true, isDefault: true,
+      latitude: true, longitude: true, boardType: true, createdAt: true,
+      _count: { select: { students: true, teachers: true, classes: true } },
+    },
+  });
+}
+
+export async function findDefaultSchool() {
+  return prisma.school.findFirst({ where: { isDefault: true } });
+}
+
+export async function setDefaultSchool(id: string) {
+  // Clear existing default, then set new one
+  await prisma.school.updateMany({ where: { isDefault: true }, data: { isDefault: false } });
+  return prisma.school.update({ where: { id }, data: { isDefault: true } });
 }
 
 export async function createSchool(data: CreateSchoolInput) {
   return prisma.school.create({
     data: {
       name:             data.name.trim(),
-      email:            data.email   ?? null,
-      phone:            data.phone   ?? null,
-      address:          data.address ?? null,
+      email:            data.email     ?? null,
+      phone:            data.phone     ?? null,
+      address:          data.address   ?? null,
+      city:             data.city      ?? null,
+      state:            data.state     ?? null,
+      website:          data.website   ?? null,
+      latitude:         data.latitude  ?? null,
+      longitude:        data.longitude ?? null,
+      boardType:        data.boardType ?? null,
       subscriptionPlan: data.subscriptionPlan || 'basic',
       status:           'active',
     },
@@ -32,9 +63,15 @@ export async function updateSchool(data: UpdateSchoolInput) {
     where: { id: data.id },
     data: {
       ...(data.name             && { name:             data.name.trim() }),
-      ...(data.email   !== undefined && { email:            data.email   ?? null }),
-      ...(data.phone   !== undefined && { phone:            data.phone   ?? null }),
-      ...(data.address !== undefined && { address:          data.address ?? null }),
+      ...(data.email   !== undefined && { email:    data.email   ?? null }),
+      ...(data.phone   !== undefined && { phone:    data.phone   ?? null }),
+      ...(data.address !== undefined && { address:  data.address ?? null }),
+      ...(data.city    !== undefined && { city:     data.city    ?? null }),
+      ...(data.state   !== undefined && { state:    data.state   ?? null }),
+      ...(data.website !== undefined && { website:  data.website ?? null }),
+      ...(data.latitude  !== undefined && { latitude:  data.latitude  }),
+      ...(data.longitude !== undefined && { longitude: data.longitude }),
+      ...(data.boardType !== undefined && { boardType: data.boardType ?? null }),
       ...(data.subscriptionPlan && { subscriptionPlan: data.subscriptionPlan }),
       ...(data.status           && { status:           data.status }),
     },

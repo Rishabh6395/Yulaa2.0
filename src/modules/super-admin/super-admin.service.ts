@@ -10,17 +10,42 @@ export async function listSchools() {
 }
 
 export async function createSchool(body: Record<string, any>) {
-  const { name, email, phone, address, subscriptionPlan } = body;
+  const { name, email, phone, address, city, state, website, latitude, longitude, boardType, subscriptionPlan, configSource } = body;
   if (!name?.trim()) throw new AppError('School name is required');
 
-  return repo.createSchool({ name, email: email || null, phone: phone || null, address: address || null, subscriptionPlan });
+  const school = await repo.createSchool({
+    name, email: email || null, phone: phone || null, address: address || null,
+    city: city || null, state: state || null, website: website || null,
+    latitude:  latitude  ? parseFloat(latitude)  : null,
+    longitude: longitude ? parseFloat(longitude) : null,
+    boardType: boardType || null,
+    subscriptionPlan,
+  });
+  return { school };
 }
 
 export async function updateSchool(body: Record<string, any>) {
-  const { id, name, email, phone, address, subscriptionPlan, status } = body;
+  const { id, name, email, phone, address, city, state, website, latitude, longitude, boardType, subscriptionPlan, status } = body;
   if (!id) throw new AppError('id is required');
 
-  return repo.updateSchool({ id, name, email, phone, address, subscriptionPlan, status } as UpdateSchoolInput);
+  return repo.updateSchool({
+    id, name, email, phone, address, city, state, website,
+    latitude:  latitude  !== undefined ? parseFloat(latitude)  : undefined,
+    longitude: longitude !== undefined ? parseFloat(longitude) : undefined,
+    boardType, subscriptionPlan, status,
+  } as UpdateSchoolInput);
+}
+
+export async function setDefaultSchool(id: string) {
+  if (!id) throw new AppError('id is required');
+  await repo.setDefaultSchool(id);
+  return { success: true };
+}
+
+export async function getSchoolById(id: string) {
+  const school = await repo.findSchoolById(id);
+  if (!school) throw new AppError('School not found', 404);
+  return { school };
 }
 
 // ── Users ────────────────────────────────────────────────────────────────────

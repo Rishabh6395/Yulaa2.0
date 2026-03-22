@@ -404,15 +404,16 @@ function SuperAdminDashboard({ data }: { data: any }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
         <StatCard
-          title="Total Schools"    value={s?.totalSchools || 0}
+          title="Total Schools"      value={s?.totalSchools || 0}
           subtext={`${s?.activeSchools || 0} active`}
           iconBg="bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400"
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 22V12h6v10M3 9h18M9 3v6M15 3v6"/></svg>}
         />
         <StatCard
-          title="Total Students"   value={s?.totalStudents || 0}
+          title="Total Students"     value={s?.totalStudents || 0}
+          subtext={`${s?.totalTeachers || 0} teachers`}
           iconBg="bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
         />
@@ -422,38 +423,20 @@ function SuperAdminDashboard({ data }: { data: any }) {
           iconBg="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400"
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>}
         />
-        <StatCard
-          title="Fee Collected"    value={`₹${((s?.fees?.collected || 0) / 1000).toFixed(0)}K`}
-          subtext={`${s?.fees?.overdueCount || 0} overdue`}
-          iconBg="bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>}
-        />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="card p-5">
-          <p className="text-xs font-semibold text-surface-400 dark:text-gray-500 uppercase tracking-wider mb-1">Teachers</p>
-          <p className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">{s?.totalTeachers || 0}</p>
-        </div>
-        <div className="card p-5">
-          <p className="text-xs font-semibold text-surface-400 dark:text-gray-500 uppercase tracking-wider mb-1">Classes</p>
-          <p className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">{s?.totalClasses || 0}</p>
-        </div>
-      </div>
-
-      <div className="card p-5">
-        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Quick Links</p>
-        <div className="flex flex-wrap gap-3">
-          {[
-            { label: 'Manage Schools', href: '/dashboard/schools' },
-            { label: 'Users & Roles',  href: '/dashboard/users' },
-          ].map(l => (
-            <a key={l.href} href={l.href}
-              className="text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline">
-              {l.label} →
-            </a>
-          ))}
-        </div>
+        <a href="/dashboard/schools" className="card p-5 hover:shadow-md transition-all group cursor-pointer block">
+          <p className="text-xs font-semibold text-surface-400 dark:text-gray-500 uppercase tracking-wider mb-1">School Library</p>
+          <p className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">{s?.totalSchools || 0} <span className="text-base font-normal text-surface-400">schools</span></p>
+          <p className="text-xs text-brand-500 dark:text-brand-400 mt-2 font-medium group-hover:underline">Manage all schools →</p>
+        </a>
+        <a href="/dashboard/schools/default" className="card p-5 hover:shadow-md transition-all group cursor-pointer block">
+          <p className="text-xs font-semibold text-surface-400 dark:text-gray-500 uppercase tracking-wider mb-1">Default School Settings</p>
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-2">Configuration Template</p>
+          <p className="text-xs text-surface-400 dark:text-gray-500 mt-1">Base config for new school onboarding</p>
+          <p className="text-xs text-brand-500 dark:text-brand-400 mt-2 font-medium group-hover:underline">Configure →</p>
+        </a>
       </div>
     </div>
   );

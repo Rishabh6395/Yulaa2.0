@@ -16,12 +16,16 @@ model School {
   status              String               @default("active") @db.VarChar(20)
   subscriptionPlan    String               @default("basic") @map("subscription_plan") @db.VarChar(20)
   admissionsOpen      Boolean              @default(false) @map("admissions_open")
+  isDefault           Boolean              @default(false) @map("is_default")
   description         String?
   city                String?              @db.VarChar(100)
   state               String?              @db.VarChar(100)
   website             String?              @db.VarChar(200)
   facilities          String[]
   admissionFeeAmt     Decimal?             @map("admission_fee_amt") @db.Decimal(10, 2)
+  latitude            Float?
+  longitude           Float?
+  boardType           String?              @map("board_type") @db.VarChar(30)
   createdAt           DateTime             @default(now()) @map("created_at")
   admissionWorkflows  AdmissionWorkflow[]
   admissionApplications AdmissionApplication[]
@@ -35,6 +39,8 @@ model School {
   feeStructures       FeeStructure[]
   homework            Homework[]
   leaveRequests       LeaveRequest[]
+  leaveWorkflows      LeaveWorkflow[]
+  teacherLeaveBalances TeacherLeaveBalance[]
   queries             StudentQuery[]
   students            Student[]
   teachers            Teacher[]
@@ -72,6 +78,7 @@ model User {
   consultants           Consultant?
   reviewedLeaves        LeaveRequest[]         @relation("ReviewedBy")
   leaveRequests         LeaveRequest[]
+  leaveActions          LeaveAction[]          @relation("LeaveActionActor")
   parents               Parent?
   respondedQueries      StudentQuery[]         @relation("RespondedBy")
   teachers              Teacher[]
@@ -112,11 +119,12 @@ model Teacher {
   joiningDate     DateTime?    @map("joining_date") @db.Date
   status          String       @default("active") @db.VarChar(20)
   createdAt       DateTime     @default(now()) @map("created_at")
-  attendance      Attendance[]
-  classes         Class[]
-  homework        Homework[]
-  school          School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendance           Attendance[]
+  classes              Class[]
+  homework             Homework[]
+  leaveBalances        TeacherLeaveBalance[]
+  school               School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user                 User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, schoolId])
   @@index([schoolId])
@@ -146,6 +154,7 @@ model Student {
   homeworkSubmissions HomeworkSubmission[]
   parentStudents      ParentStudent[]
   queries             StudentQuery[]
+  leaveRequests       LeaveRequest[]
   admissionChildLink  AdmissionChild?      @relation("CreatedFromAdmission")
   class               Class?               @relation(fields: [classId], references: [id])
   school              School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -351,21 +360,88 @@ model LeaveRequest {
   id             String    @id @default(uuid())
   schoolId       String    @map("school_id")
   userId         String    @map("user_id")
+  studentId      String?   @map("student_id")
   roleCode       String    @map("role_code") @db.VarChar(30)
+  leaveType      String    @default("other") @map("leave_type") @db.VarChar(50)
   startDate      DateTime  @map("start_date") @db.Date
   endDate        DateTime  @map("end_date") @db.Date
   reason         String
   status         String    @default("pending") @db.VarChar(20)
+  currentStep    Int       @default(0) @map("current_step")
   reviewedBy     String?   @map("reviewed_by")
   reviewedAt     DateTime? @map("reviewed_at")
   createdAt      DateTime  @default(now()) @map("created_at")
   reviewedByUser User?     @relation("ReviewedBy", fields: [reviewedBy], references: [id])
   school         School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  student        Student?  @relation(fields: [studentId], references: [id])
+  actions        LeaveAction[]
 
   @@index([schoolId, status])
   @@index([userId])
   @@map("leave_requests")
+}
+
+model LeaveAction {
+  id           String       @id @default(uuid())
+  leaveId      String       @map("leave_id")
+  actorUserId  String?      @map("actor_user_id")
+  stepOrder    Int          @map("step_order")
+  action       String       @db.VarChar(20)
+  comment      String?
+  createdAt    DateTime     @default(now()) @map("created_at")
+  leave        LeaveRequest @relation(fields: [leaveId], references: [id], onDelete: Cascade)
+  actor        User?        @relation("LeaveActionActor", fields: [actorUserId], references: [id])
+
+  @@index([leaveId])
+  @@map("leave_actions")
+}
+
+model LeaveWorkflow {
+  id        String              @id @default(uuid())
+  schoolId  String              @map("school_id")
+  type      String              @db.VarChar(20)
+  isActive  Boolean             @default(true) @map("is_active")
+  createdAt DateTime            @default(now()) @map("created_at")
+  school    School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  steps     LeaveWorkflowStep[]
+
+  @@unique([schoolId, type])
+  @@index([schoolId])
+  @@map("leave_workflows")
+}
+
+model LeaveWorkflowStep {
+  id             String        @id @default(uuid())
+  workflowId     String        @map("workflow_id")
+  stepOrder      Int           @map("step_order")
+  label          String        @db.VarChar(100)
+  approverRole   String?       @map("approver_role") @db.VarChar(30)
+  approverUserId String?       @map("approver_user_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  workflow       LeaveWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, stepOrder])
+  @@index([workflowId])
+  @@map("leave_workflow_steps")
+}
+
+model TeacherLeaveBalance {
+  id           String   @id @default(uuid())
+  schoolId     String   @map("school_id")
+  teacherId    String   @map("teacher_id")
+  leaveType    String   @map("leave_type") @db.VarChar(50)
+  academicYear String   @default("2024-25") @map("academic_year") @db.VarChar(9)
+  totalDays    Int      @default(0) @map("total_days")
+  usedDays     Int      @default(0) @map("used_days")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher      Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, teacherId, leaveType, academicYear])
+  @@index([schoolId, teacherId])
+  @@map("teacher_leave_balances")
 }
 
 model StudentQuery {

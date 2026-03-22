@@ -33,6 +33,12 @@ export interface CreateSchoolInput {
   email?:           string | null;
   phone?:           string | null;
   address?:         string | null;
+  city?:            string | null;
+  state?:           string | null;
+  website?:         string | null;
+  latitude?:        number | null;
+  longitude?:       number | null;
+  boardType?:       string | null;
   subscriptionPlan?: string;
 }
 
@@ -42,6 +48,12 @@ export interface UpdateSchoolInput {
   email?:           string | null;
   phone?:           string | null;
   address?:         string | null;
+  city?:            string | null;
+  state?:           string | null;
+  website?:         string | null;
+  latitude?:        number;
+  longitude?:       number;
+  boardType?:       string | null;
   subscriptionPlan?: string;
   status?:          string;
 }
