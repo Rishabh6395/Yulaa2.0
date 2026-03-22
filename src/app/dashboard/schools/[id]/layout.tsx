@@ -51,8 +51,7 @@ export default function SchoolLayout({ children, params }: { children: React.Rea
     'workflow': 'Workflow',
     'form-config': 'Form Configuration',
     'year-cycle': 'Academic Year Cycle',
-    'menu-permissions': 'Menu Permissions',
-    'transport': 'Transport',
+    'timetable': 'Timetable',
   };
 
   const currentModuleLabel = moduleLabels[moduleSegment] || null;

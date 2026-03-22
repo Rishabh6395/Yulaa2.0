@@ -89,7 +89,7 @@ export default function TimetablePage({ params }: { params: { id: string } }) {
           const derivedPeriods = Object.values(periodMap).sort((a, b) => a.no - b.no);
           if (derivedPeriods.length) setPeriods(derivedPeriods);
 
-          const derivedDays = [...new Set(d.timetable.slots.map((s: any) => s.dayOfWeek as number))];
+          const derivedDays: number[] = [...new Set<number>(d.timetable.slots.map((s: any) => s.dayOfWeek as number))];
           if (derivedDays.length) setActiveDays(derivedDays.sort((a, b) => a - b));
 
           const newGrid: Record<string, SlotData> = {};
@@ -348,7 +348,7 @@ export default function TimetablePage({ params }: { params: { id: string } }) {
                             >
                               <option value="">— Teacher —</option>
                               {teachers.filter(t => t.user).map(t => (
-                                <option key={t.id} value={t.id}>{t.user.firstName} {t.user.lastName}</option>
+                                <option key={t.id} value={t.id}>{t.user?.firstName} {t.user?.lastName}</option>
                               ))}
                             </select>
                           </div>
