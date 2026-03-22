@@ -38,10 +38,14 @@ model School {
   feeInvoices         FeeInvoice[]
   feeStructures       FeeStructure[]
   homework            Homework[]
-  leaveRequests       LeaveRequest[]
-  leaveWorkflows      LeaveWorkflow[]
+  leaveRequests        LeaveRequest[]
+  leaveWorkflows       LeaveWorkflow[]
   teacherLeaveBalances TeacherLeaveBalance[]
-  queries             StudentQuery[]
+  leaveTypeMasters     LeaveTypeMaster[]
+  leaveBalancePolicies LeaveBalancePolicy[]
+  holidayCalendar      HolidayCalendar[]
+  timetables           Timetable[]
+  queries              StudentQuery[]
   students            Student[]
   teachers            Teacher[]
   transportRoutes     TransportRoute[]
@@ -123,6 +127,7 @@ model Teacher {
   classes              Class[]
   homework             Homework[]
   leaveBalances        TeacherLeaveBalance[]
+  timetableSlots       TimetableSlot[]
   school               School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user                 User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -208,6 +213,7 @@ model Class {
   feeStructures  FeeStructure[]
   homework       Homework[]
   students       Student[]
+  timetables     Timetable[]
 
   @@unique([schoolId, grade, section, academicYear])
   @@map("classes")
@@ -706,4 +712,93 @@ model AdmissionAction {
 
   @@index([applicationId])
   @@map("admission_actions")
+}
+
+// ── Leave Type Master & Balance Policy ────────────────────────────────────────
+
+model LeaveTypeMaster {
+  id           String               @id @default(uuid())
+  schoolId     String               @map("school_id")
+  name         String               @db.VarChar(100)
+  code         String               @db.VarChar(30)
+  applicableTo String[]             @map("applicable_to")
+  isActive     Boolean              @default(true) @map("is_active")
+  createdAt    DateTime             @default(now()) @map("created_at")
+  school       School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  policies     LeaveBalancePolicy[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+  @@map("leave_type_masters")
+}
+
+model LeaveBalancePolicy {
+  id           String          @id @default(uuid())
+  schoolId     String          @map("school_id")
+  leaveTypeId  String          @map("leave_type_id")
+  roleCode     String          @map("role_code") @db.VarChar(30)
+  daysPerYear  Int             @default(0) @map("days_per_year")
+  carryForward Boolean         @default(false) @map("carry_forward")
+  maxCarryDays Int             @default(0) @map("max_carry_days")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @default(now()) @updatedAt @map("updated_at")
+  school       School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  leaveType    LeaveTypeMaster @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, leaveTypeId, roleCode])
+  @@index([schoolId, roleCode])
+  @@map("leave_balance_policies")
+}
+
+// ── Holiday Calendar ──────────────────────────────────────────────────────────
+
+model HolidayCalendar {
+  id           String   @id @default(uuid())
+  schoolId     String   @map("school_id")
+  academicYear String   @map("academic_year") @db.VarChar(9)
+  date         DateTime @db.Date
+  name         String   @db.VarChar(200)
+  type         String   @default("mandatory") @db.VarChar(20)
+  createdAt    DateTime @default(now()) @map("created_at")
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, date])
+  @@index([schoolId, academicYear])
+  @@map("holiday_calendar")
+}
+
+// ── Timetable ─────────────────────────────────────────────────────────────────
+
+model Timetable {
+  id           String          @id @default(uuid())
+  schoolId     String          @map("school_id")
+  classId      String          @map("class_id")
+  academicYear String          @default("2025-2026") @map("academic_year") @db.VarChar(9)
+  isActive     Boolean         @default(true) @map("is_active")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @default(now()) @updatedAt @map("updated_at")
+  school       School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class        Class           @relation(fields: [classId], references: [id], onDelete: Cascade)
+  slots        TimetableSlot[]
+
+  @@unique([schoolId, classId, academicYear])
+  @@index([schoolId])
+  @@map("timetables")
+}
+
+model TimetableSlot {
+  id          String    @id @default(uuid())
+  timetableId String    @map("timetable_id")
+  dayOfWeek   Int       @map("day_of_week")
+  periodNo    Int       @map("period_no")
+  startTime   String    @map("start_time") @db.VarChar(10)
+  endTime     String    @map("end_time") @db.VarChar(10)
+  subject     String    @db.VarChar(100)
+  teacherId   String?   @map("teacher_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  timetable   Timetable @relation(fields: [timetableId], references: [id], onDelete: Cascade)
+  teacher     Teacher?  @relation(fields: [teacherId], references: [id])
+
+  @@unique([timetableId, dayOfWeek, periodNo])
+  @@map("timetable_slots")
 }
