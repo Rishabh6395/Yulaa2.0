@@ -130,10 +130,10 @@ function AdminDashboard({ data }: { data: any }) {
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>}
         />
         <StatCard
-          title="Fee Collection" value={`₹${((stats?.fees?.collected || 0) / 1000).toFixed(0)}K`}
-          subtext={`₹${((stats?.fees?.pending || 0) / 1000).toFixed(0)}K pending`}
+          title="Pending Admissions" value={stats?.pendingAdmissions || 0}
+          subtext={`${stats?.totalClasses || 0} active classes`}
           iconBg="bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>}
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>}
         />
         <StatCard
           title="Teachers" value={stats?.totalTeachers || 0}
@@ -156,25 +156,37 @@ function AdminDashboard({ data }: { data: any }) {
         </SectionCard>
 
         <SectionCard>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Fee Collection Summary</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-surface-400 dark:text-gray-500">Collected</span>
-              <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                ₹{(stats?.fees?.collected || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div className="h-2.5 rounded-full bg-surface-100 dark:bg-gray-800 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-700"
-                style={{ width: `${stats?.fees?.totalFees > 0 ? (stats.fees.collected / stats.fees.totalFees * 100) : 0}%` }}
-              />
-            </div>
-            <div className="flex justify-between text-xs text-surface-400 dark:text-gray-500">
-              <span>₹{(stats?.fees?.pending || 0).toLocaleString('en-IN')} pending</span>
-              <span>{stats?.fees?.overdueCount || 0} overdue invoices</span>
-            </div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Admission Applications</h3>
+            <a href="/dashboard/admissions" className="text-xs text-brand-500 dark:text-brand-400 font-medium hover:underline">View all</a>
           </div>
+          {(() => {
+            const total    = (stats?.admissions?.approved || 0) + (stats?.admissions?.pending || 0) + (stats?.admissions?.rejected || 0);
+            const approved = stats?.admissions?.approved || 0;
+            const pending  = stats?.admissions?.pending  || 0;
+            const rejected = stats?.admissions?.rejected || 0;
+            const pctApproved = total > 0 ? Math.round((approved / total) * 100) : 0;
+            const pctPending  = total > 0 ? Math.round((pending  / total) * 100) : 0;
+            const pctRejected = total > 0 ? Math.round((rejected / total) * 100) : 0;
+            return (
+              <div className="space-y-3">
+                <div className="flex gap-4 text-sm">
+                  <span className="font-bold text-2xl text-gray-900 dark:text-gray-100">{total}</span>
+                  <span className="text-xs text-surface-400 dark:text-gray-500 self-end mb-0.5">total applications</span>
+                </div>
+                <div className="h-3 rounded-full overflow-hidden bg-surface-100 dark:bg-gray-800 flex">
+                  <div className="bg-emerald-400 dark:bg-emerald-500 transition-all" style={{ width: `${pctApproved}%` }}/>
+                  <div className="bg-amber-400  dark:bg-amber-500  transition-all" style={{ width: `${pctPending}%` }}/>
+                  <div className="bg-red-400    dark:bg-red-500    transition-all" style={{ width: `${pctRejected}%` }}/>
+                </div>
+                <div className="flex gap-4 text-xs text-gray-600 dark:text-gray-400">
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400"/> Approved: {approved}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400"/>  Pending: {pending}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400"/>    Rejected: {rejected}</span>
+                </div>
+              </div>
+            );
+          })()}
         </SectionCard>
       </div>
 
@@ -447,6 +459,49 @@ function SuperAdminDashboard({ data }: { data: any }) {
   );
 }
 
+// ── Teacher dashboard ─────────────────────────────────────────────────────────
+
+function TeacherDashboard({ data }: { data: any }) {
+  const stats         = data?.stats;
+  const announcements = data?.recentAnnouncements || [];
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+        <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">Your classes and attendance overview.</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 stagger-children">
+        <StatCard
+          title="My Students" value={stats?.totalStudents || 0}
+          subtext="Students in your classes"
+          iconBg="bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+        />
+        <StatCard
+          title="Today's Attendance" value={`${stats?.todayAttendance?.rate || 0}%`}
+          subtext={`${stats?.todayAttendance?.present || 0} / ${stats?.todayAttendance?.total || 0} present`}
+          iconBg="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SectionCard>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Today&apos;s Attendance</h3>
+          <AttendanceBar
+            present={stats?.todayAttendance?.present || 0}
+            absent ={stats?.todayAttendance?.absent  || 0}
+            late   ={stats?.todayAttendance?.late    || 0}
+            total  ={stats?.todayAttendance?.total   || 0}
+          />
+        </SectionCard>
+        <AnnouncementsCard announcements={announcements} />
+      </div>
+    </div>
+  );
+}
+
 // ── No child prompt ───────────────────────────────────────────────────────────
 
 function NoChildPrompt() {
@@ -545,6 +600,7 @@ export default function DashboardPage() {
   }
 
   if (data?.isSuperAdmin) return <SuperAdminDashboard data={data} />;
+  if (data?.role === 'teacher') return <TeacherDashboard data={data || {}} />;
 
   return <AdminDashboard data={data || {}} />;
 }

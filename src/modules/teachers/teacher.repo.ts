@@ -17,6 +17,10 @@ export async function findTeacherRole() {
   return prisma.role.findUnique({ where: { code: 'teacher' } });
 }
 
+export async function updateTeacherStatus(teacherId: string, status: string) {
+  return prisma.teacher.update({ where: { id: teacherId }, data: { status } });
+}
+
 export async function createTeacherWithUser(data: CreateTeacherInput & { passwordHash: string; roleId: string }) {
   return prisma.user.create({
     data: {

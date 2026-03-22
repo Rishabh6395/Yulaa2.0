@@ -29,17 +29,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             setParentChildren(kids);
 
             const stored = localStorage.getItem('activeChild');
+            let selectedChild: any = null;
             if (stored) {
               try {
                 const storedChild = JSON.parse(stored);
-                const match = kids.find((k: any) => k.id === storedChild.id);
-                setActiveChild(match || kids[0] || null);
+                selectedChild = kids.find((k: any) => k.id === storedChild.id) || kids[0] || null;
               } catch {
-                setActiveChild(kids[0] || null);
+                selectedChild = kids[0] || null;
               }
             } else if (kids.length > 0) {
-              setActiveChild(kids[0]);
-              localStorage.setItem('activeChild', JSON.stringify(kids[0]));
+              selectedChild = kids[0];
+            }
+            if (selectedChild) {
+              setActiveChild(selectedChild);
+              localStorage.setItem('activeChild', JSON.stringify(selectedChild));
+              // Dispatch so all pages react to the initial child selection
+              window.dispatchEvent(new CustomEvent('activeChildChanged', { detail: selectedChild }));
             }
           })
           .catch(() => {});

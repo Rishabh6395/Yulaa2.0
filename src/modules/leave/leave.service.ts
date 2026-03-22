@@ -8,6 +8,9 @@ export async function listLeaveRequests(schoolId: string, userId: string, isAdmi
     leaves: leaves.map((lr) => ({
       id:               lr.id,
       role_code:        lr.roleCode,
+      leave_type:       lr.reason?.startsWith('Leave type: ')
+                          ? lr.reason.replace('Leave type: ', '')
+                          : 'other',
       start_date:       lr.startDate,
       end_date:         lr.endDate,
       reason:           lr.reason,
@@ -15,6 +18,7 @@ export async function listLeaveRequests(schoolId: string, userId: string, isAdmi
       created_at:       lr.createdAt,
       reviewed_at:      lr.reviewedAt,
       requester_name:   `${lr.user.firstName} ${lr.user.lastName}`,
+      student_name:     null,
       approved_by_name: lr.reviewedByUser
         ? `${lr.reviewedByUser.firstName} ${lr.reviewedByUser.lastName}`
         : null,
@@ -23,17 +27,18 @@ export async function listLeaveRequests(schoolId: string, userId: string, isAdmi
 }
 
 export async function submitLeaveRequest(schoolId: string, userId: string, roleCode: string, body: Record<string, any>) {
-  const { start_date, end_date, reason } = body;
-  if (!start_date || !end_date || !reason) {
-    throw new AppError('start_date, end_date, and reason are required');
+  const { start_date, end_date, reason, leave_type } = body;
+  if (!start_date || !end_date) {
+    throw new AppError('start_date and end_date are required');
   }
+  if (!schoolId) throw new AppError('School association not found for this user');
   return repo.createLeaveRequest({
     schoolId,
     userId,
     roleCode,
     startDate: new Date(start_date),
     endDate:   new Date(end_date),
-    reason,
+    reason:    reason || (leave_type ? `Leave type: ${leave_type}` : 'Leave requested'),
   });
 }
 

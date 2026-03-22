@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useApi } from '@/hooks/useApi';
 
@@ -8,11 +8,27 @@ export default function LeavePage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm]   = useState({ leave_type: 'sick', start_date: '', end_date: '', reason: '' });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [activeChild, setActiveChild] = useState<any>(null);
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
   const user    = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
-  const isAdmin = ['school_admin', 'super_admin'].includes(user.primaryRole);
+  const isAdmin  = ['school_admin', 'super_admin'].includes(user.primaryRole);
+  const isParent = user.primaryRole === 'parent';
+
+  // Load active child for parent
+  useEffect(() => {
+    if (!isParent) return;
+    const stored = localStorage.getItem('activeChild');
+    if (stored) setActiveChild(JSON.parse(stored));
+  }, [isParent]);
+
+  useEffect(() => {
+    const handler = (e: Event) => setActiveChild((e as CustomEvent).detail);
+    window.addEventListener('activeChildChanged', handler);
+    return () => window.removeEventListener('activeChildChanged', handler);
+  }, []);
 
   const { data, isLoading, mutate } = useApi<{ leaves: any[] }>('/api/leave');
   const leaves = data?.leaves ?? [];
@@ -22,14 +38,22 @@ export default function LeavePage() {
     mutate();
   };
 
-  const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const res = await fetch('/api/leave', { method: 'POST', headers, body: JSON.stringify(form) });
-    if (res.ok) {
+    setSaveError('');
+    try {
+      const payload: any = { ...form };
+      if (isParent && activeChild) payload.student_id = activeChild.id;
+      const res = await fetch('/api/leave', { method: 'POST', headers, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (!res.ok) { setSaveError(data.error || 'Failed to submit leave request'); setSaving(false); return; }
       setShowAddModal(false);
       setForm({ leave_type: 'sick', start_date: '', end_date: '', reason: '' });
+      setSaveError('');
       mutate();
+    } catch {
+      setSaveError('Network error. Please try again.');
     }
     setSaving(false);
   };
@@ -37,16 +61,30 @@ export default function LeavePage() {
   const statusMap: Record<string, string> = { pending: 'badge-warning', approved: 'badge-success', rejected: 'badge-danger' };
   const typeMap:   Record<string, string> = { sick: '🤒', personal: '👤', family: '👨‍👩‍👧', vacation: '✈️', other: '📋' };
 
+  // Parent must have an active child selected
+  if (isParent && !activeChild) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-3">
+        <p className="text-gray-900 dark:text-gray-100 font-semibold">No child selected</p>
+        <p className="text-sm text-surface-400">Select a child from the top bar to apply or view leave.</p>
+      </div>
+    );
+  }
+
+  const childName = activeChild ? `${activeChild.first_name} ${activeChild.last_name}` : '';
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Leave Requests</h1>
-          <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">Manage leave applications</p>
+          <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">
+            {isParent ? `Leave applications for ${childName}` : 'Manage leave applications'}
+          </p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Apply Leave
+          {isParent ? `Apply Leave for ${childName}` : 'Apply Leave'}
         </button>
       </div>
 
@@ -56,7 +94,7 @@ export default function LeavePage() {
             <thead>
               <tr>
                 <th>Requester</th>
-                <th>Student</th>
+                {!isParent && <th>Student</th>}
                 <th>Type</th>
                 <th>Duration</th>
                 <th>Reason</th>
@@ -76,7 +114,7 @@ export default function LeavePage() {
               ) : leaves.map((l) => (
                 <tr key={l.id}>
                   <td className="font-medium text-gray-900 dark:text-gray-100">{l.requester_name}</td>
-                  <td>{l.student_name || '—'}</td>
+                  {!isParent && <td>{l.student_name || '—'}</td>}
                   <td>
                     <span className="flex items-center gap-1.5 text-sm">
                       {typeMap[l.leave_type] || '📋'} <span className="capitalize">{l.leave_type}</span>
@@ -104,8 +142,15 @@ export default function LeavePage() {
         </div>
       </div>
 
-      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Apply for Leave">
+      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title={isParent ? `Apply Leave for ${childName}` : 'Apply for Leave'}>
         <form onSubmit={handleAdd} className="space-y-4">
+          {isParent && activeChild && (
+            <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-950/40 border border-brand-100 dark:border-brand-900">
+              <p className="text-xs text-brand-600 dark:text-brand-400 font-medium">
+                Applying leave for: <span className="font-bold">{childName}</span>
+              </p>
+            </div>
+          )}
           <div>
             <label className="label">Leave Type</label>
             <select className="input-field" value={form.leave_type} onChange={e => setForm({...form, leave_type: e.target.value})}>
@@ -130,6 +175,9 @@ export default function LeavePage() {
             <label className="label">Reason</label>
             <textarea className="input-field" rows={3} value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} placeholder="Reason for leave..."/>
           </div>
+          {saveError && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{saveError}</p>
+          )}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Submitting...' : 'Submit'}</button>

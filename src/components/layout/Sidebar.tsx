@@ -36,19 +36,18 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Teachers',       href: '/dashboard/teachers',      icon: 'GraduationCap' },
     { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck' },
     { label: 'Fees',           href: '/dashboard/fees',          icon: 'CreditCard' },
-    { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen' },
+    { label: 'Scheduling',     href: '/dashboard/scheduling',    icon: 'CalendarDays' },
     { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone' },
     { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar' },
     { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare' },
     { label: 'Compliance',     href: '/dashboard/compliance',    icon: 'ShieldCheck' },
     { label: 'Reports',        href: '/dashboard/reports',       icon: 'BarChart' },
-    { label: 'Inventory',      href: '/dashboard/inventory',     icon: 'ShoppingBag' },
-    { label: 'Career Sessions',href: '/dashboard/sessions',      icon: 'Briefcase' },
     { label: 'Settings',       href: '/dashboard/settings',      icon: 'Settings' },
   ],
   teacher: [
     { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard' },
     { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck' },
+    { label: 'Performance',    href: '/dashboard/performance',   icon: 'TrendingUp' },
     { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen' },
     { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar' },
   ],
@@ -61,15 +60,17 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare' },
   ],
   parent: [
-    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard' },
-    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck' },
-    { label: 'Fees',           href: '/dashboard/fees',          icon: 'CreditCard' },
-    { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen' },
-    { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone' },
-    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar' },
-    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare' },
-    { label: 'Career Sessions',href: '/dashboard/sessions',      icon: 'Briefcase' },
-    { label: 'Inventory',      href: '/dashboard/inventory',     icon: 'ShoppingBag' },
+    { label: 'Dashboard',        href: '/dashboard',               icon: 'LayoutDashboard' },
+    { label: 'Attendance',       href: '/dashboard/attendance',    icon: 'CalendarCheck' },
+    { label: 'Fees',             href: '/dashboard/fees',          icon: 'CreditCard' },
+    { label: 'Performance',      href: '/dashboard/performance',   icon: 'TrendingUp' },
+    { label: 'Homework',         href: '/dashboard/homework',      icon: 'BookOpen' },
+    { label: 'Announcements',    href: '/dashboard/announcements', icon: 'Megaphone' },
+    { label: 'Leave',            href: '/dashboard/leave',         icon: 'Calendar' },
+    { label: 'Queries',          href: '/dashboard/queries',       icon: 'MessageSquare' },
+    { label: 'Career Sessions',  href: '/dashboard/sessions',      icon: 'Briefcase' },
+    { label: 'Online Classes',   href: '/dashboard/online-classes',icon: 'Monitor' },
+    { label: 'Transport',        href: '/dashboard/transport',     icon: 'Bus' },
   ],
   vendor: [
     { label: 'Dashboard', href: '/dashboard',           icon: 'LayoutDashboard' },
@@ -191,6 +192,31 @@ const icons: Record<string, React.ReactNode> = {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
       <line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>
+    </svg>
+  ),
+  CalendarDays: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+      <circle cx="8" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="15" r="1" fill="currentColor"/>
+      <circle cx="16" cy="15" r="1" fill="currentColor"/>
+    </svg>
+  ),
+  Monitor: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+    </svg>
+  ),
+  Bus: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 6v6M15 6v6M2 12h19.6M18 18h2a1 1 0 0 0 1-1v-5H3v5a1 1 0 0 0 1 1h2"/>
+      <path d="M4 12V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5"/>
+      <circle cx="7" cy="18" r="1"/><circle cx="17" cy="18" r="1"/>
+    </svg>
+  ),
+  TrendingUp: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/>
+      <polyline points="17,6 23,6 23,12"/>
     </svg>
   ),
 };

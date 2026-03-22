@@ -22,6 +22,7 @@ export async function GET(request: Request) {
       return Response.json(await getSuperAdminDashboard());
     }
 
-    return Response.json(await getAdminDashboard(primaryRole.school_id));
+    const dashData = await getAdminDashboard(primaryRole.school_id);
+    return Response.json({ ...dashData, role: primaryRole.role_code });
   } catch (err) { return handleError(err); }
 }

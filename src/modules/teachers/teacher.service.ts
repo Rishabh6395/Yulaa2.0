@@ -3,6 +3,11 @@ import { AppError, NotFoundError } from '@/utils/errors';
 import * as repo from './teacher.repo';
 import type { TeacherRow } from './teacher.types';
 
+export async function toggleTeacherStatus(teacherId: string, status: string) {
+  if (!['active', 'inactive'].includes(status)) throw new AppError('status must be active or inactive');
+  return repo.updateTeacherStatus(teacherId, status);
+}
+
 export async function listTeachers(schoolId: string): Promise<TeacherRow[]> {
   const teachers = await repo.findTeachersBySchool(schoolId);
   return teachers.map((t) => ({
