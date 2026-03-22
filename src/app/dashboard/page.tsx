@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 // ── Announcement type badge ──────────────────────────────────────────────────
 
@@ -100,17 +100,39 @@ function AdminDashboard({ data }: { data: any }) {
   const announcements = data?.recentAnnouncements || [];
   const homework      = data?.recentHomework      || [];
 
+  // Spotlight effect
+  const spotRef = useRef<HTMLDivElement>(null);
+  function onSpotMove(e: React.MouseEvent<HTMLDivElement>) {
+    const el = spotRef.current;
+    if (!el) return;
+    const { left, top } = el.getBoundingClientRect();
+    el.style.setProperty('--sx', `${e.clientX - left}px`);
+    el.style.setProperty('--sy', `${e.clientY - top}px`);
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
-          <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">Welcome back. Here&apos;s your school overview.</p>
-        </div>
-        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-brand-50 to-purple-50 dark:from-brand-950/50 dark:to-purple-950/50 border border-brand-100 dark:border-brand-900 text-xs font-medium text-brand-600 dark:text-brand-400">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
-          Live data
+      {/* Page header — Spotlight */}
+      <div
+        ref={spotRef}
+        onMouseMove={onSpotMove}
+        className="group relative rounded-2xl border border-surface-100 dark:border-white/5 bg-gradient-to-br from-white to-surface-50 dark:from-gray-900 dark:to-gray-900/80 p-6 overflow-hidden"
+        style={{ '--sx': '50%', '--sy': '50%' } as React.CSSProperties}
+      >
+        {/* Spotlight layer */}
+        <div
+          className="pointer-events-none absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+          style={{ background: 'radial-gradient(600px circle at var(--sx) var(--sy), rgba(99,102,241,0.12) 0%, rgba(168,85,247,0.06) 40%, transparent 70%)' }}
+        />
+        <div className="relative z-10 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-display font-bold">Dashboard</h1>
+            <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">Welcome back. Here&apos;s your school overview.</p>
+          </div>
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-brand-50 to-purple-50 dark:from-brand-950/50 dark:to-purple-950/50 border border-brand-100 dark:border-brand-900 text-xs font-medium text-brand-600 dark:text-brand-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
+            Live data
+          </div>
         </div>
       </div>
 

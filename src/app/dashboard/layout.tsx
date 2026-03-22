@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import BackgroundBeams from '@/components/ui/BackgroundBeams';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
@@ -60,6 +61,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     window.dispatchEvent(new CustomEvent('activeChildChanged', { detail: child }));
   }, []);
 
+  // ── Card glow (ALL hooks before any early return — Rules of Hooks) ──────────
+  const mainRef  = useRef<HTMLElement>(null);
+  const lastCard = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+
+    function onMove(e: MouseEvent) {
+      let el = e.target as HTMLElement | null;
+      while (el && el !== main && !el.classList.contains('card')) {
+        el = el.parentElement;
+      }
+      const card = el?.classList.contains('card') ? el : null;
+
+      if (lastCard.current && lastCard.current !== card) {
+        lastCard.current.style.setProperty('--gx', '-400px');
+        lastCard.current.style.setProperty('--gy', '-400px');
+      }
+      lastCard.current = card;
+
+      if (card) {
+        const rect = card.getBoundingClientRect();
+        card.style.setProperty('--gx', `${e.clientX - rect.left}px`);
+        card.style.setProperty('--gy', `${e.clientY - rect.top}px`);
+      }
+    }
+
+    main.addEventListener('mousemove', onMove);
+    return () => main.removeEventListener('mousemove', onMove);
+  }, []);
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-50 dark:bg-gray-950">
@@ -75,7 +108,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-surface-50 dark:bg-gray-950 transition-colors duration-300">
+    <div className="min-h-screen bg-surface-50 dark:bg-gray-950 transition-colors duration-300 relative">
+      {/* Background Beams — sits behind everything */}
+      <BackgroundBeams />
+
       <Sidebar user={user} collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
       <Header
         user={user}
@@ -85,7 +121,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         activeChild={activeChild}
         onChildSwitch={handleChildSwitch}
       />
-      <main className={`pt-16 transition-all duration-300 ${collapsed ? 'ml-[68px]' : 'ml-[240px]'}`}>
+      <main
+        ref={mainRef}
+        className={`pt-16 transition-all duration-300 relative z-10 ${collapsed ? 'ml-[68px]' : 'ml-[240px]'}`}
+      >
         <div className="p-6">
           {children}
         </div>

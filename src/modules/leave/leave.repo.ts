@@ -104,6 +104,22 @@ export async function upsertLeaveWorkflow(
   });
 }
 
+// ── Leave Type Master ─────────────────────────────────────────────────────────
+
+export async function findLeaveTypesByRole(schoolId: string, roleCode: string) {
+  return prisma.leaveTypeMaster.findMany({
+    where: { schoolId, isActive: true, applicableTo: { has: roleCode } },
+    orderBy: { name: 'asc' },
+  });
+}
+
+export async function findLeaveBalancePoliciesByRole(schoolId: string, roleCode: string) {
+  return prisma.leaveBalancePolicy.findMany({
+    where: { schoolId, roleCode },
+    include: { leaveType: true },
+  });
+}
+
 // ── Teacher Leave Balance ─────────────────────────────────────────────────────
 
 export async function findTeacherBalances(schoolId: string, teacherId: string, academicYear: string) {

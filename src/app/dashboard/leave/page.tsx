@@ -4,23 +4,13 @@ import { useState, useEffect } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useApi } from '@/hooks/useApi';
 
-// ─── Leave type definitions per role ─────────────────────────────────────────
-
-const PARENT_LEAVE_TYPES = [
-  { value: 'sick',      label: 'Sick Leave',      icon: '🤒' },
-  { value: 'emergency', label: 'Emergency Leave',  icon: '🚨' },
-  { value: 'other',     label: 'Other',            icon: '📋' },
-];
-
-const TEACHER_LEAVE_TYPES = [
-  { value: 'sick',    label: 'Sick Leave',    icon: '🤒' },
-  { value: 'casual',  label: 'Casual Leave',  icon: '☀️' },
-  { value: 'other',   label: 'Other',         icon: '📋' },
-];
+// ─── Leave type icon mapping (extended, fallback to 📋) ──────────────────────
 
 const LEAVE_TYPE_ICON: Record<string, string> = {
   sick: '🤒', emergency: '🚨', casual: '☀️', other: '📋',
+  earned: '🏖️', maternity: '👶', paternity: '👨‍👦', unpaid: '💸', comp: '🔄',
 };
+function leaveIcon(code: string) { return LEAVE_TYPE_ICON[code.toLowerCase()] ?? '📋'; }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -86,7 +76,7 @@ function BalanceCards({ balances }: { balances: any[] }) {
           <div key={b.leave_type} className="card p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-surface-400 capitalize">{b.leave_type} Leave</span>
-              <span className="text-lg">{LEAVE_TYPE_ICON[b.leave_type] || '📋'}</span>
+              <span className="text-lg">{leaveIcon(b.leave_type ?? 'other')}</span>
             </div>
             <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{b.remaining}
               <span className="text-sm font-normal text-surface-400 ml-1">/ {b.total_days}</span>
@@ -141,14 +131,18 @@ export default function LeavePage() {
   const { data: balanceData } = useApi<{ balances: any[] }>(isTeacher ? '/api/leave/balance' : null);
   const balances = balanceData?.balances ?? [];
 
+  // Leave types from DB (synced with super admin master config)
+  const { data: typesData } = useApi<{ types: { code: string; name: string }[] }>(
+    !isAdmin ? '/api/leave/types' : null,
+  );
+  const leaveTypes = (typesData?.types ?? []).map(t => ({ value: t.code, label: t.name, icon: leaveIcon(t.code) }));
+
   // Filter leaves by tab / role
   const leaves = isAdmin
     ? activeTab === 'parent'  ? allLeaves.filter(l => l.role_code === 'parent')
     : activeTab === 'teacher' ? allLeaves.filter(l => l.role_code === 'teacher')
     : allLeaves
     : allLeaves;
-
-  const leaveTypes = isParent ? PARENT_LEAVE_TYPES : isTeacher ? TEACHER_LEAVE_TYPES : PARENT_LEAVE_TYPES;
 
   // Determine current workflow steps for a leave
   function getWorkflowSteps(leave: any) {
@@ -221,7 +215,7 @@ export default function LeavePage() {
              'Manage all leave applications'}
           </p>
         </div>
-        <button onClick={() => { setForm({ leave_type: leaveTypes[0].value, start_date: '', end_date: '', reason: '' }); setShowAddModal(true); }}
+        <button onClick={() => { setForm({ leave_type: leaveTypes[0]?.value ?? 'other', start_date: '', end_date: '', reason: '' }); setShowAddModal(true); }}
           className="btn-primary flex items-center gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           {isParent ? `Apply for ${childName}` : 'Apply Leave'}
@@ -261,7 +255,7 @@ export default function LeavePage() {
             <div key={l.id} className="card p-4 space-y-2">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="flex items-start gap-3">
-                  <span className="text-2xl mt-0.5">{LEAVE_TYPE_ICON[l.leave_type] || '📋'}</span>
+                  <span className="text-2xl mt-0.5">{leaveIcon(l.leave_type ?? 'other')}</span>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-gray-900 dark:text-gray-100 capitalize">{l.leave_type} Leave</span>

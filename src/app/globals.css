@@ -108,13 +108,59 @@
            active:scale-[0.98];
   }
 
-  /* Cards */
+  /* Cards — stars + blur glow layer via ::before */
   .card {
     @apply bg-white dark:bg-gray-900 rounded-2xl
            border border-surface-200 dark:border-gray-800
            shadow-card dark:shadow-card-dark
-           transition-shadow duration-200;
+           relative overflow-hidden;
+    isolation: isolate;
+    transition: box-shadow 0.2s ease, border-color 0.3s ease;
   }
+
+  /* Stars + mouse-glow pseudo-element */
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    /* glow at default off-card position + 20 star dots */
+    background-image:
+      radial-gradient(380px circle at var(--gx, -400px) var(--gy, -400px), rgba(99,102,241,0.14), transparent 60%),
+      radial-gradient(circle 1.5px at 11% 7%,  rgba(255,255,255,0.9) 0%, transparent 100%),
+      radial-gradient(circle 1px   at 48% 60%, rgba(255,255,255,0.7) 0%, transparent 100%),
+      radial-gradient(circle 1px   at 85% 22%, rgba(255,255,255,0.8) 0%, transparent 100%),
+      radial-gradient(circle 1px   at 25% 75%, rgba(255,255,255,0.6) 0%, transparent 100%),
+      radial-gradient(circle 1.5px at 62% 37%, rgba(255,255,255,0.9) 0%, transparent 100%),
+      radial-gradient(circle 1px   at 2%  90%, rgba(255,255,255,0.7) 0%, transparent 100%),
+      radial-gradient(circle 1px   at 39% 52%, rgba(255,255,255,0.8) 0%, transparent 100%),
+      radial-gradient(circle 2px   at 76% 14%, rgba(255,255,255,0.7) 0%, transparent 100%),
+      radial-gradient(circle 1px   at 16% 67%, rgba(255,255,255,0.9) 0%, transparent 100%),
+      radial-gradient(circle 1.5px at 53% 29%, rgba(255,255,255,0.7) 0%, transparent 100%),
+      radial-gradient(circle 1px   at 90% 82%, rgba(255,255,255,0.8) 0%, transparent 100%),
+      radial-gradient(circle 1px   at 30% 44%, rgba(255,255,255,0.6) 0%, transparent 100%),
+      radial-gradient(circle 2px   at 67% 6%,  rgba(255,255,255,0.9) 0%, transparent 100%),
+      radial-gradient(circle 1px   at 7%  59%, rgba(255,255,255,0.7) 0%, transparent 100%),
+      radial-gradient(circle 1px   at 44% 21%, rgba(255,255,255,0.8) 0%, transparent 100%),
+      radial-gradient(circle 1px   at 81% 74%, rgba(255,255,255,0.6) 0%, transparent 100%),
+      radial-gradient(circle 1.5px at 21% 36%, rgba(255,255,255,0.9) 0%, transparent 100%),
+      radial-gradient(circle 1px   at 58% 89%, rgba(255,255,255,0.7) 0%, transparent 100%),
+      radial-gradient(circle 1px   at 95% 51%, rgba(255,255,255,0.8) 0%, transparent 100%),
+      radial-gradient(circle 1px   at 35% 13%, rgba(255,255,255,0.9) 0%, transparent 100%);
+    filter: blur(0.55px);
+    opacity: 0;
+    animation: cardStarsTwinkle 5s ease-in-out infinite alternate;
+    transition: opacity 0.4s ease;
+  }
+
+  /* Show stars in dark mode */
+  .dark .card::before { opacity: 0.6; }
+
+  /* Very subtle stars in light mode on hover */
+  .card:hover::before { opacity: 0.18; }
+  .dark .card:hover::before { opacity: 0.85; }
 
   .card-hover {
     @apply card hover:shadow-card-hover dark:hover:shadow-lg;
@@ -176,9 +222,12 @@
 .dark ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
 
 /* ── Animations ─────────────────────────────────────────────────────────────── */
-@keyframes fadeIn    { from { opacity:0; transform:translateY(8px); }  to { opacity:1; transform:translateY(0); } }
-@keyframes slideIn   { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:translateX(0); } }
-@keyframes pulse-soft{ 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+@keyframes fadeIn         { from { opacity:0; transform:translateY(8px); }  to { opacity:1; transform:translateY(0); } }
+@keyframes slideIn        { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:translateX(0); } }
+@keyframes pulse-soft     { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+@keyframes cardStarsTwinkle { from { opacity: var(--stars-lo, 0.45); } to { opacity: var(--stars-hi, 0.75); } }
+@keyframes gradientShift  { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+@keyframes beamSlide      { 0% { stroke-dashoffset: 1200; opacity:0; } 40% { opacity:1; } 100% { stroke-dashoffset: -200; opacity:0; } }
 
 .animate-fade-in   { animation: fadeIn    0.3s  ease-out forwards; }
 .animate-slide-in  { animation: slideIn   0.25s ease-out forwards; }
@@ -191,3 +240,32 @@
 .stagger-children > *:nth-child(4) { animation-delay: 0.20s; }
 .stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
 .stagger-children > *:nth-child(6) { animation-delay: 0.30s; }
+
+/* ── Gradient headings — outside @layer so cascade wins over all Tailwind utilities ── */
+/* h1: animated indigo→purple→pink (page titles)                                       */
+main h1 {
+  background-image: linear-gradient(90deg, #4f46e5, #9333ea, #ec4899, #4f46e5);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: gradientShift 6s ease infinite;
+}
+/* Dark mode — lighter palette for dark backgrounds */
+.dark main h1 {
+  background-image: linear-gradient(90deg, #818cf8, #c084fc, #f472b6, #818cf8);
+}
+
+/* h2: same gradient, no animation — section headers */
+main h2 {
+  background-image: linear-gradient(90deg, #4f46e5, #9333ea, #ec4899);
+  background-size: 100% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.dark main h2 {
+  background-image: linear-gradient(90deg, #818cf8, #c084fc, #f472b6);
+}

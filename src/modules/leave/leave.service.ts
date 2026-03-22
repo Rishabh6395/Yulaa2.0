@@ -2,9 +2,18 @@ import { AppError } from '@/utils/errors';
 import * as repo from './leave.repo';
 import type { LeaveRow, LeaveBalanceRow } from './leave.types';
 
-// Default leave types per role group
-const PARENT_LEAVE_TYPES  = ['sick', 'emergency', 'other'];
-const TEACHER_LEAVE_TYPES = ['sick', 'casual', 'other'];
+// Fallback leave types used only when school hasn't configured any
+const FALLBACK_PARENT_TYPES  = [
+  { code: 'sick', name: 'Sick Leave' },
+  { code: 'emergency', name: 'Emergency Leave' },
+  { code: 'other', name: 'Other' },
+];
+const FALLBACK_TEACHER_TYPES = [
+  { code: 'sick',   name: 'Sick Leave' },
+  { code: 'casual', name: 'Casual Leave' },
+  { code: 'other',  name: 'Other' },
+];
+const FALLBACK_BALANCE: Record<string, number> = { sick: 10, casual: 12, other: 0 };
 
 function daysBetween(start: Date, end: Date) {
   return Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
@@ -65,13 +74,15 @@ export async function submitLeaveRequest(
 
   const leaveType = leave_type || 'other';
 
-  // Validate leave type is allowed for this role
-  if (roleCode === 'parent'  && !PARENT_LEAVE_TYPES.includes(leaveType)  && leaveType !== 'other') {
-    throw new AppError('Invalid leave type for parent');
+  // Validate leave type is allowed for this role (check DB first, then fallback)
+  const dbTypes = await repo.findLeaveTypesByRole(schoolId, roleCode);
+  if (dbTypes.length > 0) {
+    const allowedCodes = dbTypes.map(t => t.code);
+    if (!allowedCodes.includes(leaveType)) {
+      throw new AppError(`Invalid leave type. Allowed: ${allowedCodes.join(', ')}`);
+    }
   }
-  if (roleCode === 'teacher' && !TEACHER_LEAVE_TYPES.includes(leaveType) && leaveType !== 'other') {
-    throw new AppError('Invalid leave type for teacher');
-  }
+  // If no DB types configured, allow anything (school uses defaults)
 
   return repo.createLeaveRequest({
     schoolId,
@@ -109,21 +120,41 @@ export async function getTeacherBalances(
   const teacherId = await repo.findTeacherIdByUserId(schoolId, userId);
   if (!teacherId) return { balances: [] };
 
-  const rows = await repo.findTeacherBalances(schoolId, teacherId, academicYear);
+  const [rows, dbTypes, policies] = await Promise.all([
+    repo.findTeacherBalances(schoolId, teacherId, academicYear),
+    repo.findLeaveTypesByRole(schoolId, 'teacher'),
+    repo.findLeaveBalancePoliciesByRole(schoolId, 'teacher'),
+  ]);
 
-  // Fill in defaults for standard types if not set
-  const defaults: Record<string, number> = { sick: 10, casual: 12, other: 0 };
-  const result: LeaveBalanceRow[] = TEACHER_LEAVE_TYPES.map(lt => {
-    const row = rows.find(r => r.leaveType === lt);
-    const total = row?.totalDays ?? defaults[lt] ?? 0;
-    const used  = row?.usedDays  ?? 0;
+  // Use DB-configured leave types; fall back to defaults if none configured
+  const typeList = dbTypes.length > 0
+    ? dbTypes.map(t => t.code)
+    : FALLBACK_TEACHER_TYPES.map(t => t.code);
+
+  const result: LeaveBalanceRow[] = typeList.map(lt => {
+    const row    = rows.find(r => r.leaveType === lt);
+    const policy = policies.find(p => p.leaveType.code === lt);
+    // Priority: uploaded balance > policy default > hardcoded fallback
+    const total  = row?.totalDays ?? policy?.daysPerYear ?? FALLBACK_BALANCE[lt] ?? 0;
+    const used   = row?.usedDays  ?? 0;
     return { leave_type: lt, total_days: total, used_days: used, remaining: Math.max(0, total - used) };
   });
 
-  // Also include any custom types
-  rows.filter(r => !TEACHER_LEAVE_TYPES.includes(r.leaveType)).forEach(r => {
+  // Include any uploaded balances for types not in the master list
+  rows.filter(r => !typeList.includes(r.leaveType)).forEach(r => {
     result.push({ leave_type: r.leaveType, total_days: r.totalDays, used_days: r.usedDays, remaining: Math.max(0, r.totalDays - r.usedDays) });
   });
 
   return { balances: result };
+}
+
+// Exported for use by /api/leave/types
+export async function getLeaveTypesForRole(
+  schoolId: string, roleCode: string,
+): Promise<{ code: string; name: string }[]> {
+  const dbTypes = await repo.findLeaveTypesByRole(schoolId, roleCode);
+  if (dbTypes.length > 0) return dbTypes.map(t => ({ code: t.code, name: t.name }));
+  // Fallback when school hasn't configured any types yet
+  const fallback = roleCode === 'parent' ? FALLBACK_PARENT_TYPES : FALLBACK_TEACHER_TYPES;
+  return fallback;
 }

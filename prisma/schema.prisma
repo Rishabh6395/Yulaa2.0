@@ -7,50 +7,50 @@ datasource db {
 }
 
 model School {
-  id                  String               @id @default(uuid())
-  name                String               @db.VarChar(200)
-  address             String?
-  email               String?              @unique @db.VarChar(100)
-  phone               String?              @db.VarChar(20)
-  logoUrl             String?              @map("logo_url")
-  status              String               @default("active") @db.VarChar(20)
-  subscriptionPlan    String               @default("basic") @map("subscription_plan") @db.VarChar(20)
-  admissionsOpen      Boolean              @default(false) @map("admissions_open")
-  isDefault           Boolean              @default(false) @map("is_default")
-  description         String?
-  city                String?              @db.VarChar(100)
-  state               String?              @db.VarChar(100)
-  website             String?              @db.VarChar(200)
-  facilities          String[]
-  admissionFeeAmt     Decimal?             @map("admission_fee_amt") @db.Decimal(10, 2)
-  latitude            Float?
-  longitude           Float?
-  boardType           String?              @map("board_type") @db.VarChar(30)
-  createdAt           DateTime             @default(now()) @map("created_at")
-  admissionWorkflows  AdmissionWorkflow[]
+  id                    String                 @id @default(uuid())
+  name                  String                 @db.VarChar(200)
+  address               String?
+  email                 String?                @unique @db.VarChar(100)
+  phone                 String?                @db.VarChar(20)
+  logoUrl               String?                @map("logo_url")
+  status                String                 @default("active") @db.VarChar(20)
+  subscriptionPlan      String                 @default("basic") @map("subscription_plan") @db.VarChar(20)
+  createdAt             DateTime               @default(now()) @map("created_at")
+  admissionFeeAmt       Decimal?               @map("admission_fee_amt") @db.Decimal(10, 2)
+  admissionsOpen        Boolean                @default(false) @map("admissions_open")
+  city                  String?                @db.VarChar(100)
+  description           String?
+  facilities            String[]
+  state                 String?                @db.VarChar(100)
+  website               String?                @db.VarChar(200)
+  boardType             String?                @map("board_type") @db.VarChar(30)
+  isDefault             Boolean                @default(false) @map("is_default")
+  latitude              Float?
+  longitude             Float?
   admissionApplications AdmissionApplication[]
-  announcements       Announcement[]
-  attendance          Attendance[]
-  classes             Class[]
-  complianceItems     ComplianceItem[]
-  consultantContracts ConsultantContract[]
-  consultantSessions  ConsultantSession[]
-  feeInvoices         FeeInvoice[]
-  feeStructures       FeeStructure[]
-  homework            Homework[]
-  leaveRequests        LeaveRequest[]
-  leaveWorkflows       LeaveWorkflow[]
-  teacherLeaveBalances TeacherLeaveBalance[]
-  leaveTypeMasters     LeaveTypeMaster[]
-  leaveBalancePolicies LeaveBalancePolicy[]
-  holidayCalendar      HolidayCalendar[]
-  timetables           Timetable[]
-  queries              StudentQuery[]
-  students            Student[]
-  teachers            Teacher[]
-  transportRoutes     TransportRoute[]
-  userRoles           UserRole[]
-  vendorInventory     VendorInventory[]
+  admissionWorkflows    AdmissionWorkflow[]
+  announcements         Announcement[]
+  attendance            Attendance[]
+  classes               Class[]
+  complianceItems       ComplianceItem[]
+  consultantContracts   ConsultantContract[]
+  consultantSessions    ConsultantSession[]
+  feeInvoices           FeeInvoice[]
+  feeStructures         FeeStructure[]
+  holidayCalendar       HolidayCalendar[]
+  homework              Homework[]
+  leaveBalancePolicies  LeaveBalancePolicy[]
+  leaveRequests         LeaveRequest[]
+  leaveTypeMasters      LeaveTypeMaster[]
+  leaveWorkflows        LeaveWorkflow[]
+  queries               StudentQuery[]
+  students              Student[]
+  teacherLeaveBalances  TeacherLeaveBalance[]
+  teachers              Teacher[]
+  timetables            Timetable[]
+  transportRoutes       TransportRoute[]
+  userRoles             UserRole[]
+  vendorInventory       VendorInventory[]
 
   @@map("schools")
 }
@@ -66,30 +66,30 @@ model Role {
 }
 
 model User {
-  id               String         @id @default(uuid())
-  email            String         @unique @db.VarChar(100)
-  passwordHash     String         @map("password_hash")
-  firstName        String         @map("first_name") @db.VarChar(100)
-  lastName         String         @map("last_name") @db.VarChar(100)
-  phone            String?        @db.VarChar(20)
-  avatarUrl        String?        @map("avatar_url")
+  id                    String                 @id @default(uuid())
+  email                 String                 @unique @db.VarChar(100)
+  passwordHash          String                 @map("password_hash")
+  firstName             String                 @map("first_name") @db.VarChar(100)
+  lastName              String                 @map("last_name") @db.VarChar(100)
+  phone                 String?                @db.VarChar(20)
+  avatarUrl             String?                @map("avatar_url")
   status                String                 @default("active") @db.VarChar(20)
-  mustResetPassword     Boolean                @default(false) @map("must_reset_password")
   createdAt             DateTime               @default(now()) @map("created_at")
+  mustResetPassword     Boolean                @default(false) @map("must_reset_password")
+  admissionActions      AdmissionAction[]      @relation("AdmissionActionActor")
+  admissionApplications AdmissionApplication[] @relation("ApplicationParentUser")
   announcements         Announcement[]         @relation("CreatedBy")
   markedAttendance      Attendance[]           @relation("MarkedBy")
   updatedAttendance     Attendance[]           @relation("UpdatedBy")
   consultants           Consultant?
+  leaveActions          LeaveAction[]          @relation("LeaveActionActor")
   reviewedLeaves        LeaveRequest[]         @relation("ReviewedBy")
   leaveRequests         LeaveRequest[]
-  leaveActions          LeaveAction[]          @relation("LeaveActionActor")
   parents               Parent?
   respondedQueries      StudentQuery[]         @relation("RespondedBy")
   teachers              Teacher[]
   userRoles             UserRole[]
   vendors               Vendor?
-  admissionApplications AdmissionApplication[] @relation("ApplicationParentUser")
-  admissionActions      AdmissionAction[]      @relation("AdmissionActionActor")
 
   @@map("users")
 }
@@ -112,24 +112,24 @@ model UserRole {
 }
 
 model Teacher {
-  id              String       @id @default(uuid())
-  userId          String       @map("user_id")
-  schoolId        String       @map("school_id")
-  employeeId      String?      @map("employee_id") @db.VarChar(30)
-  designation     String?      @db.VarChar(100)
-  department      String?      @db.VarChar(100)
+  id              String                @id @default(uuid())
+  userId          String                @map("user_id")
+  schoolId        String                @map("school_id")
+  employeeId      String?               @map("employee_id") @db.VarChar(30)
+  designation     String?               @db.VarChar(100)
+  department      String?               @db.VarChar(100)
   qualification   String?
-  experienceYears Int?         @map("experience_years")
-  joiningDate     DateTime?    @map("joining_date") @db.Date
-  status          String       @default("active") @db.VarChar(20)
-  createdAt       DateTime     @default(now()) @map("created_at")
-  attendance           Attendance[]
-  classes              Class[]
-  homework             Homework[]
-  leaveBalances        TeacherLeaveBalance[]
-  timetableSlots       TimetableSlot[]
-  school               School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user                 User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  experienceYears Int?                  @map("experience_years")
+  joiningDate     DateTime?             @map("joining_date") @db.Date
+  status          String                @default("active") @db.VarChar(20)
+  createdAt       DateTime              @default(now()) @map("created_at")
+  attendance      Attendance[]
+  classes         Class[]
+  homework        Homework[]
+  leaveBalances   TeacherLeaveBalance[]
+  school          School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timetableSlots  TimetableSlot[]
 
   @@unique([userId, schoolId])
   @@index([schoolId])
@@ -151,16 +151,16 @@ model Student {
   address             String?
   bloodGroup          String?              @map("blood_group") @db.VarChar(5)
   emergencyContact    String?              @map("emergency_contact") @db.VarChar(200)
-  aadhaarNo           String?              @map("aadhaar_no") @db.VarChar(12)
   status              String               @default("active") @db.VarChar(20)
   createdAt           DateTime             @default(now()) @map("created_at")
+  aadhaarNo           String?              @map("aadhaar_no") @db.VarChar(12)
+  admissionChildLink  AdmissionChild?      @relation("CreatedFromAdmission")
   attendance          Attendance[]
   feeInvoices         FeeInvoice[]
   homeworkSubmissions HomeworkSubmission[]
+  leaveRequests       LeaveRequest[]
   parentStudents      ParentStudent[]
   queries             StudentQuery[]
-  leaveRequests       LeaveRequest[]
-  admissionChildLink  AdmissionChild?      @relation("CreatedFromAdmission")
   class               Class?               @relation(fields: [classId], references: [id])
   school              School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
@@ -220,24 +220,24 @@ model Class {
 }
 
 model Attendance {
-  id           String   @id @default(uuid())
-  schoolId     String   @map("school_id")
-  studentId    String?  @map("student_id")
-  teacherId    String?  @map("teacher_id")
-  classId      String?  @map("class_id")
-  date         DateTime @db.Date
-  status       String   @db.VarChar(10)
-  markedBy     String?  @map("marked_by")
-  updatedBy    String?  @map("updated_by")
-  remarks      String?
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
-  class        Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
-  markedByUser User?    @relation("MarkedBy",  fields: [markedBy],  references: [id])
-  updatedByUser User?   @relation("UpdatedBy", fields: [updatedBy], references: [id])
-  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student      Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  teacher      Teacher? @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  id            String   @id @default(uuid())
+  schoolId      String   @map("school_id")
+  studentId     String?  @map("student_id")
+  teacherId     String?  @map("teacher_id")
+  classId       String?  @map("class_id")
+  date          DateTime @db.Date
+  status        String   @db.VarChar(10)
+  markedBy      String?  @map("marked_by")
+  remarks       String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+  updatedBy     String?  @map("updated_by")
+  class         Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  markedByUser  User?    @relation("MarkedBy", fields: [markedBy], references: [id])
+  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student       Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher       Teacher? @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  updatedByUser User?    @relation("UpdatedBy", fields: [updatedBy], references: [id])
 
   @@unique([studentId, date])
   @@index([schoolId, date])
@@ -363,25 +363,25 @@ model Announcement {
 }
 
 model LeaveRequest {
-  id             String    @id @default(uuid())
-  schoolId       String    @map("school_id")
-  userId         String    @map("user_id")
-  studentId      String?   @map("student_id")
-  roleCode       String    @map("role_code") @db.VarChar(30)
-  leaveType      String    @default("other") @map("leave_type") @db.VarChar(50)
-  startDate      DateTime  @map("start_date") @db.Date
-  endDate        DateTime  @map("end_date") @db.Date
+  id             String        @id @default(uuid())
+  schoolId       String        @map("school_id")
+  userId         String        @map("user_id")
+  roleCode       String        @map("role_code") @db.VarChar(30)
+  startDate      DateTime      @map("start_date") @db.Date
+  endDate        DateTime      @map("end_date") @db.Date
   reason         String
-  status         String    @default("pending") @db.VarChar(20)
-  currentStep    Int       @default(0) @map("current_step")
-  reviewedBy     String?   @map("reviewed_by")
-  reviewedAt     DateTime? @map("reviewed_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  reviewedByUser User?     @relation("ReviewedBy", fields: [reviewedBy], references: [id])
-  school         School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  student        Student?  @relation(fields: [studentId], references: [id])
+  status         String        @default("pending") @db.VarChar(20)
+  reviewedBy     String?       @map("reviewed_by")
+  reviewedAt     DateTime?     @map("reviewed_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  currentStep    Int           @default(0) @map("current_step")
+  leaveType      String        @default("other") @map("leave_type") @db.VarChar(50)
+  studentId      String?       @map("student_id")
   actions        LeaveAction[]
+  reviewedByUser User?         @relation("ReviewedBy", fields: [reviewedBy], references: [id])
+  school         School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student        Student?      @relation(fields: [studentId], references: [id])
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([schoolId, status])
   @@index([userId])
@@ -389,15 +389,15 @@ model LeaveRequest {
 }
 
 model LeaveAction {
-  id           String       @id @default(uuid())
-  leaveId      String       @map("leave_id")
-  actorUserId  String?      @map("actor_user_id")
-  stepOrder    Int          @map("step_order")
-  action       String       @db.VarChar(20)
-  comment      String?
-  createdAt    DateTime     @default(now()) @map("created_at")
-  leave        LeaveRequest @relation(fields: [leaveId], references: [id], onDelete: Cascade)
-  actor        User?        @relation("LeaveActionActor", fields: [actorUserId], references: [id])
+  id          String       @id @default(uuid())
+  leaveId     String       @map("leave_id")
+  actorUserId String?      @map("actor_user_id")
+  stepOrder   Int          @map("step_order")
+  action      String       @db.VarChar(20)
+  comment     String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  actor       User?        @relation("LeaveActionActor", fields: [actorUserId], references: [id])
+  leave       LeaveRequest @relation(fields: [leaveId], references: [id], onDelete: Cascade)
 
   @@index([leaveId])
   @@map("leave_actions")
@@ -409,8 +409,8 @@ model LeaveWorkflow {
   type      String              @db.VarChar(20)
   isActive  Boolean             @default(true) @map("is_active")
   createdAt DateTime            @default(now()) @map("created_at")
-  school    School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   steps     LeaveWorkflowStep[]
+  school    School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, type])
   @@index([schoolId])
@@ -572,8 +572,6 @@ model ConsultantSession {
   @@map("consultant_sessions")
 }
 
-// ── Compliance ────────────────────────────────────────────────────────────────
-
 model ComplianceItem {
   id          String               @id @default(uuid())
   schoolId    String               @map("school_id")
@@ -587,8 +585,8 @@ model ComplianceItem {
   createdAt   DateTime             @default(now()) @map("created_at")
   updatedAt   DateTime             @default(now()) @updatedAt @map("updated_at")
   updatedBy   String?              @map("updated_by")
-  school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   documents   ComplianceDocument[]
+  school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([schoolId, category])
   @@index([schoolId, status])
@@ -610,8 +608,6 @@ model ComplianceDocument {
   @@map("compliance_documents")
 }
 
-// ── Admissions ────────────────────────────────────────────────────────────────
-
 model OtpVerification {
   id        String   @id @default(uuid())
   phone     String   @db.VarChar(20)
@@ -631,9 +627,9 @@ model AdmissionWorkflow {
   name         String                  @db.VarChar(100)
   isActive     Boolean                 @default(true) @map("is_active")
   createdAt    DateTime                @default(now()) @map("created_at")
-  school       School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  steps        AdmissionWorkflowStep[]
   applications AdmissionApplication[]
+  steps        AdmissionWorkflowStep[]
+  school       School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
   @@map("admission_workflows")
@@ -654,24 +650,24 @@ model AdmissionWorkflowStep {
 }
 
 model AdmissionApplication {
-  id              String                  @id @default(uuid())
-  schoolId        String                  @map("school_id")
-  workflowId      String?                 @map("workflow_id")
-  parentName      String                  @map("parent_name") @db.VarChar(200)
-  parentPhone     String                  @map("parent_phone") @db.VarChar(20)
-  parentEmail     String                  @map("parent_email") @db.VarChar(100)
-  parentUserId    String?                 @map("parent_user_id")
-  currentStep     Int                     @default(0) @map("current_step")
-  status          String                  @default("submitted") @db.VarChar(20)
-  riskScore       Int                     @default(0) @map("risk_score")
-  validationFlags Json?                   @map("validation_flags")
-  submittedAt     DateTime                @default(now()) @map("submitted_at")
-  updatedAt       DateTime                @default(now()) @updatedAt @map("updated_at")
-  school          School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  workflow        AdmissionWorkflow?      @relation(fields: [workflowId], references: [id])
-  parentUser      User?                   @relation("ApplicationParentUser", fields: [parentUserId], references: [id])
-  children        AdmissionChild[]
+  id              String             @id @default(uuid())
+  schoolId        String             @map("school_id")
+  workflowId      String?            @map("workflow_id")
+  parentName      String             @map("parent_name") @db.VarChar(200)
+  parentPhone     String             @map("parent_phone") @db.VarChar(20)
+  parentEmail     String             @map("parent_email") @db.VarChar(100)
+  parentUserId    String?            @map("parent_user_id")
+  currentStep     Int                @default(0) @map("current_step")
+  status          String             @default("submitted") @db.VarChar(20)
+  riskScore       Int                @default(0) @map("risk_score")
+  validationFlags Json?              @map("validation_flags")
+  submittedAt     DateTime           @default(now()) @map("submitted_at")
+  updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at")
   actions         AdmissionAction[]
+  parentUser      User?              @relation("ApplicationParentUser", fields: [parentUserId], references: [id])
+  school          School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  workflow        AdmissionWorkflow? @relation(fields: [workflowId], references: [id])
+  children        AdmissionChild[]
 
   @@index([schoolId, status])
   @@index([parentEmail])
@@ -707,14 +703,12 @@ model AdmissionAction {
   action        String               @db.VarChar(20)
   comment       String?
   createdAt     DateTime             @default(now()) @map("created_at")
-  application   AdmissionApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   actorUser     User?                @relation("AdmissionActionActor", fields: [actorUserId], references: [id])
+  application   AdmissionApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@index([applicationId])
   @@map("admission_actions")
 }
-
-// ── Leave Type Master & Balance Policy ────────────────────────────────────────
 
 model LeaveTypeMaster {
   id           String               @id @default(uuid())
@@ -724,8 +718,8 @@ model LeaveTypeMaster {
   applicableTo String[]             @map("applicable_to")
   isActive     Boolean              @default(true) @map("is_active")
   createdAt    DateTime             @default(now()) @map("created_at")
-  school       School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   policies     LeaveBalancePolicy[]
+  school       School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -742,15 +736,13 @@ model LeaveBalancePolicy {
   maxCarryDays Int             @default(0) @map("max_carry_days")
   createdAt    DateTime        @default(now()) @map("created_at")
   updatedAt    DateTime        @default(now()) @updatedAt @map("updated_at")
-  school       School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   leaveType    LeaveTypeMaster @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  school       School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, leaveTypeId, roleCode])
   @@index([schoolId, roleCode])
   @@map("leave_balance_policies")
 }
-
-// ── Holiday Calendar ──────────────────────────────────────────────────────────
 
 model HolidayCalendar {
   id           String   @id @default(uuid())
@@ -767,8 +759,6 @@ model HolidayCalendar {
   @@map("holiday_calendar")
 }
 
-// ── Timetable ─────────────────────────────────────────────────────────────────
-
 model Timetable {
   id           String          @id @default(uuid())
   schoolId     String          @map("school_id")
@@ -777,9 +767,9 @@ model Timetable {
   isActive     Boolean         @default(true) @map("is_active")
   createdAt    DateTime        @default(now()) @map("created_at")
   updatedAt    DateTime        @default(now()) @updatedAt @map("updated_at")
-  school       School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  class        Class           @relation(fields: [classId], references: [id], onDelete: Cascade)
   slots        TimetableSlot[]
+  class        Class           @relation(fields: [classId], references: [id], onDelete: Cascade)
+  school       School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, classId, academicYear])
   @@index([schoolId])
@@ -796,8 +786,8 @@ model TimetableSlot {
   subject     String    @db.VarChar(100)
   teacherId   String?   @map("teacher_id")
   createdAt   DateTime  @default(now()) @map("created_at")
-  timetable   Timetable @relation(fields: [timetableId], references: [id], onDelete: Cascade)
   teacher     Teacher?  @relation(fields: [teacherId], references: [id])
+  timetable   Timetable @relation(fields: [timetableId], references: [id], onDelete: Cascade)
 
   @@unique([timetableId, dayOfWeek, periodNo])
   @@map("timetable_slots")
