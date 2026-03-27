@@ -6,16 +6,30 @@ import { useApi } from '@/hooks/useApi';
 
 const EMPTY_FORM = { class_id: '', subject: '', title: '', description: '', due_date: '' };
 
+const STATUS_CFG: Record<string, { label: string; bg: string; text: string }> = {
+  done:         { label: 'Done',       bg: 'bg-emerald-100 dark:bg-emerald-950/40', text: 'text-emerald-700 dark:text-emerald-400' },
+  not_done:     { label: 'Not Done',   bg: 'bg-red-100     dark:bg-red-950/40',     text: 'text-red-700     dark:text-red-400' },
+  parent_noted: { label: 'Noted',      bg: 'bg-brand-100   dark:bg-brand-950/40',   text: 'text-brand-700   dark:text-brand-400' },
+  submitted:    { label: 'Submitted',  bg: 'bg-emerald-100 dark:bg-emerald-950/40', text: 'text-emerald-700 dark:text-emerald-400' },
+  pending:      { label: 'Pending',    bg: 'bg-surface-100 dark:bg-gray-800',       text: 'text-surface-400 dark:text-gray-500' },
+};
+
 export default function HomeworkPage() {
   const [showAddModal,  setShowAddModal]  = useState(false);
   const [editHw,        setEditHw]        = useState<any>(null);
-  const [noteHw,        setNoteHw]        = useState<any>(null);  // for parent note
+  const [noteHw,        setNoteHw]        = useState<any>(null);
+  const [viewHw,        setViewHw]        = useState<any>(null); // teacher: view submissions
   const [form,          setForm]          = useState(EMPTY_FORM);
   const [editForm,      setEditForm]      = useState({ title: '', description: '', due_date: '' });
   const [note,          setNote]          = useState('');
   const [saving,        setSaving]        = useState(false);
   const [editSaving,    setEditSaving]    = useState(false);
   const [noteSaving,    setNoteSaving]    = useState(false);
+  const [toggling,      setToggling]      = useState<string | null>(null); // hw.id being toggled
+
+  // Teacher: submissions for a homework
+  const [submissions,   setSubmissions]   = useState<any[]>([]);
+  const [subsLoading,   setSubsLoading]   = useState(false);
 
   const [activeChild, setActiveChild] = useState<any>(null);
 
@@ -33,14 +47,16 @@ export default function HomeworkPage() {
   const isTeacherOrAdmin = ['teacher', 'school_admin', 'super_admin'].includes(user.primaryRole);
   const isParent         = user.primaryRole === 'parent';
 
-  const { data, isLoading, mutate } = useApi<{ homework: any[] }>('/api/homework');
+  // Include student_id when parent has active child so we get per-student status
+  const hwUrl = isParent && activeChild ? `/api/homework?student_id=${activeChild.id}` : '/api/homework';
+  const { data, isLoading, mutate } = useApi<{ homework: any[] }>(hwUrl);
   const { data: clsData }           = useApi<{ classes: any[] }>('/api/classes');
   const homework = data?.homework ?? [];
   const classes  = clsData?.classes ?? [];
 
   const isOverdue = (dueDate: string) => new Date(dueDate) < new Date(new Date().toDateString());
 
-  // Create homework (teacher/admin)
+  // Create homework
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
@@ -49,13 +65,11 @@ export default function HomeworkPage() {
     setSaving(false);
   };
 
-  // Open edit modal (teacher) — pre-fill with existing values
+  // Edit homework (teacher)
   const openEdit = (hw: any) => {
     setEditHw(hw);
     setEditForm({ title: hw.title, description: hw.description || '', due_date: hw.due_date?.split('T')[0] ?? '' });
   };
-
-  // Save homework edit (teacher/admin)
   const handleEdit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editHw) return;
@@ -68,8 +82,21 @@ export default function HomeworkPage() {
     setEditSaving(false);
   };
 
-  // Parent: add note / mark done
-  const openNote = (hw: any) => { setNoteHw(hw); setNote(''); };
+  // Parent: quick Done/Not Done toggle
+  const handleToggleDone = async (hw: any) => {
+    if (!activeChild) return;
+    setToggling(hw.id);
+    const newStatus = hw.student_status === 'done' ? 'not_done' : 'done';
+    await fetch('/api/homework', {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ id: hw.id, student_id: activeChild.id, done_status: newStatus }),
+    });
+    mutate();
+    setToggling(null);
+  };
+
+  // Parent: note modal
+  const openNote = (hw: any) => { setNoteHw(hw); setNote(hw.parent_note || ''); };
   const handleNote = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!noteHw) return;
@@ -83,6 +110,26 @@ export default function HomeworkPage() {
     mutate();
     setNoteSaving(false);
   };
+
+  // Teacher: view submissions chart
+  const openSubmissions = async (hw: any) => {
+    setViewHw(hw);
+    setSubmissions([]);
+    setSubsLoading(true);
+    const res  = await fetch(`/api/homework/submissions?id=${hw.id}`, { headers });
+    const data = await res.json();
+    setSubmissions(data.submissions || []);
+    setSubsLoading(false);
+  };
+
+  // Submission status counts for teacher chart
+  const subCounts = (subs: any[]) => ({
+    done:     subs.filter(s => s.status === 'done').length,
+    not_done: subs.filter(s => s.status === 'not_done').length,
+    noted:    subs.filter(s => s.status === 'parent_noted').length,
+    pending:  subs.filter(s => !s.status || s.status === 'pending').length,
+    total:    subs.length,
+  });
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -101,7 +148,7 @@ export default function HomeworkPage() {
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1,2,3].map(i => <div key={i} className="card p-5 h-40 animate-pulse bg-surface-100"/>)}
+          {[1,2,3].map(i => <div key={i} className="card p-5 h-44 animate-pulse bg-surface-100"/>)}
         </div>
       ) : homework.length === 0 ? (
         <div className="card p-12 text-center">
@@ -111,15 +158,24 @@ export default function HomeworkPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {homework.map((hw) => {
             const overdue = isOverdue(hw.due_date);
+            const stuStatus = hw.student_status;
+            const stuCfg    = stuStatus ? STATUS_CFG[stuStatus] : null;
             return (
               <div key={hw.id} className="card-hover p-5 flex flex-col">
                 <div className="flex items-start justify-between mb-3">
                   <span className="badge-info text-[10px]">{hw.subject}</span>
-                  {overdue && hw.status === 'active' ? (
-                    <span className="badge-danger text-[10px]">Overdue</span>
-                  ) : (
-                    <span className="badge-neutral text-[10px]">{hw.status}</span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {stuCfg && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${stuCfg.bg} ${stuCfg.text}`}>
+                        {stuCfg.label}
+                      </span>
+                    )}
+                    {overdue && hw.status === 'active' ? (
+                      <span className="badge-danger text-[10px]">Overdue</span>
+                    ) : (
+                      <span className="badge-neutral text-[10px]">{hw.status}</span>
+                    )}
+                  </div>
                 </div>
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">{hw.title}</h3>
                 {hw.description && <p className="text-xs text-surface-400 line-clamp-2 mb-3">{hw.description}</p>}
@@ -140,26 +196,52 @@ export default function HomeworkPage() {
 
                 {/* Action buttons */}
                 <div className="flex gap-2 mt-3">
-                  {/* Teacher: Edit button */}
+                  {/* Teacher: Edit + View Submissions */}
                   {isTeacherOrAdmin && (
-                    <button
-                      onClick={() => openEdit(hw)}
-                      className="flex-1 text-xs bg-surface-50 dark:bg-gray-800 text-surface-600 dark:text-gray-400 border border-surface-200 dark:border-gray-700 px-3 py-1.5 rounded-lg hover:bg-surface-100 font-medium transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      Edit
-                    </button>
+                    <>
+                      <button
+                        onClick={() => openEdit(hw)}
+                        className="flex-1 text-xs bg-surface-50 dark:bg-gray-800 text-surface-600 dark:text-gray-400 border border-surface-200 dark:border-gray-700 px-3 py-1.5 rounded-lg hover:bg-surface-100 font-medium transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => openSubmissions(hw)}
+                        className="flex-1 text-xs bg-brand-50 dark:bg-brand-950/30 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800 px-3 py-1.5 rounded-lg hover:bg-brand-100 font-medium transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        Submissions
+                      </button>
+                    </>
                   )}
 
-                  {/* Parent: Add note / mark done */}
+                  {/* Parent: Done/Not Done toggle + Note */}
                   {isParent && (
-                    <button
-                      onClick={() => openNote(hw)}
-                      className="flex-1 text-xs bg-brand-50 dark:bg-brand-950/30 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800 px-3 py-1.5 rounded-lg hover:bg-brand-100 font-medium transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                      {hw.parent_note ? 'Edit Note' : 'Add Note'}
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleToggleDone(hw)}
+                        disabled={toggling === hw.id}
+                        className={`flex-1 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-1.5 border ${
+                          hw.student_status === 'done'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                            : 'bg-surface-50 dark:bg-gray-800 text-surface-600 dark:text-gray-400 border-surface-200 dark:border-gray-700 hover:bg-surface-100'
+                        }`}
+                      >
+                        {hw.student_status === 'done' ? (
+                          <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20,6 9,17 4,12"/></svg>Done</>
+                        ) : (
+                          <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Mark Done</>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => openNote(hw)}
+                        className="flex-1 text-xs bg-brand-50 dark:bg-brand-950/30 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800 px-3 py-1.5 rounded-lg hover:bg-brand-100 font-medium transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                        {hw.parent_note ? 'Edit Note' : 'Add Note'}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -168,7 +250,7 @@ export default function HomeworkPage() {
         </div>
       )}
 
-      {/* Assign Homework Modal (teacher/admin) */}
+      {/* Assign Homework Modal */}
       <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Assign Homework">
         <form onSubmit={handleAdd} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -190,7 +272,7 @@ export default function HomeworkPage() {
           </div>
           <div>
             <label className="label">Description</label>
-            <textarea className="input-field" rows={3} placeholder="Instructions for students..." value={form.description} onChange={e => setForm({...form, description: e.target.value})}/>
+            <textarea className="input-field" rows={3} placeholder="Instructions for students…" value={form.description} onChange={e => setForm({...form, description: e.target.value})}/>
           </div>
           <div>
             <label className="label">Due Date *</label>
@@ -198,12 +280,12 @@ export default function HomeworkPage() {
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving...' : 'Assign'}</button>
+            <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving…' : 'Assign'}</button>
           </div>
         </form>
       </Modal>
 
-      {/* Edit Homework Modal (teacher) */}
+      {/* Edit Homework Modal */}
       <Modal open={!!editHw} onClose={() => setEditHw(null)} title={`Edit: ${editHw?.title ?? ''}`}>
         <form onSubmit={handleEdit} className="space-y-4">
           <div>
@@ -220,7 +302,7 @@ export default function HomeworkPage() {
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => setEditHw(null)} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={editSaving} className="btn-primary flex-1">{editSaving ? 'Saving...' : 'Update'}</button>
+            <button type="submit" disabled={editSaving} className="btn-primary flex-1">{editSaving ? 'Saving…' : 'Update'}</button>
           </div>
         </form>
       </Modal>
@@ -234,13 +316,79 @@ export default function HomeworkPage() {
           </div>
           <div>
             <label className="label">Your Note</label>
-            <textarea className="input-field" rows={3} placeholder="e.g. Completed, needs review. Facing difficulty with Q3..." value={note} onChange={e => setNote(e.target.value)}/>
+            <textarea className="input-field" rows={3} placeholder="e.g. Completed, needs review. Facing difficulty with Q3…" value={note} onChange={e => setNote(e.target.value)}/>
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => setNoteHw(null)} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={noteSaving} className="btn-primary flex-1">{noteSaving ? 'Saving...' : 'Save Note'}</button>
+            <button type="submit" disabled={noteSaving} className="btn-primary flex-1">{noteSaving ? 'Saving…' : 'Save Note'}</button>
           </div>
         </form>
+      </Modal>
+
+      {/* Teacher: Submissions Chart Modal */}
+      <Modal open={!!viewHw} onClose={() => setViewHw(null)} title={`Submissions: ${viewHw?.title ?? ''}`}>
+        {subsLoading ? (
+          <div className="space-y-2">
+            {[1,2,3,4].map(i => <div key={i} className="h-8 bg-surface-100 dark:bg-gray-800 rounded-xl animate-pulse"/>)}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Summary bar chart */}
+            {(() => {
+              const c = subCounts(submissions);
+              return (
+                <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                  {[
+                    { label: 'Done',     count: c.done,     cls: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400' },
+                    { label: 'Not Done', count: c.not_done, cls: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' },
+                    { label: 'Noted',    count: c.noted,    cls: 'bg-brand-100 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400' },
+                    { label: 'Pending',  count: c.pending,  cls: 'bg-surface-100 dark:bg-gray-800 text-surface-500 dark:text-gray-400' },
+                  ].map(item => (
+                    <div key={item.label} className={`rounded-xl p-3 ${item.cls}`}>
+                      <p className="text-xl font-bold">{item.count}</p>
+                      <p className="font-semibold opacity-80">{item.label}</p>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Progress bar */}
+            {submissions.length > 0 && (() => {
+              const c = subCounts(submissions);
+              return (
+                <div>
+                  <div className="flex items-center justify-between text-xs text-surface-400 mb-1">
+                    <span>Student responses</span>
+                    <span>{submissions.length - c.pending} / {submissions.length} responded</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-surface-100 dark:bg-gray-800 overflow-hidden flex">
+                    <div className="bg-emerald-400 transition-all" style={{ width: `${(c.done / submissions.length) * 100}%` }}/>
+                    <div className="bg-red-400 transition-all"     style={{ width: `${(c.not_done / submissions.length) * 100}%` }}/>
+                    <div className="bg-brand-400 transition-all"   style={{ width: `${(c.noted / submissions.length) * 100}%` }}/>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Student list */}
+            <div className="max-h-64 overflow-y-auto space-y-1">
+              {submissions.map(s => {
+                const cfg = STATUS_CFG[s.status] || STATUS_CFG.pending;
+                return (
+                  <div key={s.student_id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-surface-50 dark:bg-gray-800 text-xs">
+                    <div>
+                      <span className="font-medium text-gray-800 dark:text-gray-200">{s.student_name}</span>
+                      {s.admission_no && <span className="text-surface-400 ml-2">#{s.admission_no}</span>}
+                      {s.feedback && <p className="text-surface-400 mt-0.5 text-[11px] italic">{s.feedback}</p>}
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-md font-semibold ${cfg.bg} ${cfg.text}`}>{cfg.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

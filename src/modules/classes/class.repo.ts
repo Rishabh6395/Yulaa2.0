@@ -6,7 +6,7 @@ export async function findClassesBySchool(schoolId: string) {
     where: { schoolId },
     include: {
       classTeacher: {
-        include: { user: { select: { firstName: true, lastName: true } } },
+        include: { user: { select: { id: true, firstName: true, lastName: true } } },
       },
       _count: { select: { students: { where: { status: 'active' } } } },
     },

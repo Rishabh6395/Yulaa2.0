@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Modal from '@/components/ui/Modal';
 
 // ─── Push Notification Modal ──────────────────────────────────────────────────
@@ -77,7 +77,7 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={map[status] || 'badge-neutral'}>{status}</span>;
 }
 
-function FeesTable({ invoices, loading, summary, filter, setFilter, title, subtitle, isParent, role, token }: {
+function FeesTable({ invoices, loading, summary, filter, setFilter, title, subtitle, isParent, role, token, onRefresh }: {
   invoices: any[];
   loading: boolean;
   summary: any;
@@ -88,9 +88,51 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
   isParent: boolean;
   role: string;
   token: string;
+  onRefresh?: () => void;
 }) {
-  const [showNotify, setShowNotify] = useState(false);
+  const [showNotify,    setShowNotify]    = useState(false);
+  const [showUpload,    setShowUpload]    = useState(false);
+  const [uploadFile,    setUploadFile]    = useState<File | null>(null);
+  const [uploading,     setUploading]     = useState(false);
+  const [uploadResult,  setUploadResult]  = useState<{ created: number; errors: string[]; total: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
+
+  const handleDownloadTemplate = () => {
+    fetch('/api/fees/upload', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.blob())
+      .then(blob => {
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = 'fees-template.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+  };
+
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadFile) return;
+    setUploading(true);
+    setUploadResult(null);
+    const fd = new FormData();
+    fd.append('file', uploadFile);
+    const res  = await fetch('/api/fees/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+    const data = await res.json();
+    setUploadResult(data);
+    setUploading(false);
+    if (data.created > 0 && onRefresh) onRefresh();
+  };
+
+  const closeUpload = () => {
+    setShowUpload(false);
+    setUploadFile(null);
+    setUploadResult(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
   const fmt = (n: any) => `₹${parseFloat(n || 0).toLocaleString('en-IN')}`;
 
   const filterOptions = ['', 'unpaid', 'overdue', 'paid'];
@@ -110,13 +152,51 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
           <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">{subtitle}</p>
         </div>
         {!isParent && (
-          <button onClick={() => setShowNotify(true)} className="btn-primary flex items-center gap-2">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-            Notify Parents
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowUpload(true)} className="btn-secondary flex items-center gap-2">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload Fees
+            </button>
+            <button onClick={() => setShowNotify(true)} className="btn-primary flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+              Notify Parents
+            </button>
+          </div>
         )}
       </div>
       {!isParent && <NotifyModal open={showNotify} onClose={() => setShowNotify(false)} token={token} />}
+
+      {/* Fee Upload Modal */}
+      <Modal open={showUpload} onClose={closeUpload} title="Bulk Upload Fee Invoices">
+        <div className="space-y-4">
+          <div className="p-3 rounded-xl bg-surface-50 dark:bg-gray-800 border border-surface-200 dark:border-gray-700 text-xs text-surface-500 dark:text-gray-400 space-y-1">
+            <p className="font-semibold text-gray-700 dark:text-gray-300">Required columns:</p>
+            <p><span className="font-mono bg-surface-100 dark:bg-gray-700 px-1 rounded">admission_no</span>, <span className="font-mono bg-surface-100 dark:bg-gray-700 px-1 rounded">amount</span>, <span className="font-mono bg-surface-100 dark:bg-gray-700 px-1 rounded">due_date</span> (YYYY-MM-DD)</p>
+            <p>Optional: <span className="font-mono bg-surface-100 dark:bg-gray-700 px-1 rounded">installment_no</span>, <span className="font-mono bg-surface-100 dark:bg-gray-700 px-1 rounded">description</span></p>
+          </div>
+          <button onClick={handleDownloadTemplate} className="w-full flex items-center justify-center gap-2 text-sm text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800 rounded-xl py-2 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-colors font-medium">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download Excel Template
+          </button>
+          <form onSubmit={handleUpload} className="space-y-3">
+            <div>
+              <label className="label">Select File (CSV or XLSX)</label>
+              <input ref={fileInputRef} type="file" accept=".csv,.xlsx" className="input-field text-sm"
+                onChange={e => setUploadFile(e.target.files?.[0] ?? null)} />
+            </div>
+            {uploadResult && (
+              <div className={`rounded-xl border p-3 text-sm space-y-1 ${uploadResult.errors.length > 0 ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'}`}>
+                <p className="font-semibold text-gray-800 dark:text-gray-200">{uploadResult.created} of {uploadResult.total} invoices created</p>
+                {uploadResult.errors.map((err, i) => <p key={i} className="text-xs text-amber-700 dark:text-amber-400">{err}</p>)}
+              </div>
+            )}
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={closeUpload} className="btn-secondary flex-1">Close</button>
+              <button type="submit" disabled={!uploadFile || uploading} className="btn-primary flex-1">{uploading ? 'Uploading…' : 'Upload'}</button>
+            </div>
+          </form>
+        </div>
+      </Modal>
 
       {summary && (
         isParent ? (
@@ -241,14 +321,26 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
       {/* Admin: bulk download */}
       {!isParent && (
         <div className="flex justify-end">
-          <a
-            href={`/api/fees/export`}
-            download
+          <button
+            onClick={() => {
+              fetch('/api/fees/export', { headers: { Authorization: `Bearer ${token}` } })
+                .then(r => r.blob())
+                .then(blob => {
+                  const url  = URL.createObjectURL(blob);
+                  const a    = document.createElement('a');
+                  a.href     = url;
+                  a.download = `fees-${new Date().toISOString().slice(0,10)}.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                });
+            }}
             className="text-xs flex items-center gap-1.5 bg-surface-50 dark:bg-gray-800 border border-surface-200 dark:border-gray-700 text-surface-600 dark:text-gray-400 px-3 py-2 rounded-lg hover:bg-surface-100 dark:hover:bg-gray-700 font-medium transition-colors"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Download CSV
-          </a>
+          </button>
         </div>
       )}
     </div>
@@ -256,12 +348,13 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
 }
 
 export default function FeesPage() {
-  const [invoices, setInvoices] = useState<any[]>([]);
-  const [summary, setSummary] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('');
-  const [role, setRole] = useState<string | null>(null);
+  const [invoices,    setInvoices]    = useState<any[]>([]);
+  const [summary,     setSummary]     = useState<any>(null);
+  const [loading,     setLoading]     = useState(true);
+  const [filter,      setFilter]      = useState('');
+  const [role,        setRole]        = useState<string | null>(null);
   const [activeChild, setActiveChild] = useState<any>(null);
+  const [refreshKey,  setRefreshKey]  = useState(0);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
 
@@ -294,14 +387,14 @@ export default function FeesPage() {
     if (filter) params.set('status', filter);
     if (role === 'parent' && activeChild) params.set('student_id', activeChild.id);
 
-    fetch(`/api/fees?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`/api/fees?${params}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
         setInvoices(d.invoices || []);
         setSummary(d.summary);
         setLoading(false);
       });
-  }, [filter, token, role, activeChild]);
+  }, [filter, token, role, activeChild, refreshKey]);
 
   if (role === 'parent' && !activeChild) {
     return (
@@ -327,6 +420,7 @@ export default function FeesPage() {
       token={token || ''}
       title={isParent ? `${childName}'s Fees` : 'Fee Management'}
       subtitle={isParent ? `Fee invoices for ${childName}` : 'Track invoices and payments'}
+      onRefresh={() => setRefreshKey(k => k + 1)}
     />
   );
 }

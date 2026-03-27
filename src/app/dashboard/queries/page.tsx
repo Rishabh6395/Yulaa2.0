@@ -15,15 +15,17 @@ export default function QueriesPage() {
   const [form,     setForm]     = useState({ subject: '', message: '', priority: 'normal' });
   const [reply,    setReply]    = useState('');
   const [reopenComment, setReopenComment] = useState('');
-  const [saving,   setSaving]   = useState(false);
-  const [replying, setReplying] = useState(false);
+  const [saving,    setSaving]    = useState(false);
+  const [replying,  setReplying]  = useState(false);
   const [reopening, setReopening] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
   const user    = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
-  const canReply  = REPLY_ROLES.includes(user.primaryRole);
-  const canReopen = REOPEN_ROLES.includes(user.primaryRole);
+  const canReply   = REPLY_ROLES.includes(user.primaryRole);
+  const canReopen  = REOPEN_ROLES.includes(user.primaryRole);
+  const isSubmitter = ['parent', 'student'].includes(user.primaryRole);
 
   const { data, isLoading, mutate } = useApi<{ queries: any[] }>('/api/queries');
   const queries = data?.queries ?? [];
@@ -55,6 +57,16 @@ export default function QueriesPage() {
     setReply('');
     mutate();
     setReplying(false);
+  };
+
+  const handleConfirmResolve = async (q: any) => {
+    setConfirming(true);
+    await fetch('/api/queries', {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ action: 'confirm_resolve', id: q.id }),
+    });
+    mutate();
+    setConfirming(false);
   };
 
   const handleReopen = async (e: React.FormEvent) => {
@@ -129,6 +141,18 @@ export default function QueriesPage() {
                       >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 21 1.9-5.7A8.5 8.5 0 1 1 5.8 17.8z"/></svg>
                         Reply
+                      </button>
+                    )}
+
+                    {/* Confirm Resolved — submitter confirms after admin replies */}
+                    {isSubmitter && q.response && q.status === 'in_progress' && (
+                      <button
+                        onClick={() => handleConfirmResolve(q)}
+                        disabled={confirming}
+                        className="text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 px-3 py-1.5 rounded-lg hover:bg-emerald-100 font-medium transition-colors flex items-center gap-1.5"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+                        Mark Resolved
                       </button>
                     )}
 

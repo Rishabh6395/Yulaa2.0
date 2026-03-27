@@ -37,6 +37,13 @@ export async function respondToQuery(id: string, respondedBy: string, data: {
   });
 }
 
+export async function confirmResolveQuery(id: string) {
+  return prisma.studentQuery.update({
+    where: { id },
+    data:  { status: 'resolved' },
+  });
+}
+
 export async function reopenQuery(id: string, comment: string | undefined) {
   const note = comment?.trim()
     ? `[Reopened with comment: ${comment.trim()}]`

@@ -79,51 +79,70 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
       </div>
 
       {view === 'daily' ? (
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-6">
-            <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-surface-100 text-surface-400 transition-colors">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15,18 9,12 15,6"/></svg>
+        <div className="card overflow-hidden">
+          {/* Month navigator */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-surface-100 dark:border-gray-800">
+            <button onClick={prevMonth} className="w-8 h-8 rounded-lg hover:bg-surface-100 dark:hover:bg-gray-800 flex items-center justify-center text-surface-400 transition-colors">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15,18 9,12 15,6"/></svg>
             </button>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{monthLabel}</h3>
-            <button onClick={nextMonth} disabled={month >= today.toISOString().substring(0, 7)} className="p-2 rounded-lg hover:bg-surface-100 text-surface-400 transition-colors disabled:opacity-30">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{monthLabel}</h3>
+            <button onClick={nextMonth} disabled={month >= today.toISOString().substring(0, 7)} className="w-8 h-8 rounded-lg hover:bg-surface-100 dark:hover:bg-gray-800 flex items-center justify-center text-surface-400 transition-colors disabled:opacity-30">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9,18 15,12 9,6"/></svg>
             </button>
           </div>
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-              <div key={d} className="text-center text-[10px] font-semibold text-surface-400 py-1">{d}</div>
-            ))}
-          </div>
-          {loading ? (
-            <div className="grid grid-cols-7 gap-1">{Array.from({ length: 35 }).map((_, i) => <div key={i} className="aspect-square rounded-xl bg-surface-100 animate-pulse"/>)}</div>
-          ) : (
-            <div className="grid grid-cols-7 gap-1">
-              {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`}/>)}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const day     = i + 1;
-                const dateStr = `${year}-${String(mon).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-                const isToday = dateStr === today.toISOString().split('T')[0];
-                const dow     = new Date(dateStr + 'T00:00:00').getDay();
-                const weekend = dow === 0 || dow === 6;
-                const status  = recordMap[day];
-                const cfg     = status ? STATUS_CFG[status] : null;
-                return (
-                  <div key={day} className={`aspect-square rounded-xl flex flex-col items-center justify-center gap-0.5 ${
-                    weekend ? 'bg-surface-100 dark:bg-gray-800/50 opacity-50' :
-                    cfg     ? `${cfg.bg} ring-1 ${cfg.ring}` : 'bg-surface-50 dark:bg-gray-800/30'
-                  } ${isToday ? 'ring-2 ring-brand-400' : ''}`}>
-                    <span className={`text-xs font-semibold ${cfg ? cfg.text : weekend ? 'text-surface-300 dark:text-gray-600' : 'text-surface-400'}`}>{day}</span>
-                    {cfg && !weekend && <span className={`text-[9px] font-bold ${cfg.text}`}>{cfg.label}</span>}
-                    {weekend && <span className="text-[8px] text-surface-300 dark:text-gray-600">off</span>}
-                  </div>
-                );
-              })}
+
+          <div className="p-4">
+            {/* Day labels */}
+            <div className="grid grid-cols-7 mb-1">
+              {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+                <div key={d} className="text-center text-[11px] font-semibold text-surface-400 dark:text-gray-500 py-2">{d}</div>
+              ))}
             </div>
-          )}
-          <div className="flex flex-wrap gap-3 mt-5 pt-4 border-t border-surface-100">
+
+            {loading ? (
+              <div className="grid grid-cols-7 gap-2">
+                {Array.from({ length: 35 }).map((_, i) => (
+                  <div key={i} className="h-12 rounded-xl bg-surface-100 dark:bg-gray-800 animate-pulse"/>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-7 gap-2">
+                {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} className="h-12"/>)}
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                  const day     = i + 1;
+                  const dateStr = `${year}-${String(mon).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                  const isToday = dateStr === today.toISOString().split('T')[0];
+                  const dow     = new Date(dateStr + 'T00:00:00').getDay();
+                  const weekend = dow === 0 || dow === 6;
+                  const status  = recordMap[day];
+                  const cfg     = status ? STATUS_CFG[status] : null;
+
+                  if (weekend) {
+                    return (
+                      <div key={day} className="h-12 rounded-xl flex flex-col items-center justify-center bg-surface-50 dark:bg-gray-800/40 opacity-40">
+                        <span className="text-sm font-medium text-surface-400 dark:text-gray-600">{day}</span>
+                        <span className="text-[9px] text-surface-300 dark:text-gray-600 font-medium">OFF</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={day} className={`h-12 rounded-xl flex flex-col items-center justify-center transition-all ${
+                      cfg     ? `${cfg.bg} ${cfg.ring && `ring-1 ${cfg.ring}`}` : 'bg-surface-50 dark:bg-gray-800/30'
+                    } ${isToday ? 'ring-2 ring-brand-400 dark:ring-brand-500' : ''}`}>
+                      <span className={`text-sm font-bold leading-none ${cfg ? cfg.text : 'text-gray-600 dark:text-gray-400'}`}>{day}</span>
+                      {cfg && <span className={`text-[10px] font-semibold mt-0.5 ${cfg.text}`}>{cfg.full}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Legend */}
+          <div className="px-4 pb-4 pt-1 flex flex-wrap gap-3">
             {Object.entries(STATUS_CFG).map(([key, cfg]) => (
-              <span key={key} className="flex items-center gap-1.5 text-xs text-surface-500">
-                <span className={`w-5 h-5 rounded-md ${cfg.bg} ${cfg.text} flex items-center justify-center text-[9px] font-bold`}>{cfg.label}</span>
+              <span key={key} className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.bg} ${cfg.text}`}>
                 {cfg.full}
               </span>
             ))}
@@ -186,7 +205,7 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
 const SUBJECTS = ['Eng', 'Hindi', 'SC', 'SS', 'SKT', 'DR', 'IT', 'OT'];
 const SUBJECT_KEYS = ['eng', 'hindi', 'sc', 'ss', 'skt', 'dr', 'it', 'ot'];
 
-function TeacherAttendancePage() {
+function TeacherAttendancePage({ userId }: { userId: string }) {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [classes, setClasses] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
@@ -202,8 +221,16 @@ function TeacherAttendancePage() {
   useEffect(() => {
     fetch('/api/classes', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(d => setClasses(d.classes || []));
-  }, [token]);
+      .then(d => {
+        const list = d.classes || [];
+        setClasses(list);
+        // Auto-select the class where this teacher is the class teacher
+        if (userId) {
+          const myClass = list.find((c: any) => c.class_teacher_user_id === userId);
+          if (myClass) setSelectedClass(myClass.id);
+        }
+      });
+  }, [token, userId]);
 
   const fetchClassAttendance = useCallback(async () => {
     if (!selectedClass) return;
@@ -446,6 +473,7 @@ function TeacherAttendancePage() {
 
 export default function AttendancePage() {
   const [role, setRole] = useState<string | null>(null);
+  const [userId, setUserId] = useState('');
   const [activeChild, setActiveChild] = useState<any>(null);
 
   useEffect(() => {
@@ -454,6 +482,7 @@ export default function AttendancePage() {
       try {
         const user = JSON.parse(userData);
         setRole(user.primaryRole);
+        setUserId(user.id || '');
         if (user.primaryRole === 'parent') {
           const stored = localStorage.getItem('activeChild');
           if (stored) setActiveChild(JSON.parse(stored));
@@ -487,5 +516,5 @@ export default function AttendancePage() {
     );
   }
 
-  return <TeacherAttendancePage />;
+  return <TeacherAttendancePage userId={userId} />;
 }

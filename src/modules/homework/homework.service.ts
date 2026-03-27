@@ -3,29 +3,40 @@ import * as repo from './homework.repo';
 import type { HomeworkRow } from './homework.types';
 
 export async function listHomework(schoolId: string, searchParams: URLSearchParams): Promise<{ homework: HomeworkRow[] }> {
-  const classId  = searchParams.get('class_id');
-  const homework = await repo.findHomework(schoolId, classId);
+  const classId   = searchParams.get('class_id');
+  const studentId = searchParams.get('student_id');
+  const homework  = await repo.findHomework(schoolId, classId);
 
   const rows = await Promise.all(
     homework.map(async (h) => {
-      const totalStudents = await repo.countActiveStudentsInClass(h.classId);
+      const [totalStudents, studentSub] = await Promise.all([
+        repo.countActiveStudentsInClass(h.classId),
+        studentId ? repo.findStudentSubmission(h.id, studentId) : null,
+      ]);
       return {
-        id:             h.id,
-        subject:        h.subject,
-        title:          h.title,
-        description:    h.description,
-        due_date:       h.dueDate,
-        created_at:     h.createdAt,
-        grade:          h.class.grade,
-        section:        h.class.section,
-        teacher_name:   `${h.teacher.user.firstName} ${h.teacher.user.lastName}`,
-        submissions:    h._count.submissions,
-        total_students: totalStudents,
+        id:                      h.id,
+        subject:                 h.subject,
+        title:                   h.title,
+        description:             h.description,
+        due_date:                h.dueDate,
+        created_at:              h.createdAt,
+        grade:                   h.class.grade,
+        section:                 h.class.section,
+        teacher_name:            `${h.teacher.user.firstName} ${h.teacher.user.lastName}`,
+        submissions:             h._count.submissions,
+        total_students:          totalStudents,
+        student_status:          studentSub?.status   ?? null,
+        parent_note:             studentSub?.feedback ?? null,
       };
     })
   );
 
   return { homework: rows };
+}
+
+export async function listSubmissions(homeworkId: string) {
+  if (!homeworkId) throw new AppError('id is required');
+  return repo.findAllSubmissionsForHomework(homeworkId);
 }
 
 export async function createHomework(schoolId: string, userId: string, body: Record<string, any>) {
@@ -51,6 +62,13 @@ export async function createHomework(schoolId: string, userId: string, body: Rec
 export async function updateHomework(body: Record<string, any>) {
   const { id, subject, title, description, due_date, parent_note, student_id } = body;
   if (!id) throw new AppError('id is required');
+
+  // Parent: mark done/not_done status
+  const { done_status } = body;
+  if (done_status && student_id) {
+    if (!['done', 'not_done'].includes(done_status)) throw new AppError('done_status must be done or not_done');
+    return repo.upsertDoneStatus(id, student_id, done_status);
+  }
 
   // Parent note: upsert into HomeworkSubmission.feedback
   if (parent_note !== undefined && student_id) {

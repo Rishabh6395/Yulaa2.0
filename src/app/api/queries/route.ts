@@ -1,5 +1,5 @@
 import { getUserFromRequest } from '@/lib/auth';
-import { listQueries, submitQuery, respondToQuery, reopenQuery } from '@/modules/queries/query.service';
+import { listQueries, submitQuery, respondToQuery, reopenQuery, confirmResolveQuery } from '@/modules/queries/query.service';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 
 export async function GET(request: Request) {
@@ -28,9 +28,13 @@ export async function PATCH(request: Request) {
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
     const body        = await request.json();
 
-    // Reopen allowed for any authenticated user (submitter reopens their own)
+    // Actions allowed for any authenticated user (submitter acts on their own query)
     if (body.action === 'reopen') {
       const query = await reopenQuery(body);
+      return Response.json({ query });
+    }
+    if (body.action === 'confirm_resolve') {
+      const query = await confirmResolveQuery(body);
       return Response.json({ query });
     }
 

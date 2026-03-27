@@ -52,6 +52,12 @@ export async function respondToQuery(respondedBy: string, body: Record<string, a
   });
 }
 
+export async function confirmResolveQuery(body: Record<string, any>) {
+  const { id } = body;
+  if (!id) throw new AppError('id is required');
+  return repo.confirmResolveQuery(id);
+}
+
 export async function reopenQuery(body: Record<string, any>) {
   const { id, reopen_comment } = body;
   if (!id) throw new AppError('id is required');

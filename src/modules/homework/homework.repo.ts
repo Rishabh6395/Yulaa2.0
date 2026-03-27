@@ -49,6 +49,50 @@ export async function upsertParentNote(homeworkId: string, studentId: string, fe
   });
 }
 
+export async function upsertDoneStatus(homeworkId: string, studentId: string, status: string) {
+  return prisma.homeworkSubmission.upsert({
+    where:  { homeworkId_studentId: { homeworkId, studentId } },
+    create: { homeworkId, studentId, status },
+    update: { status },
+  });
+}
+
+export async function findStudentSubmission(homeworkId: string, studentId: string) {
+  return prisma.homeworkSubmission.findUnique({
+    where:  { homeworkId_studentId: { homeworkId, studentId } },
+    select: { feedback: true, status: true },
+  });
+}
+
+export async function findAllSubmissionsForHomework(homeworkId: string) {
+  const hw = await prisma.homework.findUnique({
+    where:   { id: homeworkId },
+    select:  { classId: true },
+  });
+  if (!hw) return [];
+
+  const [students, submissions] = await Promise.all([
+    prisma.student.findMany({
+      where:   { classId: hw.classId, status: 'active' },
+      select:  { id: true, firstName: true, lastName: true, admissionNo: true },
+      orderBy: [{ firstName: 'asc' }],
+    }),
+    prisma.homeworkSubmission.findMany({
+      where:  { homeworkId },
+      select: { studentId: true, status: true, feedback: true },
+    }),
+  ]);
+
+  const subMap = new Map(submissions.map(s => [s.studentId, s]));
+  return students.map(s => ({
+    student_id:    s.id,
+    student_name:  `${s.firstName} ${s.lastName}`,
+    admission_no:  s.admissionNo,
+    status:        subMap.get(s.id)?.status   ?? 'pending',
+    feedback:      subMap.get(s.id)?.feedback ?? null,
+  }));
+}
+
 export async function findParentNote(homeworkId: string, studentId: string) {
   return prisma.homeworkSubmission.findUnique({
     where: { homeworkId_studentId: { homeworkId, studentId } },

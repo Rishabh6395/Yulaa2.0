@@ -10,9 +10,10 @@ export async function listClasses(schoolId: string): Promise<ClassRow[]> {
     section:       c.section,
     capacity:      c.maxStudents,
     academic_year: c.academicYear,
-    teacher_name:  c.classTeacher
+    teacher_name:        c.classTeacher
       ? `${c.classTeacher.user.firstName} ${c.classTeacher.user.lastName}`
       : null,
+    class_teacher_user_id: c.classTeacher?.user.id ?? null,
     student_count: c._count.students,
   }));
 }
