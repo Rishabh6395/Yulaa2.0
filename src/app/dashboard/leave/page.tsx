@@ -24,9 +24,10 @@ function dayCount(start: any, end: any) {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  pending:  'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400',
-  approved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400',
-  rejected: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400',
+  pending:   'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400',
+  approved:  'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400',
+  rejected:  'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400',
+  withdrawn: 'bg-surface-100 text-surface-500 dark:bg-gray-700 dark:text-gray-400',
 };
 
 // ─── Workflow Step Progress ────────────────────────────────────────────────────
@@ -102,6 +103,7 @@ export default function LeavePage() {
   const [reviewComment, setReviewComment] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [withdrawing, setWithdrawing] = useState<string | null>(null);
   const [activeChild, setActiveChild] = useState<any>(null);
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
@@ -177,6 +179,23 @@ export default function LeavePage() {
       mutate();
     } catch { setSaveError('Network error. Please try again.'); }
     setSaving(false);
+  };
+
+  // Withdraw a pending leave (submitter only)
+  const handleWithdraw = async (id: string) => {
+    setWithdrawing(id);
+    await fetch('/api/leave', {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ action: 'withdraw', id }),
+    });
+    setWithdrawing(null);
+    mutate();
+  };
+
+  // Pre-fill apply modal for resubmit
+  const handleResubmit = (l: any) => {
+    setForm({ leave_type: l.leave_type, start_date: l.start_date?.split('T')[0] ?? '', end_date: l.end_date?.split('T')[0] ?? '', reason: l.reason ?? '' });
+    setShowAddModal(true);
   };
 
   // Review leave step
@@ -279,26 +298,64 @@ export default function LeavePage() {
                   </div>
                 </div>
 
-                {/* Review button */}
-                {reviewable && (
-                  <button onClick={() => { setReviewModal(l); setReviewComment(''); }}
-                    className="btn btn-secondary text-sm shrink-0">
-                    Review
-                  </button>
-                )}
-                {isAdmin && l.status === 'pending' && !reviewable && steps.length > 0 && (
-                  <span className="text-xs text-surface-400 shrink-0">Awaiting step {l.current_step + 1}</span>
-                )}
+                {/* Action buttons group */}
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  {/* Review (admin/teacher reviewers) */}
+                  {reviewable && (
+                    <button onClick={() => { setReviewModal(l); setReviewComment(''); }}
+                      className="btn btn-secondary text-sm">
+                      Review
+                    </button>
+                  )}
+                  {isAdmin && l.status === 'pending' && !reviewable && steps.length > 0 && (
+                    <span className="text-xs text-surface-400 self-center">Awaiting step {l.current_step + 1}</span>
+                  )}
+
+                  {/* Withdraw (submitter — pending only) */}
+                  {(isParent || isTeacher) && l.status === 'pending' && (
+                    <button
+                      onClick={() => handleWithdraw(l.id)}
+                      disabled={withdrawing === l.id}
+                      className="text-xs bg-red-50 dark:bg-red-950/30 text-red-600 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-lg hover:bg-red-100 font-medium transition-colors disabled:opacity-60"
+                    >
+                      {withdrawing === l.id ? 'Withdrawing…' : 'Withdraw'}
+                    </button>
+                  )}
+
+                  {/* Resubmit (submitter — rejected or withdrawn) */}
+                  {(isParent || isTeacher) && ['rejected', 'withdrawn'].includes(l.status) && (
+                    <button
+                      onClick={() => handleResubmit(l)}
+                      className="text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-600 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-lg hover:bg-amber-100 font-medium transition-colors"
+                    >
+                      Resubmit
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {/* Action history */}
+              {/* Action history — show approver comments clearly */}
               {l.actions?.length > 0 && (
-                <div className="border-t border-surface-100 dark:border-gray-700 pt-2 flex flex-wrap gap-2">
+                <div className="border-t border-surface-100 dark:border-gray-700 pt-2 space-y-1">
                   {l.actions.map((a: any, i: number) => (
-                    <span key={i} className={`text-xs px-2 py-0.5 rounded-full ${a.action === 'approved' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30' : 'bg-red-50 text-red-600 dark:bg-red-950/30'}`}>
-                      {a.actor_name || 'Admin'} {a.action} step {a.step_order + 1}
-                      {a.comment && ` — "${a.comment}"`}
-                    </span>
+                    <div key={i} className={`flex items-start gap-2 text-xs rounded-lg px-2.5 py-1.5 ${
+                      a.action === 'approved'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400'
+                        : 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400'
+                    }`}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0">
+                        {a.action === 'approved'
+                          ? <polyline points="20,6 9,17 4,12"/>
+                          : <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>}
+                      </svg>
+                      <span>
+                        <span className="font-semibold">{a.actor_name || 'Admin'}</span>
+                        {' '}{a.action} at Step {a.step_order + 1}
+                        {a.comment && (
+                          <span className="ml-1 opacity-80">· &ldquo;{a.comment}&rdquo;</span>
+                        )}
+                      </span>
+                    </div>
                   ))}
                 </div>
               )}

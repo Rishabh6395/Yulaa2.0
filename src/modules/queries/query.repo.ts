@@ -36,3 +36,13 @@ export async function respondToQuery(id: string, respondedBy: string, data: {
     data:  { ...data, respondedBy, respondedAt: new Date() },
   });
 }
+
+export async function reopenQuery(id: string, comment: string | undefined) {
+  const note = comment?.trim()
+    ? `[Reopened with comment: ${comment.trim()}]`
+    : '[Reopened by submitter]';
+  return prisma.studentQuery.update({
+    where: { id },
+    data:  { status: 'open', response: note },
+  });
+}

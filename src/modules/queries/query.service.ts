@@ -2,6 +2,8 @@ import { AppError } from '@/utils/errors';
 import * as repo from './query.repo';
 import type { QueryRow } from './query.types';
 
+export { QueryRow };
+
 export async function listQueries(schoolId: string): Promise<{ queries: QueryRow[] }> {
   const items = await repo.findQueries(schoolId);
   return {
@@ -48,4 +50,10 @@ export async function respondToQuery(respondedBy: string, body: Record<string, a
     ...(response !== undefined && { response }),
     ...(status                 && { status }),
   });
+}
+
+export async function reopenQuery(body: Record<string, any>) {
+  const { id, reopen_comment } = body;
+  if (!id) throw new AppError('id is required');
+  return repo.reopenQuery(id, reopen_comment);
 }

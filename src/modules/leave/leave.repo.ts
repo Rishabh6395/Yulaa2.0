@@ -17,6 +17,13 @@ export async function findLeaveRequests(schoolId: string, userId?: string) {
   });
 }
 
+export async function withdrawLeaveRequest(id: string, userId: string) {
+  return prisma.leaveRequest.updateMany({
+    where: { id, userId, status: 'pending' },
+    data:  { status: 'withdrawn', currentStep: 0 },
+  });
+}
+
 export async function createLeaveRequest(data: {
   schoolId:   string;
   userId:     string;

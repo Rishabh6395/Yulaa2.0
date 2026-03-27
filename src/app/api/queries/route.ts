@@ -1,5 +1,5 @@
 import { getUserFromRequest } from '@/lib/auth';
-import { listQueries, submitQuery, respondToQuery } from '@/modules/queries/query.service';
+import { listQueries, submitQuery, respondToQuery, reopenQuery } from '@/modules/queries/query.service';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 
 export async function GET(request: Request) {
@@ -26,10 +26,18 @@ export async function PATCH(request: Request) {
     const user        = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
+    const body        = await request.json();
+
+    // Reopen allowed for any authenticated user (submitter reopens their own)
+    if (body.action === 'reopen') {
+      const query = await reopenQuery(body);
+      return Response.json({ query });
+    }
+
     if (!['super_admin', 'school_admin', 'teacher'].includes(primaryRole.role_code)) {
       throw new ForbiddenError('Admin or teacher access required');
     }
-    const query = await respondToQuery(user.id, await request.json());
+    const query = await respondToQuery(user.id, body);
     return Response.json({ query });
   } catch (err) { return handleError(err); }
 }

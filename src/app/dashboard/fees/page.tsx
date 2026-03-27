@@ -32,7 +32,6 @@ function NotifyModal({ open, onClose, token }: { open: boolean; onClose: () => v
               { value: 'unpaid',  label: 'Unpaid' },
               { value: 'overdue', label: 'Overdue' },
               { value: 'paid',    label: 'Paid' },
-              { value: 'partial', label: 'Partial' },
             ].map(opt => (
               <button key={opt.value} onClick={() => setStatusFilter(opt.value)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
@@ -91,10 +90,17 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
   token: string;
 }) {
   const [showNotify, setShowNotify] = useState(false);
+  const [search, setSearch] = useState('');
   const fmt = (n: any) => `₹${parseFloat(n || 0).toLocaleString('en-IN')}`;
 
-  // Filters: parent sees All/Unpaid/Overdue/Paid; admin sees All/Unpaid/Overdue/Paid (no Partial)
   const filterOptions = ['', 'unpaid', 'overdue', 'paid'];
+
+  const filtered = search.trim()
+    ? invoices.filter(inv =>
+        (inv.student_name ?? '').toLowerCase().includes(search.toLowerCase()) ||
+        (inv.invoice_no   ?? '').toLowerCase().includes(search.toLowerCase())
+      )
+    : invoices;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -148,16 +154,34 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
         )
       )}
 
-      <div className="flex gap-2 flex-wrap">
-        {filterOptions.map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-              filter === f ? 'bg-brand-500 text-white' : 'bg-white text-surface-500 border border-surface-200 hover:bg-surface-50'
-            }`}
-          >
-            {f ? f.charAt(0).toUpperCase() + f.slice(1) : 'All'}
-          </button>
-        ))}
+      <div className="flex flex-col sm:flex-row gap-3">
+        {/* Search */}
+        {!isParent && (
+          <div className="relative flex-1 max-w-sm">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              className="input-field pl-9 py-2 text-sm"
+              placeholder="Search by student name or invoice…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+        )}
+
+        {/* Status filters */}
+        <div className="flex gap-2 flex-wrap">
+          {filterOptions.map(f => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                filter === f ? 'bg-brand-500 text-white' : 'bg-white dark:bg-gray-800 text-surface-500 border border-surface-200 dark:border-gray-700 hover:bg-surface-50'
+              }`}
+            >
+              {f ? f.charAt(0).toUpperCase() + f.slice(1) : 'All'}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="card overflow-hidden">
@@ -184,9 +208,9 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
                     ))}
                   </tr>
                 ))
-              ) : invoices.length === 0 ? (
+              ) : filtered.length === 0 ? (
                 <tr><td colSpan={isParent ? 6 : 7} className="text-center py-8 text-surface-400">No invoices found</td></tr>
-              ) : invoices.map(inv => (
+              ) : filtered.map(inv => (
                 <tr key={inv.id}>
                   <td><span className="font-mono text-xs bg-surface-50 px-2 py-1 rounded">{inv.invoice_no}</span></td>
                   {!isParent && <td className="font-medium text-gray-900 dark:text-gray-100">{inv.student_name}</td>}
@@ -219,10 +243,11 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
         <div className="flex justify-end">
           <a
             href={`/api/fees/export`}
-            className="text-xs flex items-center gap-1.5 bg-surface-50 border border-surface-200 text-surface-600 px-3 py-2 rounded-lg hover:bg-surface-100 font-medium transition-colors"
+            download
+            className="text-xs flex items-center gap-1.5 bg-surface-50 dark:bg-gray-800 border border-surface-200 dark:border-gray-700 text-surface-600 dark:text-gray-400 px-3 py-2 rounded-lg hover:bg-surface-100 dark:hover:bg-gray-700 font-medium transition-colors"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Download All
+            Download CSV
           </a>
         </div>
       )}

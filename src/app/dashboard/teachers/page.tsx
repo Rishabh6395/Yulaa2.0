@@ -1,15 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Modal from '@/components/ui/Modal';
 
 export default function TeachersPage() {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [form, setForm] = useState({ first_name: '', last_name: '', email: '', password: '', phone: '', employee_id: '', qualification: '', joining_date: '' });
+
+  // Bulk upload state
+  const [uploadFile, setUploadFile]     = useState<File | null>(null);
+  const [uploading, setUploading]       = useState(false);
+  const [uploadResult, setUploadResult] = useState<{ created: number; errors: string[]; total: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const user  = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
@@ -43,6 +50,42 @@ export default function TeachersPage() {
     fetchTeachers();
   };
 
+  const handleDownloadTemplate = () => {
+    fetch('/api/teachers/bulk', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.blob())
+      .then(blob => {
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = 'teachers-template.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+  };
+
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadFile) return;
+    setUploading(true);
+    setUploadResult(null);
+    const fd = new FormData();
+    fd.append('file', uploadFile);
+    const res  = await fetch('/api/teachers/bulk', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+    const data = await res.json();
+    setUploadResult(data);
+    setUploading(false);
+    if (data.created > 0) fetchTeachers();
+  };
+
+  const closeUploadModal = () => {
+    setShowUploadModal(false);
+    setUploadFile(null);
+    setUploadResult(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const active   = teachers.filter(t => t.status === 'active');
   const inactive = teachers.filter(t => t.status !== 'active');
 
@@ -56,10 +99,16 @@ export default function TeachersPage() {
           </p>
         </div>
         {isAdmin && (
-          <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Teacher
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowUploadModal(true)} className="btn-secondary flex items-center gap-2">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload
+            </button>
+            <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Teacher
+            </button>
+          </div>
         )}
       </div>
 
@@ -91,6 +140,47 @@ export default function TeachersPage() {
           )}
         </div>
       )}
+
+      {/* Bulk Upload Modal */}
+      <Modal open={showUploadModal} onClose={closeUploadModal} title="Bulk Upload Teachers">
+        <div className="space-y-4">
+          <div className="p-3 rounded-xl bg-surface-50 dark:bg-gray-800 border border-surface-200 dark:border-gray-700 text-xs text-surface-500 dark:text-gray-400 space-y-1">
+            <p className="font-semibold text-gray-700 dark:text-gray-300">Required columns:</p>
+            <p><span className="font-mono bg-surface-100 dark:bg-gray-700 px-1 rounded">first_name</span>, <span className="font-mono bg-surface-100 dark:bg-gray-700 px-1 rounded">last_name</span>, <span className="font-mono bg-surface-100 dark:bg-gray-700 px-1 rounded">email</span></p>
+            <p>Optional: <span className="font-mono bg-surface-100 dark:bg-gray-700 px-1 rounded">password</span> (default: Welcome@123), <span className="font-mono bg-surface-100 dark:bg-gray-700 px-1 rounded">phone</span>, <span className="font-mono bg-surface-100 dark:bg-gray-700 px-1 rounded">employee_id</span>, <span className="font-mono bg-surface-100 dark:bg-gray-700 px-1 rounded">qualification</span>, <span className="font-mono bg-surface-100 dark:bg-gray-700 px-1 rounded">joining_date</span></p>
+          </div>
+          <button onClick={handleDownloadTemplate} className="w-full flex items-center justify-center gap-2 text-sm text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800 rounded-xl py-2 hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-colors font-medium">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download Excel Template
+          </button>
+          <form onSubmit={handleUpload} className="space-y-3">
+            <div>
+              <label className="label">Select File (CSV or XLSX)</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx"
+                className="input-field text-sm"
+                onChange={e => setUploadFile(e.target.files?.[0] ?? null)}
+              />
+            </div>
+            {uploadResult && (
+              <div className={`rounded-xl border p-3 text-sm space-y-1 ${uploadResult.errors.length > 0 ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'}`}>
+                <p className="font-semibold text-gray-800 dark:text-gray-200">{uploadResult.created} of {uploadResult.total} teachers created successfully</p>
+                {uploadResult.errors.map((err, i) => (
+                  <p key={i} className="text-xs text-amber-700 dark:text-amber-400">{err}</p>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={closeUploadModal} className="btn-secondary flex-1">Close</button>
+              <button type="submit" disabled={!uploadFile || uploading} className="btn-primary flex-1">
+                {uploading ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </Modal>
 
       <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add Teacher">
         <form onSubmit={handleAdd} className="space-y-4">

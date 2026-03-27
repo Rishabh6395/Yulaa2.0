@@ -100,15 +100,21 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
             <div className="grid grid-cols-7 gap-1">
               {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`}/>)}
               {Array.from({ length: daysInMonth }).map((_, i) => {
-                const day = i + 1;
+                const day     = i + 1;
                 const dateStr = `${year}-${String(mon).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
                 const isToday = dateStr === today.toISOString().split('T')[0];
-                const status = recordMap[day];
-                const cfg = status ? STATUS_CFG[status] : null;
+                const dow     = new Date(dateStr + 'T00:00:00').getDay();
+                const weekend = dow === 0 || dow === 6;
+                const status  = recordMap[day];
+                const cfg     = status ? STATUS_CFG[status] : null;
                 return (
-                  <div key={day} className={`aspect-square rounded-xl flex flex-col items-center justify-center gap-0.5 ${cfg ? `${cfg.bg} ring-1 ${cfg.ring}` : 'bg-surface-50'} ${isToday ? 'ring-2 ring-brand-400' : ''}`}>
-                    <span className={`text-xs font-semibold ${cfg ? cfg.text : 'text-surface-400'}`}>{day}</span>
-                    {cfg && <span className={`text-[9px] font-bold ${cfg.text}`}>{cfg.label}</span>}
+                  <div key={day} className={`aspect-square rounded-xl flex flex-col items-center justify-center gap-0.5 ${
+                    weekend ? 'bg-surface-100 dark:bg-gray-800/50 opacity-50' :
+                    cfg     ? `${cfg.bg} ring-1 ${cfg.ring}` : 'bg-surface-50 dark:bg-gray-800/30'
+                  } ${isToday ? 'ring-2 ring-brand-400' : ''}`}>
+                    <span className={`text-xs font-semibold ${cfg ? cfg.text : weekend ? 'text-surface-300 dark:text-gray-600' : 'text-surface-400'}`}>{day}</span>
+                    {cfg && !weekend && <span className={`text-[9px] font-bold ${cfg.text}`}>{cfg.label}</span>}
+                    {weekend && <span className="text-[8px] text-surface-300 dark:text-gray-600">off</span>}
                   </div>
                 );
               })}
@@ -188,6 +194,7 @@ function TeacherAttendancePage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [saveError, setSaveError] = useState('');
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -230,23 +237,42 @@ function TeacherAttendancePage() {
 
   const markAll = (status: string) => setStudents(prev => prev.map(s => ({ ...s, schoolStatus: status })));
 
+  // Weekend check (0 = Sunday, 6 = Saturday)
+  const selectedDayOfWeek = new Date(date + 'T00:00:00').getDay();
+  const isWeekend = selectedDayOfWeek === 0 || selectedDayOfWeek === 6;
+
   const saveAttendance = async () => {
+    if (isWeekend) {
+      setSaveError('Cannot mark attendance on weekends (Saturday/Sunday).');
+      return;
+    }
     setSaving(true);
     setMessage('');
-    const records = students.map(s => ({
-      student_id:  s.student_id,
-      status:      s.schoolStatus,
-      punch_in:    s.punchIn,
-      punch_out:   s.punchOut,
-      subjects:    s.subjects,
-    }));
-    const res = await fetch('/api/attendance', {
-      method: 'POST', headers,
-      body: JSON.stringify({ records, date, class_id: selectedClass }),
-    });
-    if (res.ok) { setMessage('Attendance saved!'); fetchClassAttendance(); }
+    setSaveError('');
+    try {
+      const records = students
+        .filter(s => s.schoolStatus)
+        .map(s => ({
+          student_id: s.student_id,
+          status:     s.schoolStatus || 'present',
+          remarks:    s.remarks || undefined,
+        }));
+      const res  = await fetch('/api/attendance', {
+        method: 'POST', headers,
+        body: JSON.stringify({ records, date, class_id: selectedClass }),
+      });
+      const body = await res.json();
+      if (res.ok) {
+        setMessage('Attendance saved successfully!');
+        fetchClassAttendance();
+      } else {
+        setSaveError(body.error || 'Failed to save attendance. Please try again.');
+      }
+    } catch {
+      setSaveError('Network error. Please check your connection and try again.');
+    }
     setSaving(false);
-    setTimeout(() => setMessage(''), 3000);
+    setTimeout(() => setMessage(''), 4000);
   };
 
   const selectedCls = classes.find(c => c.id === selectedClass);
@@ -392,14 +418,22 @@ function TeacherAttendancePage() {
             </table>
           </div>
 
+          {isWeekend && (
+            <div className="mx-4 my-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400 font-medium flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Weekend — attendance cannot be marked on Saturday or Sunday.
+            </div>
+          )}
+
           {students.length > 0 && (
-            <div className="p-4 border-t border-surface-100 dark:border-gray-800 flex items-center justify-between">
-              {message && <span className="text-sm text-emerald-600 font-medium animate-fade-in">{message}</span>}
-              <div className="ml-auto">
-                <button onClick={saveAttendance} disabled={saving} className="btn-primary">
-                  {saving ? 'Saving...' : 'Save Attendance'}
-                </button>
+            <div className="p-4 border-t border-surface-100 dark:border-gray-800 flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                {message   && <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">{message}</span>}
+                {saveError && <span className="text-sm text-red-600 dark:text-red-400 font-medium">{saveError}</span>}
               </div>
+              <button onClick={saveAttendance} disabled={saving || isWeekend} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed ml-auto">
+                {saving ? 'Saving…' : 'Save Attendance'}
+              </button>
             </div>
           )}
         </div>

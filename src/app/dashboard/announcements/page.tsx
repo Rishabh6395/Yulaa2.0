@@ -55,7 +55,11 @@ export default function AnnouncementsPage() {
     : '/api/announcements';
 
   const { data, isLoading, mutate } = useApi<{ announcements: any[] }>(listUrl);
-  const announcements = data?.announcements ?? [];
+  // Filter out announcements older than 20 days (client-side expiry)
+  const announcements = (data?.announcements ?? []).filter(a => {
+    const ageDays = Math.floor((Date.now() - new Date(a.published_at).getTime()) / 86400000);
+    return ageDays < 20;
+  });
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

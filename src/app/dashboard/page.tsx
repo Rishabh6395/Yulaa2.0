@@ -98,7 +98,6 @@ function SectionCard({ children, className = '' }: { children: React.ReactNode; 
 function AdminDashboard({ data }: { data: any }) {
   const stats         = data?.stats;
   const announcements = data?.recentAnnouncements || [];
-  const homework      = data?.recentHomework      || [];
 
   // Spotlight effect
   const spotRef = useRef<HTMLDivElement>(null);
@@ -136,47 +135,36 @@ function AdminDashboard({ data }: { data: any }) {
         </div>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
-        <StatCard
-          title="Total Students" value={stats?.totalStudents || 0}
-          subtext={`${stats?.pendingAdmissions || 0} pending admissions`}
-          iconBg="bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
-        />
-        <StatCard
-          title="Today's Attendance" value={`${stats?.todayAttendance?.rate || 0}%`}
-          subtext={`${stats?.todayAttendance?.present || 0} / ${stats?.todayAttendance?.total || 0} present`}
-          iconBg="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400"
-          trend={3}
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>}
-        />
-        <StatCard
-          title="Pending Admissions" value={stats?.pendingAdmissions || 0}
-          subtext={`${stats?.totalClasses || 0} active classes`}
-          iconBg="bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>}
-        />
-        <StatCard
-          title="Teachers" value={stats?.totalTeachers || 0}
-          subtext={`${stats?.totalClasses || 0} active classes`}
-          iconBg="bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>}
-        />
+      {/* Stat cards — all clickable */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
+        <a href="/dashboard/students" className="group block">
+          <StatCard
+            title="Total Students" value={stats?.totalStudents || 0}
+            subtext={`${stats?.pendingAdmissions || 0} pending admissions`}
+            iconBg="bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+          />
+        </a>
+        <a href="/dashboard/admissions" className="group block">
+          <StatCard
+            title="Pending Admissions" value={stats?.pendingAdmissions || 0}
+            subtext="Click to review applications"
+            iconBg="bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400"
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>}
+          />
+        </a>
+        <a href="/dashboard/teachers" className="group block">
+          <StatCard
+            title="Teachers" value={stats?.totalTeachers || 0}
+            subtext={`${stats?.totalClasses || 0} active classes`}
+            iconBg="bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400"
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>}
+          />
+        </a>
       </div>
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SectionCard>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Today&apos;s Attendance Overview</h3>
-          <AttendanceBar
-            present={stats?.todayAttendance?.present || 0}
-            absent ={stats?.todayAttendance?.absent  || 0}
-            late   ={stats?.todayAttendance?.late    || 0}
-            total  ={stats?.todayAttendance?.total   || 0}
-          />
-        </SectionCard>
-
+      {/* Charts row — Admissions full width */}
+      <div className="grid grid-cols-1 gap-6">
         <SectionCard>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Admission Applications</h3>
@@ -212,11 +200,8 @@ function AdminDashboard({ data }: { data: any }) {
         </SectionCard>
       </div>
 
-      {/* Feed row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AnnouncementsCard announcements={announcements} />
-        <HomeworkCard      homework={homework} />
-      </div>
+      {/* Feed row — announcements only for admin */}
+      <AnnouncementsCard announcements={announcements} />
     </div>
   );
 }
@@ -380,35 +365,6 @@ function AnnouncementsCard({ announcements }: { announcements: any[] }) {
   );
 }
 
-function HomeworkCard({ homework }: { homework: any[] }) {
-  return (
-    <SectionCard>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Recent Homework</h3>
-        <a href="/dashboard/homework" className="text-xs text-brand-500 dark:text-brand-400 font-medium hover:underline">View all</a>
-      </div>
-      <div className="space-y-3">
-        {homework.length === 0 && <p className="text-sm text-surface-400 dark:text-gray-500">No homework assigned yet.</p>}
-        {homework.map((hw: any) => (
-          <div key={hw.id} className="flex gap-3 p-3 rounded-xl hover:bg-surface-50 dark:hover:bg-gray-800/50 transition-colors">
-            <div className="w-10 h-10 rounded-lg bg-brand-50 dark:bg-brand-950/50 flex items-center justify-center text-brand-500 dark:text-brand-400 flex-shrink-0">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{hw.title}</p>
-              <p className="text-xs text-surface-400 dark:text-gray-500 mt-0.5">
-                {hw.subject} · {hw.grade} {hw.section} · Due {new Date(hw.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </SectionCard>
-  );
-}
-
 // ── Super admin dashboard ─────────────────────────────────────────────────────
 
 function SuperAdminDashboard({ data }: { data: any }) {
@@ -468,7 +424,14 @@ function SuperAdminDashboard({ data }: { data: any }) {
 
 function TeacherDashboard({ data }: { data: any }) {
   const stats         = data?.stats;
-  const announcements = data?.recentAnnouncements || [];
+  const allAnnouncements = data?.recentAnnouncements || [];
+  // Filter announcements relevant to teacher role (all/teacher audience)
+  const announcements = allAnnouncements.filter(
+    (a: any) => !a.target_roles?.length || a.target_roles.includes('teacher') || a.audience === 'all' || a.audience === 'teacher',
+  );
+  const className  = stats?.className  ? ` · ${stats.className}`  : '';
+  const sectionName = stats?.sectionName ? ` ${stats.sectionName}` : '';
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -477,23 +440,30 @@ function TeacherDashboard({ data }: { data: any }) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 stagger-children">
-        <StatCard
-          title="My Students" value={stats?.totalStudents || 0}
-          subtext="Students in your classes"
-          iconBg="bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
-        />
-        <StatCard
-          title="Today's Attendance" value={`${stats?.todayAttendance?.rate || 0}%`}
-          subtext={`${stats?.todayAttendance?.present || 0} / ${stats?.todayAttendance?.total || 0} present`}
-          iconBg="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>}
-        />
+        <a href="/dashboard/students" className="block">
+          <StatCard
+            title="My Students" value={stats?.totalStudents || 0}
+            subtext={`Class${className}${sectionName} · Students in your classes`}
+            iconBg="bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+          />
+        </a>
+        <a href="/dashboard/attendance" className="block">
+          <StatCard
+            title="Today's Attendance" value={`${stats?.todayAttendance?.rate || 0}%`}
+            subtext={`${stats?.todayAttendance?.present || 0} / ${stats?.todayAttendance?.total || 0} present · Click to mark`}
+            iconBg="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400"
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>}
+          />
+        </a>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <SectionCard>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Today&apos;s Attendance</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Today&apos;s Attendance</h3>
+            <a href="/dashboard/attendance" className="text-xs text-brand-500 dark:text-brand-400 font-medium hover:underline">View all students →</a>
+          </div>
           <AttendanceBar
             present={stats?.todayAttendance?.present || 0}
             absent ={stats?.todayAttendance?.absent  || 0}

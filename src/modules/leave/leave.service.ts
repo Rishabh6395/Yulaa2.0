@@ -96,6 +96,13 @@ export async function submitLeaveRequest(
   });
 }
 
+export async function withdrawLeave(userId: string, id: string) {
+  if (!id) throw new AppError('id is required');
+  const result = await repo.withdrawLeaveRequest(id, userId);
+  if (result.count === 0) throw new AppError('Leave not found or cannot be withdrawn (must be pending)');
+  return { ok: true };
+}
+
 export async function reviewLeaveStep(
   reviewerId: string, schoolId: string, roleCode: string, body: Record<string, any>,
 ) {

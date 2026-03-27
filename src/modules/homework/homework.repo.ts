@@ -40,3 +40,18 @@ export async function updateHomework(id: string, data: {
 }) {
   return prisma.homework.update({ where: { id }, data });
 }
+
+export async function upsertParentNote(homeworkId: string, studentId: string, feedback: string) {
+  return prisma.homeworkSubmission.upsert({
+    where:  { homeworkId_studentId: { homeworkId, studentId } },
+    create: { homeworkId, studentId, feedback, status: 'parent_noted' },
+    update: { feedback, status: 'parent_noted' },
+  });
+}
+
+export async function findParentNote(homeworkId: string, studentId: string) {
+  return prisma.homeworkSubmission.findUnique({
+    where: { homeworkId_studentId: { homeworkId, studentId } },
+    select: { feedback: true, status: true },
+  });
+}

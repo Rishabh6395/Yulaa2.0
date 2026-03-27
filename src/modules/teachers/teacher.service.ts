@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { AppError, NotFoundError } from '@/utils/errors';
+import { parseCSV } from '@/services/upload.service';
 import * as repo from './teacher.repo';
 import type { TeacherRow } from './teacher.types';
 
@@ -51,4 +52,55 @@ export async function createTeacher(schoolId: string, body: Record<string, any>)
   });
 
   return newUser.teachers[0];
+}
+
+export async function bulkUploadTeachers(schoolId: string, rows: Record<string, string>[]) {
+  if (rows.length === 0) throw new AppError('File is empty or has no data rows');
+
+  const teacherRole = await repo.findTeacherRole();
+  if (!teacherRole) throw new NotFoundError('Teacher role');
+
+  let created = 0;
+  const errors: string[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const row    = rows[i];
+    const rowNum = i + 2;
+
+    const email      = row['email']?.trim();
+    const firstName  = row['first_name']?.trim();
+    const lastName   = row['last_name']?.trim();
+    const password   = row['password']?.trim() || 'Welcome@123';
+
+    if (!email || !firstName || !lastName) {
+      errors.push(`Row ${rowNum}: email, first_name, and last_name are required`);
+      continue;
+    }
+
+    try {
+      const passwordHash = await bcrypt.hash(password, 10);
+      await repo.createTeacherWithUser({
+        schoolId,
+        email,
+        password,
+        passwordHash,
+        roleId:        teacherRole.id,
+        firstName,
+        lastName,
+        phone:         row['phone']         || null,
+        employeeId:    row['employee_id']   || null,
+        qualification: row['qualification'] || null,
+        joiningDate:   row['joining_date']  || null,
+      });
+      created++;
+    } catch (err: any) {
+      errors.push(`Row ${rowNum} (${email}): ${err.message ?? 'insert failed'}`);
+    }
+  }
+
+  return { created, errors, total: rows.length };
+}
+
+export function parseTeacherCSV(csvText: string): Record<string, string>[] {
+  return parseCSV(csvText);
 }

@@ -49,8 +49,13 @@ export async function createHomework(schoolId: string, userId: string, body: Rec
 }
 
 export async function updateHomework(body: Record<string, any>) {
-  const { id, subject, title, description, due_date } = body;
+  const { id, subject, title, description, due_date, parent_note, student_id } = body;
   if (!id) throw new AppError('id is required');
+
+  // Parent note: upsert into HomeworkSubmission.feedback
+  if (parent_note !== undefined && student_id) {
+    return repo.upsertParentNote(id, student_id, parent_note);
+  }
 
   return repo.updateHomework(id, {
     ...(subject          && { subject }),

@@ -66,8 +66,29 @@ export default function ReportsPage() {
   const [data,    setData]    = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [token,   setToken]   = useState('');
+  const [user,    setUser]    = useState<any>({});
 
-  useEffect(() => { setToken(localStorage.getItem('token') ?? ''); }, []);
+  useEffect(() => {
+    setToken(localStorage.getItem('token') ?? '');
+    setUser(JSON.parse(localStorage.getItem('user') || '{}'));
+  }, []);
+
+  const isAdmin = ['school_admin', 'super_admin', 'principal'].includes(user?.primaryRole);
+
+  const handleDownload = (url: string, filename: string) => {
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.blob())
+      .then(blob => {
+        const objUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(objUrl);
+      });
+  };
 
   const fetchReport = useCallback(async () => {
     if (!token) return;
@@ -146,7 +167,7 @@ export default function ReportsPage() {
             className="px-3 py-2 rounded-xl border border-surface-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-300">
             {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-          {data && (
+          {data?.overview && (
             <button onClick={handleExportCSV}
               className="flex items-center gap-2 px-4 py-2 rounded-xl border border-surface-200 dark:border-gray-700 text-sm font-medium text-surface-600 dark:text-gray-300 hover:bg-surface-50 dark:hover:bg-gray-800">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -156,13 +177,54 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      {/* Data Export Cards — admin only */}
+      {isAdmin && (
+        <div className="card p-5">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Data Exports</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              onClick={() => handleDownload('/api/students/export', `students-${new Date().toISOString().slice(0,10)}.csv`)}
+              className="flex items-center gap-3 p-3 rounded-xl border border-surface-200 dark:border-gray-700 hover:bg-surface-50 dark:hover:bg-gray-800 transition-colors text-left"
+            >
+              <div className="w-9 h-9 rounded-lg bg-brand-50 dark:bg-brand-950/40 flex items-center justify-center flex-shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-brand-600 dark:text-brand-400"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Student Details</p>
+                <p className="text-xs text-surface-400 dark:text-gray-500">All students with class &amp; parent info</p>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-auto text-surface-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            <button
+              onClick={() => handleDownload('/api/fees/export', `fees-${new Date().toISOString().slice(0,10)}.csv`)}
+              className="flex items-center gap-3 p-3 rounded-xl border border-surface-200 dark:border-gray-700 hover:bg-surface-50 dark:hover:bg-gray-800 transition-colors text-left"
+            >
+              <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center flex-shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-600 dark:text-emerald-400"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Student Fee Report</p>
+                <p className="text-xs text-surface-400 dark:text-gray-500">All fee invoices with payment status</p>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-auto text-surface-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {loading && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[1,2,3,4].map(i => <div key={i} className="h-24 rounded-2xl bg-surface-100 dark:bg-gray-800 animate-pulse"/>)}
         </div>
       )}
 
-      {!loading && data && (
+      {!loading && data && !data.overview && (
+        <div className="card p-6 text-center">
+          <p className="text-sm text-red-500">{data.error ?? 'Failed to load report. Please try again.'}</p>
+        </div>
+      )}
+
+      {!loading && data?.overview && (
         <>
           {/* Overview */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
