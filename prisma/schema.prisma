@@ -425,6 +425,9 @@ model LeaveWorkflowStep {
   label          String        @db.VarChar(100)
   approverRole   String?       @map("approver_role") @db.VarChar(30)
   approverUserId String?       @map("approver_user_id")
+  emailEnabled   Boolean       @default(false) @map("email_enabled")
+  notifyEnabled  Boolean       @default(true)  @map("notify_enabled")
+  notifyMessage  String?       @map("notify_message") @db.VarChar(300)
   createdAt      DateTime      @default(now()) @map("created_at")
   workflow       LeaveWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
@@ -637,13 +640,17 @@ model AdmissionWorkflow {
 }
 
 model AdmissionWorkflowStep {
-  id           String            @id @default(uuid())
-  workflowId   String            @map("workflow_id")
-  stepOrder    Int               @map("step_order")
-  label        String            @db.VarChar(100)
-  approverRole String            @map("approver_role") @db.VarChar(30)
-  createdAt    DateTime          @default(now()) @map("created_at")
-  workflow     AdmissionWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  id             String            @id @default(uuid())
+  workflowId     String            @map("workflow_id")
+  stepOrder      Int               @map("step_order")
+  label          String            @db.VarChar(100)
+  approverRole   String            @map("approver_role") @db.VarChar(30)
+  emailEnabled   Boolean           @default(false) @map("email_enabled")
+  notifyEnabled  Boolean           @default(true)  @map("notify_enabled")
+  notifyMessage  String?           @map("notify_message") @db.VarChar(300)
+  isFinal        Boolean           @default(false) @map("is_final")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  workflow       AdmissionWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@unique([workflowId, stepOrder])
   @@index([workflowId])

@@ -95,7 +95,7 @@ function SectionCard({ children, className = '' }: { children: React.ReactNode; 
 
 // ── Admin dashboard ──────────────────────────────────────────────────────────
 
-function AdminDashboard({ data, feedReady = true, allowed }: { data: any; feedReady?: boolean; allowed: Set<string> }) {
+function AdminDashboard({ data, feedReady = true, allowed, pending }: { data: any; feedReady?: boolean; allowed: Set<string>; pending: { admissions: any[]; leaves: any[] } | null }) {
   const stats         = data?.stats;
   const announcements = data?.recentAnnouncements || [];
 
@@ -199,6 +199,8 @@ function AdminDashboard({ data, feedReady = true, allowed }: { data: any; feedRe
           })()}
         </SectionCard>
       </div>
+
+      <PendingWorkflowCards pending={pending} />
 
       {/* Feed row — announcements only if permitted */}
       {allowed.has('announcements') && (feedReady
@@ -430,7 +432,7 @@ function SuperAdminDashboard({ data }: { data: any }) {
 
 // ── Teacher dashboard ─────────────────────────────────────────────────────────
 
-function TeacherDashboard({ data, feedReady = true, allowed }: { data: any; feedReady?: boolean; allowed: Set<string> }) {
+function TeacherDashboard({ data, feedReady = true, allowed, pending }: { data: any; feedReady?: boolean; allowed: Set<string>; pending: { admissions: any[]; leaves: any[] } | null }) {
   const stats         = data?.stats;
   const allAnnouncements = data?.recentAnnouncements || [];
   // Filter announcements relevant to teacher role (all/teacher audience)
@@ -486,6 +488,8 @@ function TeacherDashboard({ data, feedReady = true, allowed }: { data: any; feed
               {[1,2,3].map(i => <div key={i} className="h-12 bg-surface-100 dark:bg-gray-800 rounded-xl animate-pulse"/>)}
             </div>)}
       </div>
+
+      <PendingWorkflowCards pending={pending} />
     </div>
   );
 }
@@ -556,6 +560,106 @@ function LoadingSkeleton() {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
+// ── Pending workflow approval cards ──────────────────────────────────────────
+
+function PendingWorkflowCards({ pending }: { pending: { admissions: any[]; leaves: any[] } | null }) {
+  const [actioning, setActioning] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+
+  if (!pending) return null;
+  const items = [
+    ...pending.admissions.map(a => ({ ...a, _kind: 'admission' })),
+    ...pending.leaves.map(l => ({ ...l, _kind: 'leave' })),
+  ].filter(i => !dismissed.has(i.id));
+
+  if (items.length === 0) return null;
+
+  async function act(item: any, action: 'approve' | 'reject') {
+    const token = localStorage.getItem('token');
+    setActioning(`${item.id}_${action}`);
+    try {
+      const endpoint = item._kind === 'admission'
+        ? '/api/admissions/action'
+        : '/api/leave';
+      const body = item._kind === 'admission'
+        ? { applicationId: item.id, action, comment: '' }
+        : { id: item.id, action: action === 'approve' ? 'approved' : 'rejected' };
+      await fetch(endpoint, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      setDismissed(prev => new Set([...prev, item.id]));
+    } catch {}
+    setActioning(null);
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"/>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          Pending Your Approval ({items.length})
+        </h3>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {items.map(item => (
+          <div key={item.id} className="card p-4 border-l-4 border-amber-400 dark:border-amber-500">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase ${
+                    item._kind === 'admission'
+                      ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                      : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
+                  }`}>
+                    {item._kind}
+                  </span>
+                  {item.stepLabel && (
+                    <span className="text-[10px] text-surface-400 dark:text-gray-500">{item.stepLabel}</span>
+                  )}
+                </div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{item.title}</p>
+                <p className="text-xs text-surface-400 dark:text-gray-500 mt-0.5 truncate">{item.subtitle}</p>
+                {item.detail && (
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{item.detail}</p>
+                )}
+              </div>
+              {item._kind === 'admission' && item.totalSteps > 0 && (
+                <div className="text-xs text-surface-400 shrink-0">
+                  Step {item.currentStep + 1}/{item.totalSteps}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => act(item, 'approve')}
+                disabled={!!actioning}
+                className="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50 transition-colors"
+              >
+                {actioning === `${item.id}_approve` ? '…' : 'Approve'}
+              </button>
+              <button
+                onClick={() => act(item, 'reject')}
+                disabled={!!actioning}
+                className="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-950/50 text-red-600 dark:text-red-400 disabled:opacity-50 transition-colors"
+              >
+                {actioning === `${item.id}_reject` ? '…' : 'Reject'}
+              </button>
+              <a
+                href={item._kind === 'admission' ? `/dashboard/admissions` : `/dashboard/leave`}
+                className="py-1.5 px-3 rounded-lg text-xs font-medium text-surface-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              >
+                View →
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Default allowed keys used as fallback before permissions load (show everything)
 const ALL_KEYS = new Set([
   'dashboard','admissions','classes','students','teachers','parents','attendance',
@@ -570,18 +674,32 @@ export default function DashboardPage() {
   const [activeChild, setActiveChild] = useState<any>(null);
   const [isParent,    setIsParent]    = useState(false);
   const [allowed,     setAllowed]     = useState<Set<string>>(ALL_KEYS);
+  const [pending,     setPending]     = useState<{ admissions: any[]; leaves: any[] } | null>(null);
 
   // Fetch menu permissions once on mount
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
     const userRaw = localStorage.getItem('user');
-    const role = userRaw ? (JSON.parse(userRaw).primaryRole ?? '') : '';
-    if (role === 'super_admin') return; // super admin has no school-specific restrictions
+    const userRole = userRaw ? (JSON.parse(userRaw).primaryRole ?? '') : '';
+    if (userRole === 'super_admin') return;
     fetch('/api/menu-permissions', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => { if (Array.isArray(d.menuKeys)) setAllowed(new Set(d.menuKeys)); })
-      .catch(() => {}); // keep ALL_KEYS on error
+      .catch(() => {});
+  }, []);
+
+  // Fetch pending workflow items (admissions + leaves needing this user's action)
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const userRaw = localStorage.getItem('user');
+    const userRole = userRaw ? (JSON.parse(userRaw).primaryRole ?? '') : '';
+    if (userRole === 'super_admin' || userRole === 'parent' || userRole === 'student') return;
+    fetch('/api/workflow/pending', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { if (d.admissions || d.leaves) setPending(d); })
+      .catch(() => {});
   }, []);
 
   const fetchDashboard = useCallback((child: any) => {
@@ -653,7 +771,7 @@ export default function DashboardPage() {
   }
 
   if (data?.isSuperAdmin) return <SuperAdminDashboard data={data} />;
-  if (role === 'teacher')  return <TeacherDashboard  data={data} feedReady={!!feed} allowed={allowed} />;
+  if (role === 'teacher')  return <TeacherDashboard  data={data} feedReady={!!feed} allowed={allowed} pending={pending} />;
 
-  return <AdminDashboard data={data} feedReady={!!feed} allowed={allowed} />;
+  return <AdminDashboard data={data} feedReady={!!feed} allowed={allowed} pending={pending} />;
 }
