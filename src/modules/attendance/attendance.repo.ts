@@ -4,7 +4,7 @@ import type { MarkAttendanceInput } from './attendance.types';
 export async function findMonthlyAttendance(studentId: string, firstDay: Date, lastDay: Date) {
   return prisma.attendance.findMany({
     where: { studentId, date: { gte: firstDay, lte: lastDay } },
-    select: { date: true, status: true, subjectAttendance: true },
+    select: { date: true, status: true, subjectAttendance: true, remarks: true },
     orderBy: { date: 'asc' },
   });
 }

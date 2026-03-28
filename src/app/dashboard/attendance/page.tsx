@@ -165,10 +165,12 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
                   const isToday = dateStr === today.toISOString().split('T')[0];
                   const dow     = new Date(dateStr + 'T00:00:00').getDay();
                   const weekend = dow === 0 || dow === 6;
-                  const rec     = recordMap[day];
-                  const cfg     = rec ? STATUS_CFG[rec.status] : null;
-                  // In daily mode use In/Out labels instead of Present/Absent
-                  const cellLabel = attendanceMode === 'daily'
+                  const rec       = recordMap[day];
+                  const isLeave   = rec?.remarks === '__leave__';
+                  const cfg       = rec ? (isLeave ? STATUS_CFG.excused : STATUS_CFG[rec.status]) : null;
+                  // Label: Leave > daily In/Out > standard full label
+                  const cellLabel = isLeave ? 'Leave'
+                    : attendanceMode === 'daily'
                     ? (rec?.status === 'present' ? 'In' : rec?.status === 'absent' ? 'Out' : cfg?.full)
                     : cfg?.full;
                   if (weekend) {
@@ -239,21 +241,31 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
                 ) : records.length === 0 ? (
                   <tr><td colSpan={10} className="text-center py-8 text-surface-400">No attendance records for this month</td></tr>
                 ) : records.map(r => {
-                  const overallCfg = STATUS_CFG[r.status];
-                  const subData = (r.subject_attendance ?? {}) as Record<string, string>;
+                  const isLeave    = r.remarks === '__leave__';
+                  const overallCfg = isLeave ? STATUS_CFG.excused : STATUS_CFG[r.status];
+                  const subData    = (r.subject_attendance ?? {}) as Record<string, string>;
                   return (
-                    <tr key={String(r.date)}>
+                    <tr key={String(r.date)} className={isLeave ? 'bg-blue-50/40 dark:bg-blue-950/10' : ''}>
                       <td className="font-medium text-gray-700 dark:text-gray-300">
                         {new Date(r.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                       </td>
                       <td>
-                        {overallCfg ? (
+                        {isLeave ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400">
+                            🗓️ Leave
+                          </span>
+                        ) : overallCfg ? (
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ${overallCfg.bg} ${overallCfg.text}`}>
                             {overallCfg.full}
                           </span>
                         ) : <span className="text-surface-300 dark:text-gray-600">—</span>}
                       </td>
                       {PARENT_SUBJECTS.map(sub => {
+                        if (isLeave) return (
+                          <td key={sub.key} className="text-center">
+                            <span className="inline-block w-6 h-6 rounded text-[10px] font-bold leading-6 text-center bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">L</span>
+                          </td>
+                        );
                         const subStatus = subData[sub.key];
                         const disp = subStatus ? SUB_STATUS_DISPLAY[subStatus] : null;
                         return (
@@ -754,13 +766,17 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
       headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
     });
     const data = await res.json();
-    setStudents((data.students || []).map((s: any) => ({
-      ...s,
-      schoolStatus:    s.status || 'present',
-      subjectStatus:   s.subject_attendance
-        ? Object.fromEntries(Object.entries(s.subject_attendance as Record<string, string>).map(([k, v]) => [k, v === 'present' ? 'P' : v === 'absent' ? 'A' : v === 'late' ? 'L' : v]))
-        : Object.fromEntries(SUBJECTS.map(sub => [sub.key, 'P'])),
-    })));
+    setStudents((data.students || []).map((s: any) => {
+      const isLeaveLocked = s.remarks === '__leave__';
+      return {
+        ...s,
+        isLeaveLocked,
+        schoolStatus:  isLeaveLocked ? 'excused' : (s.status || 'present'),
+        subjectStatus: s.subject_attendance
+          ? Object.fromEntries(Object.entries(s.subject_attendance as Record<string, string>).map(([k, v]) => [k, v === 'present' ? 'P' : v === 'absent' ? 'A' : v === 'late' ? 'L' : v]))
+          : Object.fromEntries(SUBJECTS.map(sub => [sub.key, 'P'])),
+      };
+    }));
     setLoading(false);
   }, [selectedClass, date, token]);
 
@@ -778,9 +794,9 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
     ));
   };
 
-  const markAll = (status: string) => setStudents(prev => prev.map(s => ({ ...s, schoolStatus: status })));
+  const markAll = (status: string) => setStudents(prev => prev.map(s => s.isLeaveLocked ? s : { ...s, schoolStatus: status }));
   const markAllSubject = (subKey: string, val: string) => {
-    setStudents(prev => prev.map(s => ({ ...s, subjectStatus: { ...s.subjectStatus, [subKey]: val } })));
+    setStudents(prev => prev.map(s => s.isLeaveLocked ? s : { ...s, subjectStatus: { ...s.subjectStatus, [subKey]: val } }));
   };
 
   const selectedDayOfWeek = new Date(date + 'T00:00:00').getDay();
@@ -790,7 +806,7 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
     if (isWeekend) { setSaveError('Cannot mark attendance on weekends.'); return; }
     setSaving(true); setMessage(''); setSaveError('');
     try {
-      const records = students.filter(s => s.schoolStatus).map(s => {
+      const records = students.filter(s => s.schoolStatus && !s.isLeaveLocked).map(s => {
         const base: any = {
           student_id: s.student_id,
           status:     s.schoolStatus || 'present',
@@ -909,7 +925,32 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
                       </td>
                       <td className="font-mono text-surface-400">{s.admission_no || '—'}</td>
 
-                      {attendanceMode === 'daily' ? (
+                      {/* ── Leave-locked row ──────────────────────────────── */}
+                      {s.isLeaveLocked ? (
+                        attendanceMode === 'daily' ? (
+                          <td>
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400">
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                              Leave Approved
+                            </span>
+                          </td>
+                        ) : (
+                          <>
+                            <td>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400">
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                Leave
+                              </span>
+                            </td>
+                            {SUBJECTS.map(sub => (
+                              <td key={sub.key} className="text-center p-1">
+                                <span className="inline-block w-6 h-6 rounded text-[10px] font-bold leading-6 text-center bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 opacity-70">A</span>
+                              </td>
+                            ))}
+                          </>
+                        )
+                      ) : attendanceMode === 'daily' ? (
+                        /* ── Daily roll-call ──────────────────────────────── */
                         <td>
                           <div className="flex gap-2">
                             {DAILY_STATUSES.map(st => {
@@ -928,8 +969,8 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
                           </div>
                         </td>
                       ) : (
+                        /* ── Class-wise subject columns ───────────────────── */
                         <>
-                          {/* Overall status P/A/L/H/E */}
                           <td>
                             <div className="flex gap-1">
                               {STUDENT_STATUSES.map(st => {
@@ -948,7 +989,6 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
                               })}
                             </div>
                           </td>
-                          {/* Per-subject P/A/L buttons */}
                           {SUBJECTS.map(sub => {
                             const val = (s.subjectStatus as Record<string, string>)?.[sub.key] ?? 'P';
                             return (

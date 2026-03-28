@@ -146,7 +146,33 @@ export async function reviewLeaveStep(
     }
   }
 
+  // Auto-sync attendance calendar when a student leave is finally approved
+  if (action === 'approved' && result.status === 'approved' && leave.studentId) {
+    const classId = await repo.findStudentClassId(leave.studentId);
+    if (classId) {
+      const dates = getWeekdayDatesInRange(leave.startDate, leave.endDate);
+      if (dates.length > 0) {
+        await repo.syncLeaveToAttendance(schoolId, leave.studentId, classId, dates, reviewerId);
+      }
+    }
+  }
+
   return result;
+}
+
+// Returns weekday dates (Mon–Fri) in the leave range
+function getWeekdayDatesInRange(startDate: Date, endDate: Date): Date[] {
+  const dates: Date[] = [];
+  const cur = new Date(startDate);
+  cur.setUTCHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setUTCHours(0, 0, 0, 0);
+  while (cur <= end) {
+    const dow = cur.getDay();
+    if (dow !== 0 && dow !== 6) dates.push(new Date(cur));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return dates;
 }
 
 export async function getTeacherBalances(

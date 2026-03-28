@@ -167,6 +167,7 @@ export async function getAttendance(schoolId: string, searchParams: URLSearchPar
     const attendance = rows.map(r => ({
       date:               r.date,
       status:             r.status,
+      remarks:            r.remarks ?? null,
       subject_attendance: r.subjectAttendance ?? null,
     }));
     return { attendance };

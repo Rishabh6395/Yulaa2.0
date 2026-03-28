@@ -147,6 +147,33 @@ export async function incrementUsedDays(schoolId: string, teacherId: string, lea
   });
 }
 
+// ── Leave → Attendance auto-sync helpers ─────────────────────────────────────
+
+const LEAVE_SUBJECTS: Record<string, string> = {
+  eng: 'absent', hindi: 'absent', maths: 'absent',
+  sc: 'absent',  ss: 'absent',    skt: 'absent',
+  dr: 'absent',  it: 'absent',
+};
+
+export async function findStudentClassId(studentId: string): Promise<string | null> {
+  const s = await prisma.student.findFirst({ where: { id: studentId }, select: { classId: true } });
+  return s?.classId ?? null;
+}
+
+export async function syncLeaveToAttendance(
+  schoolId: string, studentId: string, classId: string, dates: Date[], markedBy: string,
+) {
+  return Promise.all(
+    dates.map(date =>
+      prisma.attendance.upsert({
+        where:  { studentId_date: { studentId, date } },
+        create: { schoolId, studentId, classId, date, status: 'excused', markedBy, updatedBy: markedBy, remarks: '__leave__', subjectAttendance: LEAVE_SUBJECTS },
+        update: { status: 'excused', updatedBy: markedBy, remarks: '__leave__', subjectAttendance: LEAVE_SUBJECTS },
+      })
+    )
+  );
+}
+
 export async function findStudentApprovedLeaveDays(
   schoolId: string, studentId: string, yearStart: Date, yearEnd: Date,
 ): Promise<number> {
