@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useApi } from '@/hooks/useApi';
 
-const EMPTY_FORM = { class_id: '', subject: '', title: '', description: '', due_date: '' };
+const EMPTY_FORM = { class_id: '', subject: '', title: '', description: '', due_date: '', attachments: [] as string[] };
 
 const STATUS_CFG: Record<string, { label: string; bg: string; text: string }> = {
   done:         { label: 'Done',       bg: 'bg-emerald-100 dark:bg-emerald-950/40', text: 'text-emerald-700 dark:text-emerald-400' },
@@ -61,7 +61,7 @@ export default function HomeworkPage() {
     e.preventDefault();
     setSaving(true);
     const res = await fetch('/api/homework', { method: 'POST', headers, body: JSON.stringify(form) });
-    if (res.ok) { setShowAddModal(false); setForm(EMPTY_FORM); mutate(); }
+    if (res.ok) { setShowAddModal(false); setForm({ ...EMPTY_FORM, attachments: [] }); mutate(); }
     setSaving(false);
   };
 
@@ -122,6 +122,28 @@ export default function HomeworkPage() {
     setSubsLoading(false);
   };
 
+  // Attachment helpers
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setForm(prev => ({ ...prev, attachments: [...prev.attachments, reader.result as string] }));
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+  const removeAttachment = (idx: number) => {
+    setForm(prev => ({ ...prev, attachments: prev.attachments.filter((_, i) => i !== idx) }));
+  };
+  const isImage = (url: string) => url.startsWith('data:image/');
+  const attachmentFileName = (url: string, idx: number) => {
+    const match = url.match(/data:([^;]+);/);
+    const ext = match ? match[1].split('/')[1] : 'file';
+    return `attachment-${idx + 1}.${ext}`;
+  };
+
   // Submission status counts for teacher chart
   const subCounts = (subs: any[]) => ({
     done:     subs.filter(s => s.status === 'done').length,
@@ -179,6 +201,24 @@ export default function HomeworkPage() {
                 </div>
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">{hw.title}</h3>
                 {hw.description && <p className="text-xs text-surface-400 line-clamp-2 mb-3">{hw.description}</p>}
+                {hw.attachments?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {hw.attachments.map((url: string, idx: number) =>
+                      isImage(url) ? (
+                        <a key={idx} href={url} target="_blank" rel="noreferrer">
+                          <img src={url} alt="" className="w-12 h-12 object-cover rounded-lg border border-surface-200 dark:border-gray-700 hover:opacity-80 transition-opacity"/>
+                        </a>
+                      ) : (
+                        <a key={idx} href={url} download={attachmentFileName(url, idx)}
+                          className="w-12 h-12 flex flex-col items-center justify-center rounded-lg border border-surface-200 dark:border-gray-700 bg-surface-50 dark:bg-gray-800 text-[9px] text-surface-400 gap-0.5 px-1 text-center hover:border-brand-400 transition-colors"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                          <span className="truncate w-full text-center">{attachmentFileName(url, idx)}</span>
+                        </a>
+                      )
+                    )}
+                  </div>
+                )}
                 {hw.parent_note && (
                   <div className="mb-2 p-2 rounded-lg bg-brand-50 dark:bg-brand-950/30 border border-brand-100 dark:border-brand-900">
                     <p className="text-[11px] text-brand-700 dark:text-brand-300 font-medium">Parent note:</p>
@@ -244,7 +284,7 @@ export default function HomeworkPage() {
       )}
 
       {/* Assign Homework Modal */}
-      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Assign Homework">
+      <Modal open={showAddModal} onClose={() => { setShowAddModal(false); setForm({ ...EMPTY_FORM, attachments: [] }); }} title="Assign Homework">
         <form onSubmit={handleAdd} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -270,6 +310,35 @@ export default function HomeworkPage() {
           <div>
             <label className="label">Due Date *</label>
             <input type="date" className="input-field" required value={form.due_date} onChange={e => setForm({...form, due_date: e.target.value})}/>
+          </div>
+          <div>
+            <label className="label">Attachments</label>
+            <label className="flex items-center gap-2 cursor-pointer border-2 border-dashed border-surface-200 dark:border-gray-700 rounded-xl px-4 py-3 hover:border-brand-400 transition-colors text-sm text-surface-400 hover:text-brand-500">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              Add photos or files
+              <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.txt" className="hidden" onChange={handleFileChange}/>
+            </label>
+            {form.attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {form.attachments.map((url, idx) => (
+                  <div key={idx} className="relative group">
+                    {isImage(url) ? (
+                      <img src={url} alt="" className="w-16 h-16 object-cover rounded-lg border border-surface-200 dark:border-gray-700"/>
+                    ) : (
+                      <div className="w-16 h-16 flex flex-col items-center justify-center rounded-lg border border-surface-200 dark:border-gray-700 bg-surface-50 dark:bg-gray-800 text-[10px] text-surface-400 gap-1 px-1 text-center">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                        <span className="truncate w-full text-center">{attachmentFileName(url, idx)}</span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(idx)}
+                      className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >×</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>

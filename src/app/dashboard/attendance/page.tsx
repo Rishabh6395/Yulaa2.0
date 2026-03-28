@@ -38,8 +38,8 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
   const firstDay = new Date(year, mon - 1, 1).getDay();
   const daysInMonth = new Date(year, mon, 0).getDate();
 
-  const recordMap: Record<number, string> = {};
-  records.forEach(r => { recordMap[new Date(r.date).getUTCDate()] = r.status; });
+  const recordMap: Record<number, any> = {};
+  records.forEach(r => { recordMap[new Date(r.date).getUTCDate()] = r; });
 
   const present = records.filter(r => r.status === 'present').length;
   const absent  = records.filter(r => r.status === 'absent').length;
@@ -189,104 +189,130 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
 
 // ─── Employee Attendance — Teacher self-service ────────────────────────────────
 
+function fmtTime(dt: any) {
+  if (!dt) return '—';
+  return new Date(dt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+}
+
 function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoolId: string }) {
   const today = new Date();
-  const [date, setDate]     = useState(today.toISOString().split('T')[0]);
-  const [status, setStatus] = useState('present');
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [month, setMonth]   = useState(today.toISOString().substring(0, 7));
-  const [records, setRecords] = useState<any[]>([]);
+  const todayStr = today.toISOString().split('T')[0];
+  const [month,     setMonth]     = useState(today.toISOString().substring(0, 7));
+  const [records,   setRecords]   = useState<any[]>([]);
+  const [todayRec,  setTodayRec]  = useState<any>(null);
   const [calLoading, setCalLoading] = useState(true);
-  const [teacherId, setTeacherId]   = useState<string | null>(null);
+  const [punching,  setPunching]  = useState<'in' | 'out' | null>(null);
+  const [message,   setMessage]   = useState('');
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   const fetchCalendar = useCallback(async () => {
     setCalLoading(true);
-    const res  = await fetch(`/api/attendance?type=employee&teacher_user_id=${userId}&month=${month}`, {
+    const res  = await fetch(`/api/attendance?type=employee&teacher_user_id=${userId}&month=${month}&date=${todayStr}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
     setRecords(data.attendance || []);
-    if (data.teacher_id && !teacherId) setTeacherId(data.teacher_id);
+    setTodayRec(data.today || null);
     setCalLoading(false);
-  }, [userId, month, token]);
+  }, [userId, month, token, todayStr]);
 
   useEffect(() => { fetchCalendar(); }, [fetchCalendar]);
 
-  const saveAttendance = async () => {
-    setSaving(true); setMessage('');
+  const handlePunch = async (action: 'punch_in' | 'punch_out') => {
+    setPunching(action === 'punch_in' ? 'in' : 'out');
+    setMessage('');
     try {
-      const res = await fetch('/api/attendance', {
+      const res  = await fetch('/api/attendance', {
         method: 'POST', headers,
-        body: JSON.stringify({
-          type: 'employee',
-          records: [{ user_id: userId, status }],
-          date,
-        }),
+        body: JSON.stringify({ type: 'employee', action, user_id: userId }),
       });
-      const body = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        setMessage('✓ Attendance saved!');
+        setMessage(`✓ ${action === 'punch_in' ? 'Punched In' : 'Punched Out'} at ${fmtTime(data.time)}`);
         fetchCalendar();
       } else {
-        setMessage(`Error: ${body.error || 'Failed to save attendance'}`);
+        setMessage(`Error: ${data.error || 'Failed'}`);
       }
-    } catch {
-      setMessage('Error: Network error. Please try again.');
-    }
-    setSaving(false);
-    setTimeout(() => setMessage(''), 4000);
+    } catch { setMessage('Error: Network error'); }
+    setPunching(null);
+    setTimeout(() => setMessage(''), 5000);
   };
 
   const [year, mon] = month.split('-').map(Number);
   const firstDay    = new Date(year, mon - 1, 1).getDay();
   const daysInMonth = new Date(year, mon, 0).getDate();
-  const recordMap: Record<number, string> = {};
-  records.forEach(r => { recordMap[new Date(r.date).getUTCDate()] = r.status; });
+  const recordMap: Record<number, any> = {};
+  records.forEach(r => { recordMap[new Date(r.date).getUTCDate()] = r; });
 
   const prevMonth = () => { const d = new Date(`${month}-01`); d.setMonth(d.getMonth() - 1); setMonth(d.toISOString().substring(0, 7)); };
   const nextMonth = () => { const d = new Date(`${month}-01`); d.setMonth(d.getMonth() + 1); if (d <= today) setMonth(d.toISOString().substring(0, 7)); };
   const monthLabel = new Date(`${month}-01`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 
+  const hasPunchIn  = !!todayRec?.punchInTime;
+  const hasPunchOut = !!todayRec?.punchOutTime;
+
   return (
     <div className="space-y-6">
-      {/* Mark Today's Attendance */}
+      {/* Punch In / Out card */}
       <div className="card p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Mark My Attendance</h3>
-        <div className="flex flex-wrap gap-4 items-end">
+        <div className="flex items-center justify-between">
           <div>
-            <label className="label">Date</label>
-            <input type="date" className="input-field bg-surface-50 cursor-not-allowed" value={date} readOnly
-              min={today.toISOString().split('T')[0]} max={today.toISOString().split('T')[0]} />
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">My Attendance — Today</h3>
+            <p className="text-xs text-surface-400 mt-0.5">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
           </div>
-          <div>
-            <label className="label">Status</label>
-            <div className="flex gap-2">
-              {['present', 'absent', 'late', 'half_day'].map(s => {
-                const cfg = STATUS_CFG[s];
-                return (
-                  <button key={s} type="button"
-                    onClick={() => setStatus(s)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${status === s ? `${cfg.bg} ${cfg.text} ring-2 ${cfg.ring}` : 'bg-surface-50 dark:bg-gray-800 text-surface-400 hover:bg-surface-100'}`}
-                  >
-                    {cfg.full}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <button onClick={saveAttendance} disabled={saving} className="btn-primary">
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-          {message && (
-            <span className={`text-sm font-medium ${message.startsWith('Error') ? 'text-red-600' : 'text-emerald-600'}`}>
-              {message}
+          {todayRec && (
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg capitalize ${STATUS_CFG[todayRec.status]?.bg} ${STATUS_CFG[todayRec.status]?.text}`}>
+              {STATUS_CFG[todayRec.status]?.full ?? todayRec.status}
             </span>
           )}
         </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {/* Punch In */}
+          <div className="p-4 rounded-xl border-2 border-surface-100 dark:border-gray-700 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-600"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10,17 15,12 10,7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+              </div>
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Punch In</span>
+            </div>
+            {hasPunchIn ? (
+              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{fmtTime(todayRec.punchInTime)}</p>
+            ) : (
+              <button onClick={() => handlePunch('punch_in')} disabled={punching !== null}
+                className="w-full py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold transition-colors disabled:opacity-60">
+                {punching === 'in' ? 'Saving…' : 'Punch In'}
+              </button>
+            )}
+          </div>
+
+          {/* Punch Out */}
+          <div className="p-4 rounded-xl border-2 border-surface-100 dark:border-gray-700 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-950/40 flex items-center justify-center">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-red-600"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              </div>
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">Punch Out</span>
+            </div>
+            {hasPunchOut ? (
+              <p className="text-lg font-bold text-red-600 dark:text-red-400">{fmtTime(todayRec.punchOutTime)}</p>
+            ) : (
+              <button onClick={() => handlePunch('punch_out')} disabled={punching !== null || !hasPunchIn}
+                className="w-full py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+                title={!hasPunchIn ? 'Punch In first' : ''}>
+                {punching === 'out' ? 'Saving…' : 'Punch Out'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {message && (
+          <p className={`text-sm font-medium ${message.startsWith('Error') ? 'text-red-600' : 'text-emerald-600'}`}>
+            {message}
+          </p>
+        )}
       </div>
 
       {/* Monthly calendar */}
@@ -348,16 +374,19 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
 
 function EmployeeAttendanceAdmin() {
   const today = new Date();
-  const [date, setDate]       = useState(today.toISOString().split('T')[0]);
-  const [teachers, setTeachers] = useState<any[]>([]);
-  const [loading, setLoading]   = useState(false);
-  const [saving, setSaving]     = useState(false);
-  const [message, setMessage]   = useState('');
+  const [viewMode,  setViewMode]  = useState<'daily' | 'report'>('daily');
+  const [date,      setDate]      = useState(today.toISOString().split('T')[0]);
+  const [month,     setMonth]     = useState(today.toISOString().substring(0, 7));
+  const [teachers,  setTeachers]  = useState<any[]>([]);
+  const [report,    setReport]    = useState<any[]>([]);
+  const [loading,   setLoading]   = useState(false);
+  const [saving,    setSaving]    = useState(false);
+  const [message,   setMessage]   = useState('');
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-  const fetchTeachers = useCallback(async () => {
+  const fetchDaily = useCallback(async () => {
     setLoading(true);
     const res  = await fetch(`/api/attendance?type=employee&date=${date}`, { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json();
@@ -365,13 +394,19 @@ function EmployeeAttendanceAdmin() {
     setLoading(false);
   }, [date, token]);
 
-  useEffect(() => { fetchTeachers(); }, [fetchTeachers]);
+  const fetchReport = useCallback(async () => {
+    setLoading(true);
+    const res  = await fetch(`/api/attendance?type=employee&month=${month}`, { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    setReport(data.report || []);
+    setLoading(false);
+  }, [month, token]);
+
+  useEffect(() => { if (viewMode === 'daily') fetchDaily(); else fetchReport(); }, [viewMode, fetchDaily, fetchReport]);
 
   const updateStatus = (teacherId: string, status: string) => {
     setTeachers(prev => prev.map(t => t.teacher_id === teacherId ? { ...t, pendingStatus: status } : t));
   };
-
-  const markAll = (status: string) => setTeachers(prev => prev.map(t => ({ ...t, pendingStatus: status })));
 
   const saveAll = async () => {
     setSaving(true); setMessage('');
@@ -380,89 +415,216 @@ function EmployeeAttendanceAdmin() {
       method: 'POST', headers,
       body: JSON.stringify({ type: 'employee', records, date }),
     });
-    if (res.ok) { setMessage('Saved!'); setTimeout(() => setMessage(''), 3000); fetchTeachers(); }
+    const body = await res.json().catch(() => ({}));
+    if (res.ok) { setMessage('✓ Saved!'); setTimeout(() => setMessage(''), 3000); fetchDaily(); }
+    else setMessage(`Error: ${body.error || 'Save failed'}`);
     setSaving(false);
   };
 
+  // Report: build date columns for selected month
+  const [reportYear, reportMon] = month.split('-').map(Number);
+  const daysInMonth = new Date(reportYear, reportMon, 0).getDate();
+  const dateCols = Array.from({ length: daysInMonth }, (_, i) => {
+    const d = i + 1;
+    const str = `${month}-${String(d).padStart(2, '0')}`;
+    const dow = new Date(str + 'T00:00:00').getDay();
+    return { day: d, str, isWeekend: dow === 0 || dow === 6 };
+  });
+
   return (
     <div className="space-y-4">
-      <div className="card p-4 flex flex-wrap gap-4 items-end">
-        <div>
-          <label className="label">Date</label>
-          <input type="date" className="input-field" value={date} onChange={e => setDate(e.target.value)} max={today.toISOString().split('T')[0]} />
-        </div>
-        <div className="flex gap-2 ml-auto">
-          <button onClick={() => markAll('present')} className="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-100 font-medium">All Present</button>
-          <button onClick={() => markAll('absent')}  className="text-xs bg-red-50 text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-100 font-medium">All Absent</button>
-        </div>
+      {/* View mode tabs */}
+      <div className="flex gap-1 p-1 bg-surface-100 dark:bg-gray-800 rounded-xl w-fit">
+        {(['daily', 'report'] as const).map(m => (
+          <button key={m} onClick={() => setViewMode(m)}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all capitalize ${viewMode === m ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-surface-400 hover:text-gray-700'}`}>
+            {m === 'daily' ? 'Daily Mark' : 'Monthly Report'}
+          </button>
+        ))}
       </div>
 
-      <div className="card overflow-hidden">
-        <div className="table-container">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Employee</th>
-                <th>Employee ID</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}>{[1,2,3].map(j => <td key={j}><div className="h-4 bg-surface-100 rounded animate-pulse w-24"/></td>)}</tr>
-                ))
-              ) : teachers.length === 0 ? (
-                <tr><td colSpan={3} className="text-center py-8 text-surface-400">No active teachers found.</td></tr>
-              ) : teachers.map(t => (
-                <tr key={t.teacher_id}>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-violet-100 dark:bg-violet-950/40 flex items-center justify-center text-[10px] font-bold text-violet-700 dark:text-violet-400">
-                        {t.first_name?.[0]}{t.last_name?.[0]}
-                      </div>
-                      <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">{t.first_name} {t.last_name}</span>
-                    </div>
-                  </td>
-                  <td className="text-sm text-surface-400 font-mono">{t.employee_id || '—'}</td>
-                  <td>
-                    <div className="flex gap-1">
-                      {['present', 'absent', 'late', 'half_day'].map(s => {
-                        const cfg = STATUS_CFG[s];
-                        return (
-                          <button key={s} onClick={() => updateStatus(t.teacher_id, s)}
-                            className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all ${t.pendingStatus === s ? `${cfg.bg} ${cfg.text} ring-1 ${cfg.ring}` : 'bg-surface-50 dark:bg-gray-800 text-surface-400 hover:bg-surface-100'}`}
-                          >
-                            {cfg.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {teachers.length > 0 && (
-          <div className="p-4 border-t border-surface-100 dark:border-gray-800 flex items-center gap-4">
-            {message && <span className="text-sm text-emerald-600 font-medium">{message}</span>}
-            <button onClick={saveAll} disabled={saving} className="btn-primary ml-auto">
-              {saving ? 'Saving…' : 'Save Attendance'}
-            </button>
+      {viewMode === 'daily' ? (
+        <>
+          <div className="card p-4 flex flex-wrap gap-4 items-end">
+            <div>
+              <label className="label">Date</label>
+              <input type="date" className="input-field" value={date} onChange={e => setDate(e.target.value)} max={today.toISOString().split('T')[0]} />
+            </div>
           </div>
-        )}
-      </div>
+
+          <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="data-table text-sm">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Emp ID</th>
+                    <th>Punch In</th>
+                    <th>Punch Out</th>
+                    <th>Mark Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={i}>{[1,2,3,4,5].map(j => <td key={j}><div className="h-4 bg-surface-100 dark:bg-gray-700 rounded animate-pulse"/></td>)}</tr>
+                    ))
+                  ) : teachers.length === 0 ? (
+                    <tr><td colSpan={5} className="text-center py-8 text-surface-400">No active employees found.</td></tr>
+                  ) : teachers.map(t => (
+                    <tr key={t.teacher_id}>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-violet-100 dark:bg-violet-950/40 flex items-center justify-center text-[10px] font-bold text-violet-600 shrink-0">
+                            {t.first_name?.[0]}{t.last_name?.[0]}
+                          </div>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{t.first_name} {t.last_name}</span>
+                        </div>
+                      </td>
+                      <td className="font-mono text-surface-400 text-xs">{t.employee_id || '—'}</td>
+                      <td className={`font-mono text-xs font-semibold ${t.punch_in_time ? 'text-emerald-600' : 'text-surface-300'}`}>
+                        {fmtTime(t.punch_in_time)}
+                      </td>
+                      <td className={`font-mono text-xs font-semibold ${t.punch_out_time ? 'text-red-500' : 'text-surface-300'}`}>
+                        {fmtTime(t.punch_out_time)}
+                      </td>
+                      <td>
+                        <div className="flex gap-1">
+                          {['present', 'absent', 'late', 'half_day'].map(s => {
+                            const cfg = STATUS_CFG[s];
+                            return (
+                              <button key={s} onClick={() => updateStatus(t.teacher_id, s)}
+                                className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all ${t.pendingStatus === s ? `${cfg.bg} ${cfg.text} ring-1 ${cfg.ring}` : 'bg-surface-50 dark:bg-gray-800 text-surface-400 hover:bg-surface-100'}`}>
+                                {cfg.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {teachers.length > 0 && (
+              <div className="p-4 border-t border-surface-100 dark:border-gray-800 flex items-center gap-4">
+                {message && <span className={`text-sm font-medium ${message.startsWith('Error') ? 'text-red-600' : 'text-emerald-600'}`}>{message}</span>}
+                <button onClick={saveAll} disabled={saving} className="btn-primary ml-auto">
+                  {saving ? 'Saving…' : 'Save Attendance'}
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="card p-4 flex items-end gap-4">
+            <div>
+              <label className="label">Month</label>
+              <input type="month" className="input-field" value={month} onChange={e => setMonth(e.target.value)}
+                max={today.toISOString().substring(0, 7)} />
+            </div>
+          </div>
+
+          <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="data-table text-xs" style={{ minWidth: `${200 + daysInMonth * 52}px` }}>
+                <thead>
+                  <tr>
+                    <th className="min-w-[160px] sticky left-0 bg-surface-50 dark:bg-gray-800 z-10">Employee</th>
+                    {dateCols.map(({ day, isWeekend }) => (
+                      <th key={day} className={`w-12 text-center ${isWeekend ? 'text-surface-300 dark:text-gray-600' : ''}`}>{day}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <tr key={i}>
+                        <td className="sticky left-0 bg-white dark:bg-gray-900"><div className="h-4 bg-surface-100 dark:bg-gray-700 rounded animate-pulse w-32"/></td>
+                        {dateCols.map(({ day }) => <td key={day}><div className="h-4 bg-surface-100 dark:bg-gray-700 rounded animate-pulse"/></td>)}
+                      </tr>
+                    ))
+                  ) : report.length === 0 ? (
+                    <tr><td colSpan={daysInMonth + 1} className="text-center py-8 text-surface-400">No employees found.</td></tr>
+                  ) : report.map(t => {
+                    const dayMap: Record<string, any> = {};
+                    t.records.forEach((r: any) => { dayMap[new Date(r.date).toISOString().split('T')[0]] = r; });
+                    const presentDays = t.records.filter((r: any) => r.status === 'present').length;
+                    const totalWork = dateCols.filter(d => !d.isWeekend).length;
+                    return (
+                      <tr key={t.teacher_id}>
+                        <td className="sticky left-0 bg-white dark:bg-gray-900 border-r border-surface-100 dark:border-gray-700">
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-gray-100">{t.first_name} {t.last_name}</p>
+                            <p className="text-[10px] text-surface-400">{presentDays}/{totalWork} days present</p>
+                          </div>
+                        </td>
+                        {dateCols.map(({ day, str, isWeekend }) => {
+                          const rec = dayMap[str];
+                          const cfg = rec ? STATUS_CFG[rec.status] : null;
+                          return (
+                            <td key={day} className={`text-center p-1 ${isWeekend ? 'bg-surface-50/50 dark:bg-gray-800/30' : ''}`}>
+                              {isWeekend ? (
+                                <span className="text-[9px] text-surface-300">—</span>
+                              ) : cfg ? (
+                                <div className="group relative flex flex-col items-center">
+                                  <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${cfg.bg} ${cfg.text}`}>
+                                    {cfg.label}
+                                  </span>
+                                  {(rec.punch_in_time || rec.punch_out_time) && (
+                                    <div className="hidden group-hover:block absolute top-full left-1/2 -translate-x-1/2 z-20 bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap mt-1 shadow-lg">
+                                      {rec.punch_in_time && <div>In: {fmtTime(rec.punch_in_time)}</div>}
+                                      {rec.punch_out_time && <div>Out: {fmtTime(rec.punch_out_time)}</div>}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-surface-200 dark:text-gray-700">·</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
 // ─── Student Attendance — Teacher / Admin ──────────────────────────────────────
 
-const SUBJECTS     = ['Eng', 'Hindi', 'SC', 'SS', 'SKT', 'DR', 'IT', 'OT'];
-const SUBJECT_KEYS = ['eng', 'hindi', 'sc', 'ss', 'skt', 'dr', 'it', 'ot'];
+const STUDENT_STATUSES = ['present', 'absent', 'late', 'half_day', 'excused'] as const;
+// Daily roll-call mode: only School In (present) and School Out (absent)
+const DAILY_STATUSES   = ['present', 'absent'] as const;
+const DAILY_LABELS: Record<string, string> = { present: 'School In', absent: 'School Out' };
 
-function StudentAttendancePage({ userId }: { userId: string }) {
+// Subject-wise columns used in class mode
+const SUBJECTS = [
+  { key: 'eng',   label: 'Eng' },
+  { key: 'hindi', label: 'Hindi' },
+  { key: 'maths', label: 'Maths' },
+  { key: 'sc',    label: 'Sci' },
+  { key: 'ss',    label: 'SS' },
+  { key: 'skt',   label: 'SKT' },
+  { key: 'dr',    label: 'DR' },
+  { key: 'it',    label: 'IT' },
+];
+const SUB_STATUSES = ['P', 'A', 'L'] as const;
+const SUB_STATUS_MAP: Record<string, { bg: string; text: string }> = {
+  P: { bg: 'bg-emerald-100 dark:bg-emerald-950/40', text: 'text-emerald-700 dark:text-emerald-400' },
+  A: { bg: 'bg-red-100 dark:bg-red-950/40',         text: 'text-red-700 dark:text-red-400' },
+  L: { bg: 'bg-amber-100 dark:bg-amber-950/40',     text: 'text-amber-700 dark:text-amber-400' },
+};
+const FULL_STATUS: Record<string, string> = { P: 'present', A: 'absent', L: 'late' };
+
+function StudentAttendancePage({ userId, attendanceMode }: { userId: string; attendanceMode: string }) {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [classes, setClasses] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
@@ -497,28 +659,32 @@ function StudentAttendancePage({ userId }: { userId: string }) {
     const data = await res.json();
     setStudents((data.students || []).map((s: any) => ({
       ...s,
-      schoolStatus: s.status || 'present',
-      punchIn:  s.punch_in  || '',
-      punchOut: s.punch_out || '',
-      subjects: s.subjects  || {},
+      schoolStatus:    s.status || 'present',
+      subjectStatus:   s.subject_attendance
+        ? Object.fromEntries(Object.entries(s.subject_attendance as Record<string, string>).map(([k, v]) => [k, v === 'present' ? 'P' : v === 'absent' ? 'A' : v === 'late' ? 'L' : v]))
+        : Object.fromEntries(SUBJECTS.map(sub => [sub.key, 'P'])),
     })));
     setLoading(false);
   }, [selectedClass, date, token]);
 
   useEffect(() => { fetchClassAttendance(); }, [fetchClassAttendance]);
 
-  const updateStudent = (studentId: string, field: string, value: string) => {
-    setStudents(prev => prev.map(s => s.student_id === studentId ? { ...s, [field]: value } : s));
+  const updateStatus = (studentId: string, status: string) => {
+    setStudents(prev => prev.map(s => s.student_id === studentId ? { ...s, schoolStatus: status } : s));
   };
 
-  const updateSubject = (studentId: string, subKey: string, value: string) => {
-    setStudents(prev => prev.map(s => {
-      if (s.student_id !== studentId) return s;
-      return { ...s, subjects: { ...s.subjects, [subKey]: value } };
-    }));
+  const updateSubjectStatus = (studentId: string, subKey: string, val: string) => {
+    setStudents(prev => prev.map(s =>
+      s.student_id === studentId
+        ? { ...s, subjectStatus: { ...s.subjectStatus, [subKey]: val } }
+        : s
+    ));
   };
 
   const markAll = (status: string) => setStudents(prev => prev.map(s => ({ ...s, schoolStatus: status })));
+  const markAllSubject = (subKey: string, val: string) => {
+    setStudents(prev => prev.map(s => ({ ...s, subjectStatus: { ...s.subjectStatus, [subKey]: val } })));
+  };
 
   const selectedDayOfWeek = new Date(date + 'T00:00:00').getDay();
   const isWeekend = selectedDayOfWeek === 0 || selectedDayOfWeek === 6;
@@ -527,11 +693,19 @@ function StudentAttendancePage({ userId }: { userId: string }) {
     if (isWeekend) { setSaveError('Cannot mark attendance on weekends.'); return; }
     setSaving(true); setMessage(''); setSaveError('');
     try {
-      const records = students.filter(s => s.schoolStatus).map(s => ({
-        student_id: s.student_id,
-        status:     s.schoolStatus || 'present',
-        remarks:    s.remarks || undefined,
-      }));
+      const records = students.filter(s => s.schoolStatus).map(s => {
+        const base: any = {
+          student_id: s.student_id,
+          status:     s.schoolStatus || 'present',
+          remarks:    s.remarks || undefined,
+        };
+        if (attendanceMode === 'class' && s.subjectStatus) {
+          base.subject_attendance = Object.fromEntries(
+            Object.entries(s.subjectStatus as Record<string, string>).map(([k, v]) => [k, FULL_STATUS[v] ?? 'present'])
+          );
+        }
+        return base;
+      });
       const res  = await fetch('/api/attendance', {
         method: 'POST', headers,
         body: JSON.stringify({ records, date, class_id: selectedClass }),
@@ -545,18 +719,6 @@ function StudentAttendancePage({ userId }: { userId: string }) {
   };
 
   const selectedCls = classes.find(c => c.id === selectedClass);
-
-  const cyclePunch = (studentId: string, field: 'punchIn' | 'punchOut') => {
-    const punchInTimes  = ['09:00', '09:15', '09:30', ''];
-    const punchOutTimes = ['16:00', '15:45', '15:30', ''];
-    const times = field === 'punchIn' ? punchInTimes : punchOutTimes;
-    setStudents(prev => prev.map(s => {
-      if (s.student_id !== studentId) return s;
-      const cur = s[field] || '';
-      const idx = times.indexOf(cur);
-      return { ...s, [field]: times[(idx + 1) % times.length] };
-    }));
-  };
 
   return (
     <div className="space-y-6">
@@ -577,7 +739,7 @@ function StudentAttendancePage({ userId }: { userId: string }) {
           </div>
           <div>
             <label className="label">Section</label>
-            <input className="input-field bg-surface-50" readOnly value={selectedCls ? selectedCls.section : ''} placeholder="Auto-filled" />
+            <input className="input-field bg-surface-50 cursor-not-allowed" readOnly value={selectedCls ? selectedCls.section : ''} placeholder="Auto-filled" />
           </div>
           <div>
             <label className="label">Date</label>
@@ -594,66 +756,126 @@ function StudentAttendancePage({ userId }: { userId: string }) {
               <p className="text-xs text-surface-400 mt-0.5">{students.length} students</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button onClick={() => markAll('present')} className="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-100 font-medium transition-colors">All Present</button>
-              <button onClick={() => markAll('absent')}  className="text-xs bg-red-50 text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-100 font-medium transition-colors">All Absent</button>
+              <button onClick={() => markAll('present')} className="text-xs bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-100 font-medium transition-colors">All Present</button>
+              <button onClick={() => markAll('absent')}  className="text-xs bg-red-50 dark:bg-red-950/30 text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-100 font-medium transition-colors">All Absent</button>
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="data-table text-xs min-w-[900px]">
+            <table className="data-table text-xs" style={attendanceMode === 'class' ? { minWidth: '760px' } : undefined}>
               <thead>
                 <tr>
-                  <th className="min-w-[140px]">Student Name</th>
+                  <th className="min-w-[150px]">Student Name</th>
                   <th>Roll No.</th>
-                  <th>School In</th>
-                  {SUBJECTS.map(s => <th key={s}>{s}</th>)}
-                  <th>School Out</th>
+                  {attendanceMode === 'daily' ? (
+                    <th>School In / Out</th>
+                  ) : (
+                    <>
+                      <th className="min-w-[140px]">Overall</th>
+                      {SUBJECTS.map(sub => (
+                        <th key={sub.key} className="text-center min-w-[52px] p-1">
+                          <div className="text-[11px] font-semibold mb-0.5">{sub.label}</div>
+                          <div className="flex gap-0.5 justify-center">
+                            {SUB_STATUSES.map(v => (
+                              <button key={v} onClick={() => markAllSubject(sub.key, v)}
+                                title={`All ${sub.label}: ${v}`}
+                                className={`w-5 h-4 rounded text-[8px] font-bold transition-colors ${SUB_STATUS_MAP[v].bg} ${SUB_STATUS_MAP[v].text} opacity-70 hover:opacity-100`}>
+                                {v}
+                              </button>
+                            ))}
+                          </div>
+                        </th>
+                      ))}
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}>{Array.from({ length: 12 }).map((_, j) => <td key={j}><div className="h-4 bg-surface-100 rounded animate-pulse"/></td>)}</tr>
+                    <tr key={i}>{Array.from({ length: attendanceMode === 'class' ? 10 : 3 }).map((_, j) => <td key={j}><div className="h-5 bg-surface-100 dark:bg-gray-700 rounded animate-pulse"/></td>)}</tr>
                   ))
                 ) : students.length === 0 ? (
-                  <tr><td colSpan={12} className="text-center py-8 text-surface-400">No students in this class</td></tr>
-                ) : students.map(s => (
-                  <tr key={s.student_id}>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-brand-100 dark:bg-brand-950 flex items-center justify-center text-[9px] font-bold text-brand-600 dark:text-brand-400 flex-shrink-0">
-                          {s.first_name?.[0]}{s.last_name?.[0]}
+                  <tr><td colSpan={attendanceMode === 'class' ? 10 : 3} className="text-center py-8 text-surface-400">No students in this class</td></tr>
+                ) : students.map(s => {
+                  const cur = s.schoolStatus || 'present';
+                  const cfg = STATUS_CFG[cur];
+                  return (
+                    <tr key={s.student_id}>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0 ${cfg.bg} ${cfg.text}`}>
+                            {s.first_name?.[0]}{s.last_name?.[0]}
+                          </div>
+                          <span className="font-medium text-gray-900 dark:text-gray-100 truncate max-w-[120px]">{s.first_name} {s.last_name}</span>
                         </div>
-                        <span className="font-medium text-gray-900 dark:text-gray-100 truncate max-w-[100px]">{s.first_name} {s.last_name}</span>
-                      </div>
-                    </td>
-                    <td className="font-mono">{s.admission_no || '—'}</td>
-                    <td>
-                      <button onClick={() => cyclePunch(s.student_id, 'punchIn')}
-                        className={`px-2 py-1 rounded-lg border font-mono transition-colors ${s.punchIn ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-surface-50 border-surface-200 text-surface-400'}`}>
-                        {s.punchIn || '—'}
-                      </button>
-                    </td>
-                    {SUBJECT_KEYS.map(subKey => {
-                      const val = s.subjects?.[subKey] || '';
-                      const cfg = val ? STATUS_CFG[val] : null;
-                      return (
-                        <td key={subKey}>
-                          <button onClick={() => { const cycle = ['present', 'absent', '']; const next = cycle[(cycle.indexOf(val) + 1) % cycle.length]; updateSubject(s.student_id, subKey, next); }}
-                            className={`w-7 h-7 rounded-lg border font-bold text-[9px] transition-colors ${cfg ? `${cfg.bg} ${cfg.text} border-transparent` : 'bg-surface-50 border-surface-200 text-surface-300'}`}>
-                            {cfg ? cfg.label : '—'}
-                          </button>
+                      </td>
+                      <td className="font-mono text-surface-400">{s.admission_no || '—'}</td>
+
+                      {attendanceMode === 'daily' ? (
+                        <td>
+                          <div className="flex gap-2">
+                            {DAILY_STATUSES.map(st => {
+                              const c = STATUS_CFG[st];
+                              return (
+                                <button key={st} onClick={() => updateStatus(s.student_id, st)}
+                                  className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-all border-2 ${
+                                    cur === st
+                                      ? `${c.bg} ${c.text} border-current ring-2 ${c.ring}`
+                                      : 'bg-surface-50 dark:bg-gray-800 text-surface-400 dark:text-gray-500 border-transparent hover:border-surface-200'
+                                  }`}>
+                                  {DAILY_LABELS[st]}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </td>
-                      );
-                    })}
-                    <td>
-                      <button onClick={() => cyclePunch(s.student_id, 'punchOut')}
-                        className={`px-2 py-1 rounded-lg border font-mono transition-colors ${s.punchOut ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-surface-50 border-surface-200 text-surface-400'}`}>
-                        {s.punchOut || '—'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      ) : (
+                        <>
+                          {/* Overall status P/A/L/H/E */}
+                          <td>
+                            <div className="flex gap-1">
+                              {STUDENT_STATUSES.map(st => {
+                                const c = STATUS_CFG[st];
+                                return (
+                                  <button key={st} onClick={() => updateStatus(s.student_id, st)}
+                                    title={c.full}
+                                    className={`w-7 h-7 rounded-lg font-bold text-[10px] transition-all border-2 ${
+                                      cur === st
+                                        ? `${c.bg} ${c.text} border-current ring-2 ${c.ring}`
+                                        : 'bg-surface-50 dark:bg-gray-800 text-surface-300 dark:text-gray-600 border-transparent hover:border-surface-200'
+                                    }`}>
+                                    {c.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </td>
+                          {/* Per-subject P/A/L buttons */}
+                          {SUBJECTS.map(sub => {
+                            const val = (s.subjectStatus as Record<string, string>)?.[sub.key] ?? 'P';
+                            return (
+                              <td key={sub.key} className="text-center p-1">
+                                <div className="flex gap-0.5 justify-center">
+                                  {SUB_STATUSES.map(v => (
+                                    <button key={v} onClick={() => updateSubjectStatus(s.student_id, sub.key, v)}
+                                      className={`w-6 h-6 rounded text-[10px] font-bold transition-all ${
+                                        val === v
+                                          ? `${SUB_STATUS_MAP[v].bg} ${SUB_STATUS_MAP[v].text} ring-1 ring-current`
+                                          : 'bg-surface-50 dark:bg-gray-800 text-surface-300 dark:text-gray-600 hover:bg-surface-100'
+                                      }`}>
+                                      {v}
+                                    </button>
+                                  ))}
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -685,11 +907,12 @@ function StudentAttendancePage({ userId }: { userId: string }) {
 // ─── Main page: role-aware ──────────────────────────────────────────────────────
 
 export default function AttendancePage() {
-  const [role, setRole]         = useState<string | null>(null);
-  const [userId, setUserId]     = useState('');
-  const [schoolId, setSchoolId] = useState('');
-  const [activeChild, setActiveChild] = useState<any>(null);
-  const [tab, setTab]           = useState<'student' | 'employee'>('student');
+  const [role, setRole]                   = useState<string | null>(null);
+  const [userId, setUserId]               = useState('');
+  const [schoolId, setSchoolId]           = useState('');
+  const [activeChild, setActiveChild]     = useState<any>(null);
+  const [tab, setTab]                     = useState<'student' | 'employee'>('student');
+  const [attendanceMode, setAttendanceMode] = useState('class');
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -705,6 +928,16 @@ export default function AttendancePage() {
         }
       } catch {}
     }
+  }, []);
+
+  // Fetch school attendance mode config
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch('/api/attendance-config', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { if (d.attendanceMode) setAttendanceMode(d.attendanceMode); })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -753,7 +986,7 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      {tab === 'student'  && <StudentAttendancePage userId={userId} />}
+      {tab === 'student'  && <StudentAttendancePage userId={userId} attendanceMode={attendanceMode} />}
       {tab === 'employee' && (
         isAdmin
           ? <EmployeeAttendanceAdmin />

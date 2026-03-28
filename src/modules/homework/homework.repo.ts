@@ -28,6 +28,7 @@ export async function createHomework(data: {
   title:       string;
   description: string | null;
   dueDate:     Date;
+  attachments?: string[];
 }) {
   return prisma.homework.create({ data });
 }

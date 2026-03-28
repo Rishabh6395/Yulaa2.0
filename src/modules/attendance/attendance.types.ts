@@ -13,7 +13,7 @@ export interface MarkAttendanceInput {
   classId:  string;
   date:     Date;
   markedBy: string;
-  records:  Array<{ student_id: string; status: string; remarks?: string }>;
+  records:  Array<{ student_id: string; status: string; remarks?: string; subjectAttendance?: Record<string, string> }>;
 }
 
 export interface ClassAttendanceSummary {

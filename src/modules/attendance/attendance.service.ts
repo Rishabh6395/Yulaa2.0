@@ -114,18 +114,46 @@ export async function getAttendance(schoolId: string, searchParams: URLSearchPar
       });
       if (!teacher) return { attendance: [], teacher_id: null };
       const attendance = await repo.findTeacherMonthlyAttendance(teacher.id, firstDay, lastDay);
-      return { attendance, teacher_id: teacher.id };
+      // Also return today's punch state
+      const todayDate = new Date(dateStr); todayDate.setUTCHours(0, 0, 0, 0);
+      const today = await repo.findTeacherTodayAttendance(teacher.id, todayDate);
+      return { attendance, teacher_id: teacher.id, today };
     }
 
-    // Admin: all teachers for a date
+    // Admin: monthly report for all teachers
+    if (month) {
+      const [year, monthNum] = month.split('-').map(Number);
+      const firstDay = new Date(year, monthNum - 1, 1);
+      const lastDay  = new Date(year, monthNum, 0);
+      const teachers = await repo.findAllTeachersMonthlyAttendance(schoolId, firstDay, lastDay);
+      return {
+        report: teachers.map(t => ({
+          teacher_id:  t.id,
+          employee_id: t.employeeId ?? null,
+          first_name:  t.user.firstName,
+          last_name:   t.user.lastName,
+          records:     t.attendance.map(a => ({
+            date:          a.date,
+            status:        a.status,
+            punch_in_time:  a.punchInTime,
+            punch_out_time: a.punchOutTime,
+          })),
+        })),
+        month,
+      };
+    }
+
+    // Admin: all teachers for a specific date
     const teachers = await repo.findAllTeachersAttendanceForDate(schoolId, date);
     const rows = teachers.map((t) => ({
-      teacher_id:   t.id,
-      employee_id:  t.employeeId ?? null,
-      first_name:   t.user.firstName,
-      last_name:    t.user.lastName,
-      status:       t.attendance[0]?.status  ?? null,
-      attendance_id: t.attendance[0]?.id     ?? null,
+      teacher_id:     t.id,
+      employee_id:    t.employeeId ?? null,
+      first_name:     t.user.firstName,
+      last_name:      t.user.lastName,
+      status:         t.attendance[0]?.status       ?? null,
+      punch_in_time:  t.attendance[0]?.punchInTime  ?? null,
+      punch_out_time: t.attendance[0]?.punchOutTime ?? null,
+      attendance_id:  t.attendance[0]?.id           ?? null,
     }));
     return { teachers: rows, date: dateStr };
   }
@@ -150,9 +178,10 @@ export async function getAttendance(schoolId: string, searchParams: URLSearchPar
       first_name:    s.firstName,
       last_name:     s.lastName,
       admission_no:  s.admissionNo,
-      status:        s.attendance[0]?.status  ?? null,
-      remarks:       s.attendance[0]?.remarks ?? null,
-      attendance_id: s.attendance[0]?.id      ?? null,
+      status:             s.attendance[0]?.status             ?? null,
+      remarks:            s.attendance[0]?.remarks            ?? null,
+      attendance_id:      s.attendance[0]?.id                 ?? null,
+      subject_attendance: s.attendance[0]?.subjectAttendance  ?? null,
     }));
     return { students: rows, date: dateStr };
   }
@@ -174,14 +203,27 @@ export async function getAttendance(schoolId: string, searchParams: URLSearchPar
 export async function markAttendance(schoolId: string, markedBy: string, body: Record<string, any>) {
   // ── Employee attendance ──────────────────────────────────────────────────────
   if (body.type === 'employee') {
-    const { records, date: dateStr } = body;
+    const { records, date: dateStr, action, user_id } = body;
+
+    // Punch In / Punch Out — teacher self-service
+    if (action === 'punch_in' || action === 'punch_out') {
+      if (!user_id) throw new AppError('user_id is required for punch action');
+      const today = new Date();
+      const dateOnly = new Date(today.toISOString().split('T')[0]);
+      dateOnly.setUTCHours(0, 0, 0, 0);
+      const teacher = await prisma.teacher.findFirst({ where: { userId: user_id, schoolId }, select: { id: true } });
+      if (!teacher) throw new AppError('Teacher record not found');
+      const field = action === 'punch_in' ? 'punchInTime' : 'punchOutTime';
+      const rec = await repo.punchTeacherAttendance(schoolId, teacher.id, markedBy, dateOnly, field, today);
+      return { message: `${action === 'punch_in' ? 'Punch In' : 'Punch Out'} recorded`, time: today, record: rec };
+    }
+
     if (!Array.isArray(records) || !dateStr) {
       throw new AppError('records array and date are required for employee attendance');
     }
     const parsedDate = new Date(dateStr);
     parsedDate.setUTCHours(0, 0, 0, 0);
     for (const r of records) {
-      // Support teacher_id or resolve from user_id
       let teacherId = r.teacher_id;
       if (!teacherId && r.user_id) {
         const t = await prisma.teacher.findFirst({ where: { userId: r.user_id, schoolId }, select: { id: true } });
@@ -208,7 +250,12 @@ export async function markAttendance(schoolId: string, markedBy: string, body: R
     classId:  class_id,
     date:     parsedDate,
     markedBy,
-    records,
+    records:  records.map((r: any) => ({
+      student_id:        r.student_id,
+      status:            r.status,
+      remarks:           r.remarks,
+      subjectAttendance: r.subject_attendance ?? undefined,
+    })),
   });
 
   return { message: `Attendance marked for ${records.length} students`, date };

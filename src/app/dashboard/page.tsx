@@ -22,6 +22,123 @@ function AnnouncementTypeBadge({ type }: { type: string }) {
   );
 }
 
+// ── Employee Punch In / Out card (dashboard widget) ───────────────────────────
+
+function fmtTime(dt: any) {
+  if (!dt) return null;
+  return new Date(dt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+}
+
+function PunchCard({ userId }: { userId: string }) {
+  const [todayRec,  setTodayRec]  = useState<any>(null);
+  const [punching,  setPunching]  = useState<'in' | 'out' | null>(null);
+  const [message,   setMessage]   = useState('');
+  const today = new Date().toISOString().split('T')[0];
+
+  const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+  useEffect(() => {
+    if (!userId || !token) return;
+    fetch(`/api/attendance?type=employee&teacher_user_id=${userId}&month=${today.substring(0,7)}&date=${today}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(d => setTodayRec(d.today || null))
+      .catch(() => {});
+  }, [userId, token, today]);
+
+  const handlePunch = async (action: 'punch_in' | 'punch_out') => {
+    setPunching(action === 'punch_in' ? 'in' : 'out');
+    setMessage('');
+    try {
+      const res  = await fetch('/api/attendance', {
+        method: 'POST', headers,
+        body: JSON.stringify({ type: 'employee', action, user_id: userId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setMessage(`${action === 'punch_in' ? 'Punched In' : 'Punched Out'} at ${fmtTime(data.time) ?? ''}`);
+        setTodayRec(data.record ?? null);
+      } else {
+        setMessage(`Error: ${data.error || 'Failed'}`);
+      }
+    } catch { setMessage('Error: Network error'); }
+    setPunching(null);
+    setTimeout(() => setMessage(''), 5000);
+  };
+
+  const hasPunchIn  = !!todayRec?.punchInTime;
+  const hasPunchOut = !!todayRec?.punchOutTime;
+
+  return (
+    <div className="card p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-xs font-semibold text-surface-400 dark:text-gray-500 uppercase tracking-wider">My Attendance — Today</p>
+          <p className="text-xs text-surface-400 dark:text-gray-500 mt-0.5">
+            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
+          </p>
+        </div>
+        {todayRec?.status && (
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 capitalize">
+            {todayRec.status}
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {/* Punch In */}
+        <div className={`p-3 rounded-xl border-2 space-y-2 transition-colors ${hasPunchIn ? 'border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/20' : 'border-surface-100 dark:border-gray-700'}`}>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-600">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10,17 15,12 10,7"/><line x1="15" y1="12" x2="3" y2="12"/>
+              </svg>
+            </div>
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">School In</span>
+          </div>
+          {hasPunchIn ? (
+            <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">{fmtTime(todayRec.punchInTime)}</p>
+          ) : (
+            <button onClick={() => handlePunch('punch_in')} disabled={punching !== null}
+              className="w-full py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold transition-colors disabled:opacity-60">
+              {punching === 'in' ? 'Saving…' : 'Punch In'}
+            </button>
+          )}
+        </div>
+
+        {/* Punch Out */}
+        <div className={`p-3 rounded-xl border-2 space-y-2 transition-colors ${hasPunchOut ? 'border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20' : 'border-surface-100 dark:border-gray-700'}`}>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-red-100 dark:bg-red-950/40 flex items-center justify-center">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-red-600">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </div>
+            <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">School Out</span>
+          </div>
+          {hasPunchOut ? (
+            <p className="text-base font-bold text-red-600 dark:text-red-400">{fmtTime(todayRec.punchOutTime)}</p>
+          ) : (
+            <button onClick={() => handlePunch('punch_out')} disabled={punching !== null || !hasPunchIn}
+              title={!hasPunchIn ? 'Punch In first' : ''}
+              className="w-full py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-colors disabled:opacity-60">
+              {punching === 'out' ? 'Saving…' : 'Punch Out'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {message && (
+        <p className={`mt-2 text-xs font-medium ${message.startsWith('Error') ? 'text-red-600' : 'text-emerald-600'}`}>
+          {message}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Shared stat card ─────────────────────────────────────────────────────────
 
 interface StatCardProps {
@@ -95,7 +212,7 @@ function SectionCard({ children, className = '' }: { children: React.ReactNode; 
 
 // ── Admin dashboard ──────────────────────────────────────────────────────────
 
-function AdminDashboard({ data, feedReady = true, allowed, pending }: { data: any; feedReady?: boolean; allowed: Set<string>; pending: { admissions: any[]; leaves: any[] } | null }) {
+function AdminDashboard({ data, feedReady = true, allowed, pending, userId = '' }: { data: any; feedReady?: boolean; allowed: Set<string>; pending: { admissions: any[]; leaves: any[] } | null; userId?: string }) {
   const stats         = data?.stats;
   const announcements = data?.recentAnnouncements || [];
 
@@ -199,6 +316,8 @@ function AdminDashboard({ data, feedReady = true, allowed, pending }: { data: an
           })()}
         </SectionCard>
       </div>
+
+      {userId && <PunchCard userId={userId} />}
 
       <PendingWorkflowCards pending={pending} />
 
@@ -432,7 +551,7 @@ function SuperAdminDashboard({ data }: { data: any }) {
 
 // ── Teacher dashboard ─────────────────────────────────────────────────────────
 
-function TeacherDashboard({ data, feedReady = true, allowed, pending }: { data: any; feedReady?: boolean; allowed: Set<string>; pending: { admissions: any[]; leaves: any[] } | null }) {
+function TeacherDashboard({ data, feedReady = true, allowed, pending, userId = '' }: { data: any; feedReady?: boolean; allowed: Set<string>; pending: { admissions: any[]; leaves: any[] } | null; userId?: string }) {
   const stats         = data?.stats;
   const allAnnouncements = data?.recentAnnouncements || [];
   // Filter announcements relevant to teacher role (all/teacher audience)
@@ -467,6 +586,8 @@ function TeacherDashboard({ data, feedReady = true, allowed, pending }: { data: 
           />
         </a>
       </div>
+
+      {userId && <PunchCard userId={userId} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <SectionCard>
@@ -671,6 +792,7 @@ export default function DashboardPage() {
   const [stats,       setStats]       = useState<any>(null);
   const [feed,        setFeed]        = useState<any>(null);
   const [role,        setRole]        = useState<string | null>(null);
+  const [userId,      setUserId]      = useState('');
   const [activeChild, setActiveChild] = useState<any>(null);
   const [isParent,    setIsParent]    = useState(false);
   const [allowed,     setAllowed]     = useState<Set<string>>(ALL_KEYS);
@@ -736,6 +858,7 @@ export default function DashboardPage() {
       const user       = JSON.parse(userData);
       const parentRole = user.primaryRole === 'parent';
       setIsParent(parentRole);
+      setUserId(user.id || '');
       if (parentRole) {
         const stored = localStorage.getItem('activeChild');
         const child  = stored ? JSON.parse(stored) : null;
@@ -771,7 +894,8 @@ export default function DashboardPage() {
   }
 
   if (data?.isSuperAdmin) return <SuperAdminDashboard data={data} />;
-  if (role === 'teacher')  return <TeacherDashboard  data={data} feedReady={!!feed} allowed={allowed} pending={pending} />;
+  if (role === 'teacher')  return <TeacherDashboard  data={data} feedReady={!!feed} allowed={allowed} pending={pending} userId={userId} />;
 
-  return <AdminDashboard data={data} feedReady={!!feed} allowed={allowed} pending={pending} />;
+  // school_admin, principal, hod also get the punch card
+  return <AdminDashboard data={data} feedReady={!!feed} allowed={allowed} pending={pending} userId={userId} />;
 }

@@ -27,6 +27,7 @@ export async function listHomework(schoolId: string, searchParams: URLSearchPara
         total_students:          totalStudents,
         student_status:          studentSub?.status   ?? null,
         parent_note:             studentSub?.feedback ?? null,
+        attachments:             h.attachments        ?? [],
       };
     })
   );
@@ -40,7 +41,7 @@ export async function listSubmissions(homeworkId: string) {
 }
 
 export async function createHomework(schoolId: string, userId: string, body: Record<string, any>) {
-  const { class_id, subject, title, description, due_date } = body;
+  const { class_id, subject, title, description, due_date, attachments } = body;
   if (!class_id || !subject || !title || !due_date) {
     throw new AppError('class_id, subject, title, and due_date are required');
   }
@@ -56,6 +57,7 @@ export async function createHomework(schoolId: string, userId: string, body: Rec
     title,
     description: description || null,
     dueDate:     new Date(due_date),
+    attachments: Array.isArray(attachments) ? attachments : [],
   });
 }
 

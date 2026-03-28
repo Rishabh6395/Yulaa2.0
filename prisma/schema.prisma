@@ -25,6 +25,7 @@ model School {
   website               String?                @db.VarChar(200)
   boardType             String?                @map("board_type") @db.VarChar(30)
   isDefault             Boolean                @default(false) @map("is_default")
+  attendanceMode        String                 @default("class") @map("attendance_mode") @db.VarChar(20)
   latitude              Float?
   longitude             Float?
   admissionApplications AdmissionApplication[]
@@ -231,11 +232,14 @@ model Attendance {
   classId       String?  @map("class_id")
   date          DateTime @db.Date
   status        String   @db.VarChar(10)
-  markedBy      String?  @map("marked_by")
+  markedBy      String?   @map("marked_by")
   remarks       String?
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
-  updatedBy     String?  @map("updated_by")
+  punchInTime          DateTime? @map("punch_in_time")
+  punchOutTime         DateTime? @map("punch_out_time")
+  subjectAttendance    Json?     @map("subject_attendance")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy     String?   @map("updated_by")
   class         Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
   markedByUser  User?    @relation("MarkedBy", fields: [markedBy], references: [id])
   school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -315,6 +319,7 @@ model Homework {
   subject     String               @db.VarChar(100)
   title       String               @db.VarChar(200)
   description String?
+  attachments String[]
   dueDate     DateTime             @map("due_date") @db.Date
   maxMarks    Int?                 @map("max_marks")
   createdAt   DateTime             @default(now()) @map("created_at")
