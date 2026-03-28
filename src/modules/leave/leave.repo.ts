@@ -17,19 +17,21 @@ export async function findLeaveRequests(schoolId: string, userId?: string) {
   });
 }
 
-// Returns the first pending leave for a user OR for a specific student
-export async function findPendingLeave(
-  schoolId: string, userId: string, studentId: string | null,
+// Returns any existing pending/approved leave whose dates overlap with the requested range
+export async function findOverlappingLeave(
+  schoolId: string,
+  userId: string,
+  studentId: string | null,
+  startDate: Date,
+  endDate: Date,
 ) {
-  if (studentId) {
-    return prisma.leaveRequest.findFirst({
-      where: { schoolId, studentId, status: 'pending' },
-      select: { id: true, leaveType: true, startDate: true, endDate: true },
-    });
-  }
+  const base = { schoolId, status: { in: ['pending', 'approved'] as const }, startDate: { lte: endDate }, endDate: { gte: startDate } };
+  const where = studentId
+    ? { ...base, studentId }
+    : { ...base, userId, studentId: null };
   return prisma.leaveRequest.findFirst({
-    where: { schoolId, userId, status: 'pending', studentId: null },
-    select: { id: true, leaveType: true, startDate: true, endDate: true },
+    where,
+    select: { id: true, leaveType: true, startDate: true, endDate: true, status: true },
   });
 }
 

@@ -89,11 +89,15 @@ export async function submitLeaveRequest(
 
   const leaveType = leave_type || 'other';
 
-  // Block if a pending leave already exists for this user / student
-  const existing = await repo.findPendingLeave(schoolId, userId, student_id || null);
-  if (existing) {
-    const who = student_id ? 'This student already has' : 'You already have';
-    throw new AppError(`${who} a pending leave request awaiting review. Please wait for it to be actioned before submitting a new one.`);
+  // Block if any pending or approved leave overlaps with the requested dates
+  const overlap = await repo.findOverlappingLeave(
+    schoolId, userId, student_id || null,
+    new Date(start_date), new Date(end_date),
+  );
+  if (overlap) {
+    const who   = student_id ? 'This student already has' : 'You already have';
+    const label = overlap.status === 'approved' ? 'an approved' : 'a pending';
+    throw new AppError(`${who} ${label} leave for these dates. Please choose different dates.`);
   }
 
   // Validate leave type is allowed for this role (check DB first, then fallback)

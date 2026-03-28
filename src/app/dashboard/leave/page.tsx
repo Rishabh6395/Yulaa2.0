@@ -144,19 +144,6 @@ export default function LeavePage() {
   );
   const leaveTypes = (typesData?.types ?? []).map(t => ({ value: t.code, label: t.name, icon: leaveIcon(t.code) }));
 
-  // ── Pending-leave guard ───────────────────────────────────────────────────
-  // Parent: block if the active child already has a pending leave
-  const parentHasPending = isParent && activeChild
-    ? allLeaves.some((l: any) => l.student_id === activeChild.id && l.status === 'pending')
-    : false;
-
-  // Teacher: block on own-leave tab if teacher already has a pending leave
-  const teacherHasPending = isTeacher
-    ? allLeaves.some((l: any) => l.user_id === userId && l.status === 'pending')
-    : false;
-
-  const canApply = isParent ? !parentHasPending : isTeacher ? !teacherHasPending : true;
-
   // Filter leaves by tab / role
   const EMPLOYEE_ROLES = ['teacher', 'school_admin', 'principal', 'hod', 'employee'];
   const leaves = isAdmin
@@ -281,15 +268,8 @@ export default function LeavePage() {
           </p>
         </div>
         {(!isTeacher || teacherTab === 'employee') && (
-          <button
-            onClick={() => {
-              if (!canApply) return;
-              setForm({ leave_type: leaveTypes[0]?.value ?? 'other', start_date: '', end_date: '', reason: '' });
-              setShowAddModal(true);
-            }}
-            disabled={!canApply}
-            title={!canApply ? 'A leave request is already pending review' : undefined}
-            className={`btn-primary flex items-center gap-2 ${!canApply ? 'opacity-50 cursor-not-allowed' : ''}`}>
+          <button onClick={() => { setForm({ leave_type: leaveTypes[0]?.value ?? 'other', start_date: '', end_date: '', reason: '' }); setShowAddModal(true); }}
+            className="btn-primary flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             {isParent ? `Apply for ${childName}` : 'Apply Leave'}
           </button>
@@ -361,21 +341,6 @@ export default function LeavePage() {
             </div>
           )}
         </>
-      )}
-
-      {/* Pending-leave block banner */}
-      {!canApply && (isParent || (isTeacher && teacherTab === 'employee')) && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-600 dark:text-amber-400 mt-0.5 shrink-0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <div>
-            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Leave application blocked</p>
-            <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-              {isParent
-                ? `${childName} already has a leave request pending review. A new one cannot be submitted until the current request is approved, rejected, or withdrawn.`
-                : 'You already have a leave request pending review. A new one cannot be submitted until the current request is actioned.'}
-            </p>
-          </div>
-        </div>
       )}
 
       {/* Leave list */}
@@ -557,16 +522,54 @@ export default function LeavePage() {
             </div>
           </div>
 
+          {/* Inline date-conflict warning — checked against existing leaves in local data */}
+          {(() => {
+            if (!form.start_date || !form.end_date) return null;
+            const s = new Date(form.start_date);
+            const e = new Date(form.end_date);
+            const pool = isParent && activeChild
+              ? allLeaves.filter((l: any) => l.student_id === activeChild.id && ['pending', 'approved'].includes(l.status))
+              : isTeacher
+              ? allLeaves.filter((l: any) => l.user_id === userId && ['pending', 'approved'].includes(l.status))
+              : [];
+            const conflict = pool.find((l: any) => new Date(l.start_date) <= e && new Date(l.end_date) >= s);
+            if (!conflict) return null;
+            return (
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-600 dark:text-amber-400 mt-0.5 shrink-0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  A <span className="font-semibold capitalize">{conflict.status}</span> leave already exists for {formatDate(conflict.start_date)}–{formatDate(conflict.end_date)}.
+                  {' '}Please choose different dates or withdraw the existing request first.
+                </p>
+              </div>
+            );
+          })()}
+
           <div>
             <label className="label">Reason</label>
             <textarea className="input-field" rows={3} value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} placeholder="Reason for leave..." />
           </div>
 
           {saveError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{saveError}</p>}
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Submitting...' : 'Submit'}</button>
-          </div>
+          {/* Compute conflict again for submit guard */}
+          {(() => {
+            const s = form.start_date ? new Date(form.start_date) : null;
+            const e = form.end_date   ? new Date(form.end_date)   : null;
+            const pool = s && e ? (isParent && activeChild
+              ? allLeaves.filter((l: any) => l.student_id === activeChild.id && ['pending', 'approved'].includes(l.status))
+              : isTeacher
+              ? allLeaves.filter((l: any) => l.user_id === userId && ['pending', 'approved'].includes(l.status))
+              : []) : [];
+            const hasConflict = pool.some((l: any) => s && e && new Date(l.start_date) <= e && new Date(l.end_date) >= s);
+            return (
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
+                <button type="submit" disabled={saving || hasConflict} className={`btn-primary flex-1 ${hasConflict ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  {saving ? 'Submitting...' : 'Submit'}
+                </button>
+              </div>
+            );
+          })()}
         </form>
       </Modal>
 
