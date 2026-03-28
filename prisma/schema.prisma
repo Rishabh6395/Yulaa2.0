@@ -47,6 +47,7 @@ model School {
   students              Student[]
   teacherLeaveBalances  TeacherLeaveBalance[]
   teachers              Teacher[]
+  menuPermissions       MenuPermission[]
   timetables            Timetable[]
   transportRoutes       TransportRoute[]
   userRoles             UserRole[]
@@ -791,4 +792,18 @@ model TimetableSlot {
 
   @@unique([timetableId, dayOfWeek, periodNo])
   @@map("timetable_slots")
+}
+
+model MenuPermission {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  roleCode  String   @map("role_code") @db.VarChar(30)
+  menuKey   String   @map("menu_key")  @db.VarChar(50)
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, roleCode, menuKey])
+  @@index([schoolId, roleCode])
+  @@map("menu_permissions")
 }

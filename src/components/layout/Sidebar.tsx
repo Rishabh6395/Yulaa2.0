@@ -2,74 +2,115 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 
 interface MenuItem {
   label: string;
   href: string;
   icon: string;
+  key: string;   // matches the menuKey stored in MenuPermission table
 }
 
+// All possible menu items per role — key is used for permission lookup
 const menuItems: Record<string, MenuItem[]> = {
   super_admin: [
-    { label: 'School Library',         href: '/dashboard/schools',         icon: 'Building' },
-    { label: 'Default School Settings', href: '/dashboard/schools/default', icon: 'Settings' },
+    { label: 'School Library',          href: '/dashboard/schools',         icon: 'Building',        key: 'schools' },
+    { label: 'Default School Settings', href: '/dashboard/schools/default', icon: 'Settings',        key: 'schools_default' },
   ],
   school_admin: [
-    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard' },
-    { label: 'Admissions',     href: '/dashboard/admissions',    icon: 'ClipboardList' },
-    { label: 'Classes',        href: '/dashboard/classes',       icon: 'LayoutGrid' },
-    { label: 'Students',       href: '/dashboard/students',      icon: 'Users' },
-    { label: 'Teachers',       href: '/dashboard/teachers',      icon: 'GraduationCap' },
-    { label: 'Parents',        href: '/dashboard/parents',       icon: 'Heart' },
-    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck' },
-    { label: 'Fees',           href: '/dashboard/fees',          icon: 'CreditCard' },
-    { label: 'Scheduling',     href: '/dashboard/scheduling',    icon: 'CalendarDays' },
-    { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone' },
-    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar' },
-    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare' },
-    { label: 'Transport',      href: '/dashboard/transport',     icon: 'Bus' },
-    { label: 'Compliance',     href: '/dashboard/compliance',    icon: 'ShieldCheck' },
-    { label: 'Reports',        href: '/dashboard/reports',       icon: 'BarChart' },
-    { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle' },
+    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard', key: 'dashboard' },
+    { label: 'Admissions',     href: '/dashboard/admissions',    icon: 'ClipboardList',   key: 'admissions' },
+    { label: 'Classes',        href: '/dashboard/classes',       icon: 'LayoutGrid',      key: 'classes' },
+    { label: 'Students',       href: '/dashboard/students',      icon: 'Users',           key: 'students' },
+    { label: 'Teachers',       href: '/dashboard/teachers',      icon: 'GraduationCap',   key: 'teachers' },
+    { label: 'Parents',        href: '/dashboard/parents',       icon: 'Heart',           key: 'parents' },
+    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck',   key: 'attendance' },
+    { label: 'Fees',           href: '/dashboard/fees',          icon: 'CreditCard',      key: 'fees' },
+    { label: 'Scheduling',     href: '/dashboard/scheduling',    icon: 'CalendarDays',    key: 'scheduling' },
+    { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone',       key: 'announcements' },
+    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar',        key: 'leave' },
+    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare',   key: 'queries' },
+    { label: 'Transport',      href: '/dashboard/transport',     icon: 'Bus',             key: 'transport' },
+    { label: 'Compliance',     href: '/dashboard/compliance',    icon: 'ShieldCheck',     key: 'compliance' },
+    { label: 'Reports',        href: '/dashboard/reports',       icon: 'BarChart',        key: 'reports' },
+    { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle',      key: 'settings' },
   ],
   teacher: [
-    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard' },
-    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck' },
-    { label: 'Performance',    href: '/dashboard/performance',   icon: 'TrendingUp' },
-    { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen' },
-    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar' },
-    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare' },
-    { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle' },
+    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard', key: 'dashboard' },
+    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck',   key: 'attendance' },
+    { label: 'Performance',    href: '/dashboard/performance',   icon: 'TrendingUp',      key: 'performance' },
+    { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen',        key: 'homework' },
+    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar',        key: 'leave' },
+    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare',   key: 'queries' },
+    { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle',      key: 'settings' },
   ],
   student: [
-    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard' },
-    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck' },
-    { label: 'Fees',           href: '/dashboard/fees',          icon: 'CreditCard' },
-    { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen' },
-    { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone' },
-    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare' },
+    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard', key: 'dashboard' },
+    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck',   key: 'attendance' },
+    { label: 'Fees',           href: '/dashboard/fees',          icon: 'CreditCard',      key: 'fees' },
+    { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen',        key: 'homework' },
+    { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone',       key: 'announcements' },
+    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare',   key: 'queries' },
   ],
   parent: [
-    { label: 'Dashboard',        href: '/dashboard',               icon: 'LayoutDashboard' },
-    { label: 'Attendance',       href: '/dashboard/attendance',    icon: 'CalendarCheck' },
-    { label: 'Fees',             href: '/dashboard/fees',          icon: 'CreditCard' },
-    { label: 'Performance',      href: '/dashboard/performance',   icon: 'TrendingUp' },
-    { label: 'Homework',         href: '/dashboard/homework',      icon: 'BookOpen' },
-    { label: 'Announcements',    href: '/dashboard/announcements', icon: 'Megaphone' },
-    { label: 'Leave',            href: '/dashboard/leave',         icon: 'Calendar' },
-    { label: 'Queries',          href: '/dashboard/queries',       icon: 'MessageSquare' },
-    { label: 'Career Sessions',  href: '/dashboard/sessions',      icon: 'Briefcase' },
-    { label: 'Online Classes',   href: '/dashboard/online-classes',icon: 'Monitor' },
-    { label: 'Transport',        href: '/dashboard/transport',     icon: 'Bus' },
+    { label: 'Dashboard',       href: '/dashboard',                icon: 'LayoutDashboard', key: 'dashboard' },
+    { label: 'Attendance',      href: '/dashboard/attendance',     icon: 'CalendarCheck',   key: 'attendance' },
+    { label: 'Fees',            href: '/dashboard/fees',           icon: 'CreditCard',      key: 'fees' },
+    { label: 'Performance',     href: '/dashboard/performance',    icon: 'TrendingUp',      key: 'performance' },
+    { label: 'Homework',        href: '/dashboard/homework',       icon: 'BookOpen',        key: 'homework' },
+    { label: 'Announcements',   href: '/dashboard/announcements',  icon: 'Megaphone',       key: 'announcements' },
+    { label: 'Leave',           href: '/dashboard/leave',          icon: 'Calendar',        key: 'leave' },
+    { label: 'Queries',         href: '/dashboard/queries',        icon: 'MessageSquare',   key: 'queries' },
+    { label: 'Career Sessions', href: '/dashboard/sessions',       icon: 'Briefcase',       key: 'sessions' },
+    { label: 'Online Classes',  href: '/dashboard/online-classes', icon: 'Monitor',         key: 'online_classes' },
+    { label: 'Transport',       href: '/dashboard/transport',      icon: 'Bus',             key: 'transport' },
+  ],
+  // HOD and Principal use school_admin items but filtered by their own permissions
+  hod: [
+    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard', key: 'dashboard' },
+    { label: 'Students',       href: '/dashboard/students',      icon: 'Users',           key: 'students' },
+    { label: 'Teachers',       href: '/dashboard/teachers',      icon: 'GraduationCap',   key: 'teachers' },
+    { label: 'Classes',        href: '/dashboard/classes',       icon: 'LayoutGrid',      key: 'classes' },
+    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck',   key: 'attendance' },
+    { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen',        key: 'homework' },
+    { label: 'Performance',    href: '/dashboard/performance',   icon: 'TrendingUp',      key: 'performance' },
+    { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone',       key: 'announcements' },
+    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar',        key: 'leave' },
+    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare',   key: 'queries' },
+    { label: 'Reports',        href: '/dashboard/reports',       icon: 'BarChart',        key: 'reports' },
+    { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle',      key: 'settings' },
+  ],
+  principal: [
+    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard', key: 'dashboard' },
+    { label: 'Admissions',     href: '/dashboard/admissions',    icon: 'ClipboardList',   key: 'admissions' },
+    { label: 'Classes',        href: '/dashboard/classes',       icon: 'LayoutGrid',      key: 'classes' },
+    { label: 'Students',       href: '/dashboard/students',      icon: 'Users',           key: 'students' },
+    { label: 'Teachers',       href: '/dashboard/teachers',      icon: 'GraduationCap',   key: 'teachers' },
+    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck',   key: 'attendance' },
+    { label: 'Fees',           href: '/dashboard/fees',          icon: 'CreditCard',      key: 'fees' },
+    { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone',       key: 'announcements' },
+    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar',        key: 'leave' },
+    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare',   key: 'queries' },
+    { label: 'Transport',      href: '/dashboard/transport',     icon: 'Bus',             key: 'transport' },
+    { label: 'Compliance',     href: '/dashboard/compliance',    icon: 'ShieldCheck',     key: 'compliance' },
+    { label: 'Reports',        href: '/dashboard/reports',       icon: 'BarChart',        key: 'reports' },
+    { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle',      key: 'settings' },
+  ],
+  employee: [
+    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard', key: 'dashboard' },
+    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck',   key: 'attendance' },
+    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar',        key: 'leave' },
+    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare',   key: 'queries' },
+    { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle',      key: 'settings' },
   ],
   vendor: [
-    { label: 'Dashboard', href: '/dashboard',           icon: 'LayoutDashboard' },
-    { label: 'Inventory', href: '/dashboard/inventory', icon: 'ShoppingBag' },
+    { label: 'Dashboard', href: '/dashboard',           icon: 'LayoutDashboard', key: 'dashboard' },
+    { label: 'Inventory', href: '/dashboard/inventory', icon: 'ShoppingBag',     key: 'inventory' },
   ],
   consultant: [
-    { label: 'Dashboard',      href: '/dashboard',           icon: 'LayoutDashboard' },
-    { label: 'Career Sessions',href: '/dashboard/sessions',  icon: 'Briefcase' },
-    { label: 'My Contract',    href: '/dashboard/contracts', icon: 'FileText' },
+    { label: 'Dashboard',       href: '/dashboard',           icon: 'LayoutDashboard', key: 'dashboard' },
+    { label: 'Career Sessions', href: '/dashboard/sessions',  icon: 'Briefcase',       key: 'sessions' },
+    { label: 'My Contract',     href: '/dashboard/contracts', icon: 'FileText',        key: 'contracts' },
   ],
 };
 
@@ -234,6 +275,10 @@ const roleLabels: Record<string, string> = {
   school_admin: 'School Admin',
   teacher:      'Teacher',
   parent:       'Parent',
+  student:      'Student',
+  hod:          'Head of Department',
+  principal:    'Principal',
+  employee:     'Employee',
   vendor:       'Vendor',
   consultant:   'Consultant',
 };
@@ -242,6 +287,34 @@ export default function Sidebar({ user, collapsed }: SidebarProps) {
   const pathname = usePathname();
   const role  = user?.primaryRole || 'school_admin';
   const items = menuItems[role] || menuItems.school_admin;
+
+  const [allowedKeys, setAllowedKeys] = useState<string[] | null>(null);
+
+  // Clear any previously-cached stale permission keys on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      Object.keys(sessionStorage)
+        .filter(k => k.startsWith('menu_perms_'))
+        .forEach(k => sessionStorage.removeItem(k));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // super_admin menu is not school-specific, skip permission filtering
+    if (role === 'super_admin') { setAllowedKeys(null); return; }
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch('/api/menu-permissions', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { setAllowedKeys(Array.isArray(d.menuKeys) ? d.menuKeys : null); })
+      .catch(() => setAllowedKeys(null));
+  }, [role]);
+
+  // null = no filter applied (fallback: show all items)
+  const visibleItems = allowedKeys === null
+    ? items
+    : items.filter(item => allowedKeys.includes(item.key));
 
   return (
     <aside
@@ -275,7 +348,7 @@ export default function Sidebar({ user, collapsed }: SidebarProps) {
         className="p-3 space-y-0.5 overflow-y-auto"
         style={{ height: 'calc(100vh - 64px - 80px)' }}
       >
-        {items.map((item) => {
+        {visibleItems.map((item) => {
           const isActive =
             pathname === item.href ||
             (item.href !== '/dashboard' && pathname.startsWith(item.href));

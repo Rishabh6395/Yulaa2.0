@@ -95,7 +95,7 @@ function SectionCard({ children, className = '' }: { children: React.ReactNode; 
 
 // ── Admin dashboard ──────────────────────────────────────────────────────────
 
-function AdminDashboard({ data, feedReady = true }: { data: any; feedReady?: boolean }) {
+function AdminDashboard({ data, feedReady = true, allowed }: { data: any; feedReady?: boolean; allowed: Set<string> }) {
   const stats         = data?.stats;
   const announcements = data?.recentAnnouncements || [];
 
@@ -200,10 +200,10 @@ function AdminDashboard({ data, feedReady = true }: { data: any; feedReady?: boo
         </SectionCard>
       </div>
 
-      {/* Feed row — announcements only for admin */}
-      {feedReady
+      {/* Feed row — announcements only if permitted */}
+      {allowed.has('announcements') && (feedReady
         ? <AnnouncementsCard announcements={announcements} />
-        : <FeedSkeleton />}
+        : <FeedSkeleton />)}
     </div>
   );
 }
@@ -225,7 +225,7 @@ const HW_SUBMISSION_CFG: Record<string, { label: string; cls: string }> = {
   pending:   { label: 'Pending',   cls: 'text-surface-400 dark:text-gray-500' },
 };
 
-function ParentDashboard({ data, childName, feedReady = true }: { data: any; childName: string; feedReady?: boolean }) {
+function ParentDashboard({ data, childName, feedReady = true, allowed }: { data: any; childName: string; feedReady?: boolean; allowed: Set<string> }) {
   const { stats, recentAnnouncements: announcements = [], recentHomework: homework = [] } = data;
   const todayCfg = stats?.todayStatus ? TODAY_STATUS_CFG[stats.todayStatus] : null;
   const att  = stats?.monthAttendance;
@@ -297,46 +297,48 @@ function ParentDashboard({ data, childName, feedReady = true }: { data: any; chi
         </div>
       </div>
 
-      {feedReady ? (
+      {(allowed.has('homework') || allowed.has('announcements')) && (feedReady ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Upcoming homework */}
-          <SectionCard>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Upcoming Homework</h3>
-              <a href="/dashboard/homework" className="text-xs text-brand-500 dark:text-brand-400 font-medium hover:underline">View all</a>
-            </div>
-            <div className="space-y-3">
-              {homework.length === 0 && <p className="text-sm text-surface-400 dark:text-gray-500">No pending homework.</p>}
-              {homework.map((hw: any) => {
-                const subCfg    = HW_SUBMISSION_CFG[hw.submission_status] || HW_SUBMISSION_CFG.pending;
-                const isOverdue = hw.submission_status !== 'submitted' && hw.submission_status !== 'graded' && new Date(hw.due_date) < new Date();
-                return (
-                  <div key={hw.id} className="flex gap-3 p-3 rounded-xl hover:bg-surface-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${isOverdue ? 'bg-red-50 dark:bg-red-950/50 text-red-500 dark:text-red-400' : 'bg-brand-50 dark:bg-brand-950/50 text-brand-500 dark:text-brand-400'}`}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-                      </svg>
+          {/* Upcoming homework — only if permitted */}
+          {allowed.has('homework') && (
+            <SectionCard>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Upcoming Homework</h3>
+                <a href="/dashboard/homework" className="text-xs text-brand-500 dark:text-brand-400 font-medium hover:underline">View all</a>
+              </div>
+              <div className="space-y-3">
+                {homework.length === 0 && <p className="text-sm text-surface-400 dark:text-gray-500">No pending homework.</p>}
+                {homework.map((hw: any) => {
+                  const subCfg    = HW_SUBMISSION_CFG[hw.submission_status] || HW_SUBMISSION_CFG.pending;
+                  const isOverdue = hw.submission_status !== 'submitted' && hw.submission_status !== 'graded' && new Date(hw.due_date) < new Date();
+                  return (
+                    <div key={hw.id} className="flex gap-3 p-3 rounded-xl hover:bg-surface-50 dark:hover:bg-gray-800/50 transition-colors">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${isOverdue ? 'bg-red-50 dark:bg-red-950/50 text-red-500 dark:text-red-400' : 'bg-brand-50 dark:bg-brand-950/50 text-brand-500 dark:text-brand-400'}`}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{hw.title}</p>
+                        <p className="text-xs text-surface-400 dark:text-gray-500 mt-0.5">
+                          {hw.subject} · Due {new Date(hw.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </p>
+                        <p className={`text-xs font-medium mt-0.5 ${isOverdue ? 'text-red-500 dark:text-red-400' : subCfg.cls}`}>
+                          {isOverdue ? 'Overdue' : subCfg.label}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{hw.title}</p>
-                      <p className="text-xs text-surface-400 dark:text-gray-500 mt-0.5">
-                        {hw.subject} · Due {new Date(hw.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                      </p>
-                      <p className={`text-xs font-medium mt-0.5 ${isOverdue ? 'text-red-500 dark:text-red-400' : subCfg.cls}`}>
-                        {isOverdue ? 'Overdue' : subCfg.label}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </SectionCard>
+                  );
+                })}
+              </div>
+            </SectionCard>
+          )}
 
-          <AnnouncementsCard announcements={announcements} />
+          {allowed.has('announcements') && <AnnouncementsCard announcements={announcements} />}
         </div>
       ) : (
         <FeedSkeleton />
-      )}
+      ))}
     </div>
   );
 }
@@ -428,7 +430,7 @@ function SuperAdminDashboard({ data }: { data: any }) {
 
 // ── Teacher dashboard ─────────────────────────────────────────────────────────
 
-function TeacherDashboard({ data, feedReady = true }: { data: any; feedReady?: boolean }) {
+function TeacherDashboard({ data, feedReady = true, allowed }: { data: any; feedReady?: boolean; allowed: Set<string> }) {
   const stats         = data?.stats;
   const allAnnouncements = data?.recentAnnouncements || [];
   // Filter announcements relevant to teacher role (all/teacher audience)
@@ -477,12 +479,12 @@ function TeacherDashboard({ data, feedReady = true }: { data: any; feedReady?: b
             total  ={stats?.todayAttendance?.total   || 0}
           />
         </SectionCard>
-        {feedReady
+        {allowed.has('announcements') && (feedReady
           ? <AnnouncementsCard announcements={announcements} />
           : <div className="card p-6 space-y-3">
               <div className="h-4 w-32 bg-surface-100 dark:bg-gray-800 rounded animate-pulse"/>
               {[1,2,3].map(i => <div key={i} className="h-12 bg-surface-100 dark:bg-gray-800 rounded-xl animate-pulse"/>)}
-            </div>}
+            </div>)}
       </div>
     </div>
   );
@@ -554,12 +556,33 @@ function LoadingSkeleton() {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
+// Default allowed keys used as fallback before permissions load (show everything)
+const ALL_KEYS = new Set([
+  'dashboard','admissions','classes','students','teachers','parents','attendance',
+  'fees','scheduling','homework','performance','announcements','leave','queries',
+  'transport','compliance','reports','settings',
+]);
+
 export default function DashboardPage() {
-  const [stats,       setStats]       = useState<any>(null);   // renders first
-  const [feed,        setFeed]        = useState<any>(null);   // renders after stats paint
+  const [stats,       setStats]       = useState<any>(null);
+  const [feed,        setFeed]        = useState<any>(null);
   const [role,        setRole]        = useState<string | null>(null);
   const [activeChild, setActiveChild] = useState<any>(null);
   const [isParent,    setIsParent]    = useState(false);
+  const [allowed,     setAllowed]     = useState<Set<string>>(ALL_KEYS);
+
+  // Fetch menu permissions once on mount
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const userRaw = localStorage.getItem('user');
+    const role = userRaw ? (JSON.parse(userRaw).primaryRole ?? '') : '';
+    if (role === 'super_admin') return; // super admin has no school-specific restrictions
+    fetch('/api/menu-permissions', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d.menuKeys)) setAllowed(new Set(d.menuKeys)); })
+      .catch(() => {}); // keep ALL_KEYS on error
+  }, []);
 
   const fetchDashboard = useCallback((child: any) => {
     setStats(null);
@@ -626,11 +649,11 @@ export default function DashboardPage() {
   if (isParent) {
     if (!activeChild) return <NoChildPrompt />;
     const childName = `${activeChild.first_name} ${activeChild.last_name}`;
-    return <ParentDashboard data={data || {}} childName={childName} feedReady={!!feed} />;
+    return <ParentDashboard data={data || {}} childName={childName} feedReady={!!feed} allowed={allowed} />;
   }
 
   if (data?.isSuperAdmin) return <SuperAdminDashboard data={data} />;
-  if (role === 'teacher')  return <TeacherDashboard  data={data} feedReady={!!feed} />;
+  if (role === 'teacher')  return <TeacherDashboard  data={data} feedReady={!!feed} allowed={allowed} />;
 
-  return <AdminDashboard data={data} feedReady={!!feed} />;
+  return <AdminDashboard data={data} feedReady={!!feed} allowed={allowed} />;
 }
