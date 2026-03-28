@@ -24,6 +24,7 @@ function validateAadhaar(no: string): boolean {
 }
 
 function gradeKey(classApplying: string): string {
+  if (!classApplying) return '';
   const lower = classApplying.toLowerCase().replace(/grade\s*/i, '').trim();
   return lower;
 }

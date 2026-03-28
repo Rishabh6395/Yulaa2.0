@@ -110,6 +110,7 @@ export default function LeavePage() {
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
   const user    = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
   const role    = user.primaryRole ?? '';
+  const userId  = user.id ?? '';
   const isAdmin   = ['school_admin', 'super_admin', 'principal', 'hod'].includes(role);
   const isTeacher = role === 'teacher';
   const isParent  = role === 'parent';
@@ -145,6 +146,7 @@ export default function LeavePage() {
     ? activeTab === 'student'  ? allLeaves.filter(l => l.role_code === 'parent')
     : activeTab === 'employee' ? allLeaves.filter(l => EMPLOYEE_ROLES.includes(l.role_code))
     : allLeaves
+    : isTeacher ? allLeaves.filter(l => l.user_id === userId || l.status === 'pending')
     : allLeaves;
 
   // Determine current workflow steps for a leave
@@ -158,7 +160,7 @@ export default function LeavePage() {
     if (!isAdmin && !isTeacher) return false;
     if (leave.status !== 'pending') return false;
     const steps = getWorkflowSteps(leave);
-    if (!steps.length) return isAdmin; // no workflow = admin can approve directly
+    if (!steps.length) return true; // no workflow = any reviewer (admin or teacher) can approve
     const step = steps[leave.current_step];
     if (!step) return false;
     if (step.approver_role && step.approver_role !== role) return false;
@@ -312,8 +314,8 @@ export default function LeavePage() {
                     <span className="text-xs text-surface-400 self-center">Awaiting step {l.current_step + 1}</span>
                   )}
 
-                  {/* Withdraw (submitter — pending only) */}
-                  {(isParent || isTeacher) && l.status === 'pending' && (
+                  {/* Leave Assign Back — parent only */}
+                  {isParent && l.status === 'pending' && (
                     <button
                       onClick={() => handleWithdraw(l.id)}
                       disabled={withdrawing === l.id}
@@ -322,9 +324,19 @@ export default function LeavePage() {
                       {withdrawing === l.id ? 'Assigning back…' : 'Leave Assign Back'}
                     </button>
                   )}
+                  {/* Withdraw — teacher's own pending leaves only */}
+                  {isTeacher && l.status === 'pending' && l.user_id === userId && (
+                    <button
+                      onClick={() => handleWithdraw(l.id)}
+                      disabled={withdrawing === l.id}
+                      className="text-xs bg-red-50 dark:bg-red-950/30 text-red-600 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-lg hover:bg-red-100 font-medium transition-colors disabled:opacity-60"
+                    >
+                      {withdrawing === l.id ? 'Withdrawing…' : 'Withdraw'}
+                    </button>
+                  )}
 
-                  {/* Resubmit (submitter — rejected or withdrawn) */}
-                  {(isParent || isTeacher) && ['rejected', 'withdrawn'].includes(l.status) && (
+                  {/* Resubmit (submitter's own rejected/withdrawn leaves only) */}
+                  {(isParent || (isTeacher && l.user_id === userId)) && ['rejected', 'withdrawn'].includes(l.status) && (
                     <button
                       onClick={() => handleResubmit(l)}
                       className="text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-600 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-lg hover:bg-amber-100 font-medium transition-colors"

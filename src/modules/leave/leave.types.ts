@@ -1,5 +1,6 @@
 export interface LeaveRow {
   id:               string;
+  user_id:          string;
   role_code:        string;
   leave_type:       string;
   start_date:       Date;

@@ -32,6 +32,7 @@ export async function listLeaveRequests(
     id:               lr.id,
     role_code:        lr.roleCode,
     leave_type:       lr.leaveType || 'other',
+    user_id:          lr.userId,
     start_date:       lr.startDate,
     end_date:         lr.endDate,
     reason:           lr.reason,

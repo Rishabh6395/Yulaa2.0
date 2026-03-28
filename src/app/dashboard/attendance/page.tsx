@@ -218,20 +218,27 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
 
   const saveAttendance = async () => {
     setSaving(true); setMessage('');
-    const res = await fetch('/api/attendance', {
-      method: 'POST', headers,
-      body: JSON.stringify({
-        type: 'employee',
-        records: [{ user_id: userId, status }],
-        date,
-      }),
-    });
-    if (res.ok) {
-      setMessage('Attendance saved!');
-      fetchCalendar();
-      setTimeout(() => setMessage(''), 3000);
+    try {
+      const res = await fetch('/api/attendance', {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          type: 'employee',
+          records: [{ user_id: userId, status }],
+          date,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setMessage('✓ Attendance saved!');
+        fetchCalendar();
+      } else {
+        setMessage(`Error: ${body.error || 'Failed to save attendance'}`);
+      }
+    } catch {
+      setMessage('Error: Network error. Please try again.');
     }
     setSaving(false);
+    setTimeout(() => setMessage(''), 4000);
   };
 
   const [year, mon] = month.split('-').map(Number);
@@ -252,7 +259,8 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
         <div className="flex flex-wrap gap-4 items-end">
           <div>
             <label className="label">Date</label>
-            <input type="date" className="input-field" value={date} onChange={e => setDate(e.target.value)} max={today.toISOString().split('T')[0]} />
+            <input type="date" className="input-field bg-surface-50 cursor-not-allowed" value={date} readOnly
+              min={today.toISOString().split('T')[0]} max={today.toISOString().split('T')[0]} />
           </div>
           <div>
             <label className="label">Status</label>
@@ -273,7 +281,11 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
           <button onClick={saveAttendance} disabled={saving} className="btn-primary">
             {saving ? 'Saving…' : 'Save'}
           </button>
-          {message && <span className="text-sm text-emerald-600 font-medium">{message}</span>}
+          {message && (
+            <span className={`text-sm font-medium ${message.startsWith('Error') ? 'text-red-600' : 'text-emerald-600'}`}>
+              {message}
+            </span>
+          )}
         </div>
       </div>
 
