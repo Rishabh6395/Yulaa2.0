@@ -95,7 +95,7 @@ function SectionCard({ children, className = '' }: { children: React.ReactNode; 
 
 // ── Admin dashboard ──────────────────────────────────────────────────────────
 
-function AdminDashboard({ data }: { data: any }) {
+function AdminDashboard({ data, feedReady = true }: { data: any; feedReady?: boolean }) {
   const stats         = data?.stats;
   const announcements = data?.recentAnnouncements || [];
 
@@ -201,7 +201,9 @@ function AdminDashboard({ data }: { data: any }) {
       </div>
 
       {/* Feed row — announcements only for admin */}
-      <AnnouncementsCard announcements={announcements} />
+      {feedReady
+        ? <AnnouncementsCard announcements={announcements} />
+        : <FeedSkeleton />}
     </div>
   );
 }
@@ -223,7 +225,7 @@ const HW_SUBMISSION_CFG: Record<string, { label: string; cls: string }> = {
   pending:   { label: 'Pending',   cls: 'text-surface-400 dark:text-gray-500' },
 };
 
-function ParentDashboard({ data, childName }: { data: any; childName: string }) {
+function ParentDashboard({ data, childName, feedReady = true }: { data: any; childName: string; feedReady?: boolean }) {
   const { stats, recentAnnouncements: announcements = [], recentHomework: homework = [] } = data;
   const todayCfg = stats?.todayStatus ? TODAY_STATUS_CFG[stats.todayStatus] : null;
   const att  = stats?.monthAttendance;
@@ -295,42 +297,46 @@ function ParentDashboard({ data, childName }: { data: any; childName: string }) 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Upcoming homework */}
-        <SectionCard>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Upcoming Homework</h3>
-            <a href="/dashboard/homework" className="text-xs text-brand-500 dark:text-brand-400 font-medium hover:underline">View all</a>
-          </div>
-          <div className="space-y-3">
-            {homework.length === 0 && <p className="text-sm text-surface-400 dark:text-gray-500">No pending homework.</p>}
-            {homework.map((hw: any) => {
-              const subCfg   = HW_SUBMISSION_CFG[hw.submission_status] || HW_SUBMISSION_CFG.pending;
-              const isOverdue = hw.submission_status !== 'submitted' && hw.submission_status !== 'graded' && new Date(hw.due_date) < new Date();
-              return (
-                <div key={hw.id} className="flex gap-3 p-3 rounded-xl hover:bg-surface-50 dark:hover:bg-gray-800/50 transition-colors">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${isOverdue ? 'bg-red-50 dark:bg-red-950/50 text-red-500 dark:text-red-400' : 'bg-brand-50 dark:bg-brand-950/50 text-brand-500 dark:text-brand-400'}`}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-                    </svg>
+      {feedReady ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Upcoming homework */}
+          <SectionCard>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Upcoming Homework</h3>
+              <a href="/dashboard/homework" className="text-xs text-brand-500 dark:text-brand-400 font-medium hover:underline">View all</a>
+            </div>
+            <div className="space-y-3">
+              {homework.length === 0 && <p className="text-sm text-surface-400 dark:text-gray-500">No pending homework.</p>}
+              {homework.map((hw: any) => {
+                const subCfg    = HW_SUBMISSION_CFG[hw.submission_status] || HW_SUBMISSION_CFG.pending;
+                const isOverdue = hw.submission_status !== 'submitted' && hw.submission_status !== 'graded' && new Date(hw.due_date) < new Date();
+                return (
+                  <div key={hw.id} className="flex gap-3 p-3 rounded-xl hover:bg-surface-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${isOverdue ? 'bg-red-50 dark:bg-red-950/50 text-red-500 dark:text-red-400' : 'bg-brand-50 dark:bg-brand-950/50 text-brand-500 dark:text-brand-400'}`}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{hw.title}</p>
+                      <p className="text-xs text-surface-400 dark:text-gray-500 mt-0.5">
+                        {hw.subject} · Due {new Date(hw.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      </p>
+                      <p className={`text-xs font-medium mt-0.5 ${isOverdue ? 'text-red-500 dark:text-red-400' : subCfg.cls}`}>
+                        {isOverdue ? 'Overdue' : subCfg.label}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{hw.title}</p>
-                    <p className="text-xs text-surface-400 dark:text-gray-500 mt-0.5">
-                      {hw.subject} · Due {new Date(hw.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                    </p>
-                    <p className={`text-xs font-medium mt-0.5 ${isOverdue ? 'text-red-500 dark:text-red-400' : subCfg.cls}`}>
-                      {isOverdue ? 'Overdue' : subCfg.label}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </SectionCard>
+                );
+              })}
+            </div>
+          </SectionCard>
 
-        <AnnouncementsCard announcements={announcements} />
-      </div>
+          <AnnouncementsCard announcements={announcements} />
+        </div>
+      ) : (
+        <FeedSkeleton />
+      )}
     </div>
   );
 }
@@ -422,7 +428,7 @@ function SuperAdminDashboard({ data }: { data: any }) {
 
 // ── Teacher dashboard ─────────────────────────────────────────────────────────
 
-function TeacherDashboard({ data }: { data: any }) {
+function TeacherDashboard({ data, feedReady = true }: { data: any; feedReady?: boolean }) {
   const stats         = data?.stats;
   const allAnnouncements = data?.recentAnnouncements || [];
   // Filter announcements relevant to teacher role (all/teacher audience)
@@ -471,7 +477,12 @@ function TeacherDashboard({ data }: { data: any }) {
             total  ={stats?.todayAttendance?.total   || 0}
           />
         </SectionCard>
-        <AnnouncementsCard announcements={announcements} />
+        {feedReady
+          ? <AnnouncementsCard announcements={announcements} />
+          : <div className="card p-6 space-y-3">
+              <div className="h-4 w-32 bg-surface-100 dark:bg-gray-800 rounded animate-pulse"/>
+              {[1,2,3].map(i => <div key={i} className="h-12 bg-surface-100 dark:bg-gray-800 rounded-xl animate-pulse"/>)}
+            </div>}
       </div>
     </div>
   );
@@ -498,22 +509,45 @@ function NoChildPrompt() {
   );
 }
 
-// ── Loading skeleton ──────────────────────────────────────────────────────────
+// ── Skeletons ─────────────────────────────────────────────────────────────────
+
+function StatsSkeleton({ cols = 3 }: { cols?: number }) {
+  return (
+    <div className={`grid grid-cols-1 sm:grid-cols-${cols} gap-4`}>
+      {Array.from({ length: cols }).map((_, i) => (
+        <div key={i} className="card p-5 h-28 animate-pulse bg-surface-100 dark:bg-gray-800"/>
+      ))}
+    </div>
+  );
+}
+
+function FeedSkeleton() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {[1, 2].map(i => (
+        <div key={i} className="card p-6 space-y-3">
+          <div className="h-4 w-32 bg-surface-100 dark:bg-gray-800 rounded animate-pulse"/>
+          {[1, 2, 3].map(j => (
+            <div key={j} className="flex gap-3 animate-pulse">
+              <div className="w-10 h-10 rounded-lg bg-surface-100 dark:bg-gray-800 shrink-0"/>
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3 bg-surface-100 dark:bg-gray-800 rounded w-3/4"/>
+                <div className="h-2.5 bg-surface-100 dark:bg-gray-800 rounded w-1/2"/>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function LoadingSkeleton() {
   return (
     <div className="space-y-6">
       <div className="h-8 w-48 bg-surface-200 dark:bg-gray-800 rounded-lg animate-pulse"/>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1,2,3,4].map(i => (
-          <div key={i} className="card p-5 h-28 animate-pulse bg-surface-100 dark:bg-gray-800"/>
-        ))}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {[1,2].map(i => (
-          <div key={i} className="card p-6 h-48 animate-pulse bg-surface-100 dark:bg-gray-800"/>
-        ))}
-      </div>
+      <StatsSkeleton cols={3} />
+      <FeedSkeleton />
     </div>
   );
 }
@@ -521,19 +555,37 @@ function LoadingSkeleton() {
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const [data,        setData]        = useState<any>(null);
-  const [loading,     setLoading]     = useState(true);
+  const [stats,       setStats]       = useState<any>(null);   // renders first
+  const [feed,        setFeed]        = useState<any>(null);   // renders after stats paint
+  const [role,        setRole]        = useState<string | null>(null);
   const [activeChild, setActiveChild] = useState<any>(null);
   const [isParent,    setIsParent]    = useState(false);
 
   const fetchDashboard = useCallback((child: any) => {
-    setLoading(true);
+    setStats(null);
+    setFeed(null);
     const token = localStorage.getItem('token');
     const url   = child ? `/api/dashboard?student_id=${child.id}` : '/api/dashboard';
+
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(d => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then(d => {
+        // Phase 1 — render stat cards immediately
+        setStats(d);
+        setRole(d?.role ?? null);
+
+        // Phase 2 — render feed items on next animation frame (after stats paint)
+        requestAnimationFrame(() => {
+          setFeed({
+            recentAnnouncements: d?.recentAnnouncements ?? [],
+            recentHomework:      d?.recentHomework      ?? [],
+          });
+        });
+      })
+      .catch(() => {
+        setStats({});
+        setFeed({ recentAnnouncements: [], recentHomework: [] });
+      });
   }, []);
 
   useEffect(() => {
@@ -566,16 +618,19 @@ export default function DashboardPage() {
     return () => window.removeEventListener('activeChildChanged', handler);
   }, [fetchDashboard]);
 
-  if (loading) return <LoadingSkeleton />;
+  // Merge stats + feed into a single data object each render
+  const data = stats ? { ...stats, ...(feed ?? {}) } : null;
+
+  if (!stats) return <LoadingSkeleton />;
 
   if (isParent) {
     if (!activeChild) return <NoChildPrompt />;
     const childName = `${activeChild.first_name} ${activeChild.last_name}`;
-    return <ParentDashboard data={data || {}} childName={childName} />;
+    return <ParentDashboard data={data || {}} childName={childName} feedReady={!!feed} />;
   }
 
   if (data?.isSuperAdmin) return <SuperAdminDashboard data={data} />;
-  if (data?.role === 'teacher') return <TeacherDashboard data={data || {}} />;
+  if (role === 'teacher')  return <TeacherDashboard  data={data} feedReady={!!feed} />;
 
-  return <AdminDashboard data={data || {}} />;
+  return <AdminDashboard data={data} feedReady={!!feed} />;
 }
