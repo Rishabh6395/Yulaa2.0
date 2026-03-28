@@ -18,6 +18,9 @@ const IDs = {
     student:     '00000000-0000-0000-0000-000000000005',
     vendor:      '00000000-0000-0000-0000-000000000006',
     consultant:  '00000000-0000-0000-0000-000000000007',
+    employee:    '00000000-0000-0000-0000-000000000008',
+    hod:         '00000000-0000-0000-0000-000000000009',
+    principal:   '00000000-0000-0000-0000-000000000010',
   },
   schools: {
     dps:    '10000000-0000-0000-0000-000000000001',
@@ -84,6 +87,9 @@ async function seed() {
     { id: IDs.roles.student,     code: 'student',      displayName: 'Student',        description: 'Student' },
     { id: IDs.roles.vendor,      code: 'vendor',       displayName: 'Vendor',         description: 'Accessories vendor' },
     { id: IDs.roles.consultant,  code: 'consultant',   displayName: 'Consultant',     description: 'Career consultant' },
+    { id: IDs.roles.employee,    code: 'employee',     displayName: 'Employee',       description: 'School employee (Teacher, HOD, Principal, Admin)' },
+    { id: IDs.roles.hod,         code: 'hod',          displayName: 'HOD',            description: 'Head of Department' },
+    { id: IDs.roles.principal,   code: 'principal',    displayName: 'Principal',      description: 'School Principal' },
   ];
   for (const role of roles) {
     await prisma.role.upsert({ where: { code: role.code }, update: {}, create: role });

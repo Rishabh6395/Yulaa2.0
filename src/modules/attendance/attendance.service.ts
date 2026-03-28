@@ -1,5 +1,6 @@
 import { AppError } from '@/utils/errors';
 import { parseCSV, generateCSV, type CSVField } from '@/services/upload.service';
+import prisma from '@/lib/prisma';
 import * as repo from './attendance.repo';
 
 // ── Shared CSV field definition for attendance ────────────────────────────────
@@ -90,10 +91,44 @@ export async function bulkUploadAttendance(
 }
 
 export async function getAttendance(schoolId: string, searchParams: URLSearchParams) {
-  const dateStr   = searchParams.get('date')       || new Date().toISOString().split('T')[0];
-  const classId   = searchParams.get('class_id');
-  const studentId = searchParams.get('student_id');
-  const month     = searchParams.get('month'); // YYYY-MM
+  const dateStr        = searchParams.get('date')            || new Date().toISOString().split('T')[0];
+  const classId        = searchParams.get('class_id');
+  const studentId      = searchParams.get('student_id');
+  const month          = searchParams.get('month'); // YYYY-MM
+  const type           = searchParams.get('type');  // 'employee'
+  const teacherUserId  = searchParams.get('teacher_user_id');
+
+  // ── Employee attendance ──────────────────────────────────────────────────────
+  if (type === 'employee') {
+    const date = new Date(dateStr);
+    date.setUTCHours(0, 0, 0, 0);
+
+    // Monthly view for one teacher (self)
+    if (teacherUserId && month) {
+      const [year, monthNum] = month.split('-').map(Number);
+      const firstDay = new Date(year, monthNum - 1, 1);
+      const lastDay  = new Date(year, monthNum, 0);
+      const teacher = await prisma.teacher.findFirst({
+        where: { userId: teacherUserId, schoolId },
+        select: { id: true },
+      });
+      if (!teacher) return { attendance: [], teacher_id: null };
+      const attendance = await repo.findTeacherMonthlyAttendance(teacher.id, firstDay, lastDay);
+      return { attendance, teacher_id: teacher.id };
+    }
+
+    // Admin: all teachers for a date
+    const teachers = await repo.findAllTeachersAttendanceForDate(schoolId, date);
+    const rows = teachers.map((t) => ({
+      teacher_id:   t.id,
+      employee_id:  t.employeeId ?? null,
+      first_name:   t.user.firstName,
+      last_name:    t.user.lastName,
+      status:       t.attendance[0]?.status  ?? null,
+      attendance_id: t.attendance[0]?.id     ?? null,
+    }));
+    return { teachers: rows, date: dateStr };
+  }
 
   // Monthly calendar for one student
   if (studentId && month) {
@@ -137,6 +172,28 @@ export async function getAttendance(schoolId: string, searchParams: URLSearchPar
 }
 
 export async function markAttendance(schoolId: string, markedBy: string, body: Record<string, any>) {
+  // ── Employee attendance ──────────────────────────────────────────────────────
+  if (body.type === 'employee') {
+    const { records, date: dateStr } = body;
+    if (!Array.isArray(records) || !dateStr) {
+      throw new AppError('records array and date are required for employee attendance');
+    }
+    const parsedDate = new Date(dateStr);
+    parsedDate.setUTCHours(0, 0, 0, 0);
+    for (const r of records) {
+      // Support teacher_id or resolve from user_id
+      let teacherId = r.teacher_id;
+      if (!teacherId && r.user_id) {
+        const t = await prisma.teacher.findFirst({ where: { userId: r.user_id, schoolId }, select: { id: true } });
+        if (!t) continue;
+        teacherId = t.id;
+      }
+      if (!teacherId || !r.status) continue;
+      await repo.upsertTeacherAttendance(schoolId, teacherId, markedBy, parsedDate, r.status);
+    }
+    return { message: `Employee attendance saved for ${records.length} records`, date: dateStr };
+  }
+
   const { records, date, class_id } = body;
 
   if (!records || !Array.isArray(records) || !date || !class_id) {

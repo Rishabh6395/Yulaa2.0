@@ -20,8 +20,12 @@ export default function StudentsPage() {
   const [statusFilter,  setStatusFilter]  = useState('');
   const [classFilter,   setClassFilter]   = useState('');
   const [showAddModal,  setShowAddModal]  = useState(false);
-  const [form,          setForm]          = useState({ admission_no: '', first_name: '', last_name: '', dob: '', gender: '', class_id: '', address: '' });
+  const [form,          setForm]          = useState({ admission_no: '', first_name: '', last_name: '', dob: '', gender: '', class_id: '', address: '', parent_name: '', parent_phone: '', parent_email: '' });
   const [saving,        setSaving]        = useState(false);
+
+  const [parentTarget, setParentTarget] = useState<{ id: string; name: string } | null>(null);
+  const [parentForm, setParentForm] = useState({ parent_name: '', parent_phone: '', parent_email: '' });
+  const [addingParent, setAddingParent] = useState(false);
 
   // Bulk upload state
   const fileInputRef                        = useRef<HTMLInputElement>(null);
@@ -56,10 +60,26 @@ export default function StudentsPage() {
     const res = await fetch('/api/students', { method: 'POST', headers, body: JSON.stringify(form) });
     if (res.ok) {
       setShowAddModal(false);
-      setForm({ admission_no: '', first_name: '', last_name: '', dob: '', gender: '', class_id: '', address: '' });
+      setForm({ admission_no: '', first_name: '', last_name: '', dob: '', gender: '', class_id: '', address: '', parent_name: '', parent_phone: '', parent_email: '' });
       mutate();
     }
     setSaving(false);
+  };
+
+  const handleAddParent = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!parentTarget) return;
+    setAddingParent(true);
+    const res = await fetch('/api/students', {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ action: 'add_parent', studentId: parentTarget.id, ...parentForm }),
+    });
+    if (res.ok) {
+      setParentTarget(null);
+      setParentForm({ parent_name: '', parent_phone: '', parent_email: '' });
+      mutate();
+    }
+    setAddingParent(false);
   };
 
   const downloadTemplate = async () => {
@@ -192,12 +212,20 @@ export default function StudentsPage() {
                     ) : '—'}
                   </td>
                   <td>
-                    {s.admission_status === 'pending' && (
-                      <div className="flex gap-1.5">
-                        <button onClick={() => handleApproval(s.id, 'approved')} className="text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg hover:bg-emerald-100 font-medium transition-colors">Approve</button>
-                        <button onClick={() => handleApproval(s.id, 'rejected')} className="text-xs bg-red-50 text-red-700 px-2.5 py-1 rounded-lg hover:bg-red-100 font-medium transition-colors">Reject</button>
-                      </div>
-                    )}
+                    <div className="flex gap-1.5 flex-wrap">
+                      {s.admission_status === 'pending' && (
+                        <>
+                          <button onClick={() => handleApproval(s.id, 'approved')} className="text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg hover:bg-emerald-100 font-medium transition-colors">Approve</button>
+                          <button onClick={() => handleApproval(s.id, 'rejected')} className="text-xs bg-red-50 text-red-700 px-2.5 py-1 rounded-lg hover:bg-red-100 font-medium transition-colors">Reject</button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => { setParentTarget({ id: s.id, name: `${s.first_name} ${s.last_name}` }); setParentForm({ parent_name: '', parent_phone: '', parent_email: '' }); }}
+                        className="text-xs bg-surface-50 dark:bg-gray-800 text-surface-600 dark:text-gray-300 px-2.5 py-1 rounded-lg hover:bg-surface-100 dark:hover:bg-gray-700 font-medium transition-colors"
+                      >
+                        + Parent
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -250,6 +278,39 @@ export default function StudentsPage() {
         )}
       </Modal>
 
+      <Modal
+        open={!!parentTarget}
+        onClose={() => setParentTarget(null)}
+        title={`Add Parent — ${parentTarget?.name ?? ''}`}
+      >
+        <form onSubmit={handleAddParent} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Parent Name *</label>
+              <input className="input-field" required placeholder="Full name" value={parentForm.parent_name}
+                onChange={e => setParentForm({...parentForm, parent_name: e.target.value})}/>
+            </div>
+            <div>
+              <label className="label">Phone *</label>
+              <input className="input-field" required type="tel" placeholder="10-digit mobile" value={parentForm.parent_phone}
+                onChange={e => setParentForm({...parentForm, parent_phone: e.target.value})}/>
+            </div>
+            <div className="col-span-2">
+              <label className="label">Email</label>
+              <input className="input-field" type="email" placeholder="parent@email.com" value={parentForm.parent_email}
+                onChange={e => setParentForm({...parentForm, parent_email: e.target.value})}/>
+            </div>
+          </div>
+          <p className="text-xs text-surface-400">If email is provided, the parent can log in. Phone number is used as initial password.</p>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={() => setParentTarget(null)} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={addingParent} className="btn-primary flex-1">
+              {addingParent ? 'Adding...' : 'Add Parent'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Student">
         <form onSubmit={handleAdd} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -293,6 +354,23 @@ export default function StudentsPage() {
           <div>
             <label className="label">Address</label>
             <textarea className="input-field" rows={2} value={form.address} onChange={e => setForm({...form, address: e.target.value})}/>
+          </div>
+          <div className="border-t border-surface-100 dark:border-gray-800 pt-4">
+            <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Parent / Guardian (optional)</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label">Parent Name</label>
+                <input className="input-field" placeholder="Full name" value={form.parent_name} onChange={e => setForm({...form, parent_name: e.target.value})}/>
+              </div>
+              <div>
+                <label className="label">Phone *</label>
+                <input className="input-field" type="tel" placeholder="10-digit mobile" value={form.parent_phone} onChange={e => setForm({...form, parent_phone: e.target.value})}/>
+              </div>
+              <div className="col-span-2">
+                <label className="label">Email</label>
+                <input className="input-field" type="email" placeholder="parent@email.com" value={form.parent_email} onChange={e => setForm({...form, parent_email: e.target.value})}/>
+              </div>
+            </div>
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>

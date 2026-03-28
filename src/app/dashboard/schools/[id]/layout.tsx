@@ -35,6 +35,7 @@ export default function SchoolLayout({ children, params }: { children: React.Rea
     'classes': 'Classes',
     'students': 'Students',
     'teachers': 'Teachers',
+    'parents': 'Parents',
     'users-roles': 'Users & Roles',
     'attendance': 'Attendance',
     'fees': 'Fees',

@@ -11,6 +11,11 @@ export default function UsersRolesPage({ params }: { params: { id: string } }) {
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', roleId: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [resetTarget, setResetTarget]   = useState<any>(null);
+  const [resetPwd,    setResetPwd]      = useState('');
+  const [resetSaving, setResetSaving]   = useState(false);
+  const [resetError,  setResetError]    = useState('');
+  const [resetDone,   setResetDone]     = useState(false);
 
   const token = () => localStorage.getItem('token') || '';
   const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` });
@@ -75,6 +80,21 @@ export default function UsersRolesPage({ params }: { params: { id: string } }) {
     load();
   }
 
+  async function handleResetPassword() {
+    if (!resetTarget || !resetPwd) return;
+    setResetSaving(true); setResetError('');
+    try {
+      const res = await fetch('/api/admin/reset-password', {
+        method: 'POST', headers: headers(),
+        body: JSON.stringify({ user_id: resetTarget.id, new_password: resetPwd }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setResetDone(true);
+    } catch (e: any) { setResetError(e.message); }
+    setResetSaving(false);
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -129,14 +149,60 @@ export default function UsersRolesPage({ params }: { params: { id: string } }) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => toggleStatus(u)} className={`text-xs font-medium ${u.status === 'active' ? 'text-red-500 hover:text-red-700' : 'text-emerald-600 hover:text-emerald-700'}`}>
-                      {u.status === 'active' ? 'Deactivate' : 'Activate'}
-                    </button>
+                    <div className="flex items-center gap-3 justify-end">
+                      <button
+                        onClick={() => { setResetTarget(u); setResetPwd(''); setResetError(''); setResetDone(false); }}
+                        className="text-xs font-medium text-brand-500 hover:text-brand-700"
+                      >
+                        Reset Password
+                      </button>
+                      <button onClick={() => toggleStatus(u)} className={`text-xs font-medium ${u.status === 'active' ? 'text-red-500 hover:text-red-700' : 'text-emerald-600 hover:text-emerald-700'}`}>
+                        {u.status === 'active' ? 'Deactivate' : 'Activate'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {resetTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Reset Password</h2>
+            <p className="text-sm text-surface-400">
+              Set a new password for <span className="font-medium text-gray-700 dark:text-gray-300">{resetTarget.firstName} {resetTarget.lastName}</span>
+            </p>
+            {resetDone ? (
+              <div className="space-y-4">
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-sm text-emerald-700 dark:text-emerald-400 font-medium">
+                  Password reset successfully. The user will be prompted to change it on next login.
+                </div>
+                <button onClick={() => setResetTarget(null)} className="btn btn-primary w-full">Done</button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {resetError && <p className="text-sm text-red-600 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2">{resetError}</p>}
+                <div>
+                  <label className="label">New Password *</label>
+                  <input
+                    className="input" type="password" placeholder="Min. 6 characters"
+                    value={resetPwd} onChange={e => setResetPwd(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="flex gap-3 pt-1">
+                  <button onClick={() => setResetTarget(null)} className="btn btn-secondary flex-1">Cancel</button>
+                  <button onClick={handleResetPassword} disabled={resetSaving || !resetPwd} className="btn btn-primary flex-1">
+                    {resetSaving ? 'Resetting…' : 'Reset Password'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

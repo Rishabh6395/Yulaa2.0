@@ -59,6 +59,53 @@ export async function bulkUpsertAttendance(
   );
 }
 
+// ── Employee (teacher) attendance ────────────────────────────────────────────
+
+export async function findTeacherMonthlyAttendance(teacherId: string, firstDay: Date, lastDay: Date) {
+  return prisma.attendance.findMany({
+    where: { teacherId, studentId: null, date: { gte: firstDay, lte: lastDay } },
+    select: { id: true, date: true, status: true },
+    orderBy: { date: 'asc' },
+  });
+}
+
+export async function findAllTeachersAttendanceForDate(schoolId: string, date: Date) {
+  return prisma.teacher.findMany({
+    where: { schoolId, status: 'active' },
+    select: {
+      id: true,
+      employeeId: true,
+      user: { select: { id: true, firstName: true, lastName: true } },
+      attendance: {
+        where: { date, studentId: null },
+        select: { id: true, status: true },
+      },
+    },
+    orderBy: { user: { firstName: 'asc' } },
+  });
+}
+
+export async function upsertTeacherAttendance(
+  schoolId: string,
+  teacherId: string,
+  markedBy: string,
+  date: Date,
+  status: string,
+) {
+  const existing = await prisma.attendance.findFirst({
+    where: { teacherId, studentId: null, date },
+  });
+  if (existing) {
+    return prisma.attendance.update({
+      where: { id: existing.id },
+      data: { status, updatedBy: markedBy, updatedAt: new Date() },
+    });
+  }
+  return prisma.attendance.create({
+    data: { schoolId, teacherId, studentId: null, date, status, markedBy, updatedBy: markedBy },
+  });
+}
+
 export async function upsertAttendanceRecords(input: MarkAttendanceInput) {
   return Promise.all(
     input.records.map((r) =>

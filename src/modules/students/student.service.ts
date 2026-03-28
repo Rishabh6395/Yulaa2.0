@@ -3,6 +3,8 @@ import { AppError } from '@/utils/errors';
 import { parseCSV, generateCSV } from '@/services/upload.service';
 import * as repo from './student.repo';
 import type { StudentRow } from './student.types';
+import bcrypt from 'bcryptjs';
+import prisma from '@/lib/prisma';
 
 export async function listStudents(schoolId: string, searchParams: URLSearchParams) {
   const pagination = parsePagination(searchParams);
@@ -45,13 +47,16 @@ export async function listStudents(schoolId: string, searchParams: URLSearchPara
 }
 
 export async function createStudent(schoolId: string, body: Record<string, any>) {
-  const { admission_no, first_name, last_name, dob, gender, class_id, address, blood_group } = body;
+  const {
+    admission_no, first_name, last_name, dob, gender, class_id, address, blood_group,
+    parent_name, parent_phone, parent_email,
+  } = body;
 
   if (!admission_no || !first_name || !last_name) {
     throw new AppError('Required fields: admission_no, first_name, last_name');
   }
 
-  return repo.createStudent({
+  const student = await repo.createStudent({
     schoolId,
     admissionNo: admission_no,
     firstName:   first_name,
@@ -62,6 +67,69 @@ export async function createStudent(schoolId: string, body: Record<string, any>)
     address:     address    || null,
     bloodGroup:  blood_group || null,
   });
+
+  if (parent_name?.trim() && parent_phone?.trim()) {
+    await createAndLinkParent(schoolId, student.id, {
+      name:  parent_name.trim(),
+      phone: parent_phone.trim(),
+      email: parent_email?.trim() || null,
+    });
+  }
+
+  return student;
+}
+
+export async function createAndLinkParent(
+  schoolId: string,
+  studentId: string,
+  parent: { name: string; phone: string; email: string | null },
+) {
+  const [firstName, ...rest] = parent.name.split(' ');
+  const lastName = rest.join(' ') || '-';
+  // If no email, generate a unique placeholder so the unique constraint is satisfied
+  const email = parent.email || `${parent.phone.replace(/\s+/g, '')}.${schoolId.slice(0, 6)}@noemail.local`;
+
+  let user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    const hash = await bcrypt.hash(parent.phone, 10);
+    user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash:      hash,
+        firstName:         firstName ?? parent.name,
+        lastName,
+        phone:             parent.phone,
+        mustResetPassword: true,
+        status:            'active',
+      },
+    });
+  }
+
+  let parentRecord = await prisma.parent.findUnique({ where: { userId: user.id } });
+  if (!parentRecord) {
+    parentRecord = await prisma.parent.create({ data: { userId: user.id } });
+  }
+
+  const parentRole = await prisma.role.findUnique({ where: { code: 'parent' } });
+  if (parentRole) {
+    const existingRole = await prisma.userRole.findFirst({
+      where: { userId: user.id, roleId: parentRole.id, schoolId },
+    });
+    if (!existingRole) {
+      await prisma.userRole.create({
+        data: { userId: user.id, roleId: parentRole.id, schoolId, isPrimary: true },
+      });
+    }
+  }
+
+  const existingLink = await prisma.parentStudent.findFirst({
+    where: { parentId: parentRecord.id, studentId },
+  });
+  if (!existingLink) {
+    await prisma.parentStudent.create({ data: { parentId: parentRecord.id, studentId } });
+  }
+
+  return parentRecord;
 }
 
 export async function updateStudent(body: Record<string, any>) {

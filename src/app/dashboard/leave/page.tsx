@@ -98,7 +98,7 @@ function BalanceCards({ balances }: { balances: any[] }) {
 export default function LeavePage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [reviewModal,  setReviewModal]  = useState<any>(null);
-  const [activeTab,    setActiveTab]    = useState<'all' | 'parent' | 'teacher'>('all');
+  const [activeTab,    setActiveTab]    = useState<'employee' | 'student'>('employee');
   const [form, setForm] = useState({ leave_type: 'sick', start_date: '', end_date: '', reason: '' });
   const [reviewComment, setReviewComment] = useState('');
   const [saving, setSaving] = useState(false);
@@ -140,9 +140,10 @@ export default function LeavePage() {
   const leaveTypes = (typesData?.types ?? []).map(t => ({ value: t.code, label: t.name, icon: leaveIcon(t.code) }));
 
   // Filter leaves by tab / role
+  const EMPLOYEE_ROLES = ['teacher', 'school_admin', 'principal', 'hod', 'employee'];
   const leaves = isAdmin
-    ? activeTab === 'parent'  ? allLeaves.filter(l => l.role_code === 'parent')
-    : activeTab === 'teacher' ? allLeaves.filter(l => l.role_code === 'teacher')
+    ? activeTab === 'student'  ? allLeaves.filter(l => l.role_code === 'parent')
+    : activeTab === 'employee' ? allLeaves.filter(l => EMPLOYEE_ROLES.includes(l.role_code))
     : allLeaves
     : allLeaves;
 
@@ -247,10 +248,10 @@ export default function LeavePage() {
       {/* Admin tab filter */}
       {isAdmin && (
         <div className="flex gap-1 p-1 bg-surface-100 dark:bg-gray-800 rounded-xl w-fit">
-          {(['all', 'parent', 'teacher'] as const).map(t => (
+          {([['employee', 'Employee Leave'], ['student', 'Student Leave']] as const).map(([t, label]) => (
             <button key={t} onClick={() => setActiveTab(t)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all capitalize ${activeTab === t ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-surface-400 hover:text-gray-700'}`}>
-              {t === 'all' ? 'All' : `${t.charAt(0).toUpperCase() + t.slice(1)} Leaves`}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === t ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-surface-400 hover:text-gray-700'}`}>
+              {label}
             </button>
           ))}
         </div>

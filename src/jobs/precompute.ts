@@ -121,7 +121,9 @@ export async function computeTeacherDashboard(userId: string, schoolId: string) 
   });
 
   const [totalStudents, todayAttendanceRows, announcements] = await Promise.all([
-    myClass ? prisma.student.count({ where: { classId: myClass.id, status: 'active' } }) : 0,
+    myClass
+      ? prisma.student.count({ where: { classId: myClass.id } })
+      : prisma.student.count({ where: { schoolId } }),
     myClass ? prisma.attendance.findMany({ where: { classId: myClass.id, date: today }, select: { status: true } }) : [],
     prisma.announcement.findMany({
       where: { schoolId }, orderBy: { createdAt: 'desc' }, take: 5,

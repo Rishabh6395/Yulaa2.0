@@ -1,5 +1,5 @@
 import { getUserFromRequest } from '@/lib/auth';
-import { listStudents, createStudent, updateStudent } from '@/modules/students/student.service';
+import { listStudents, createStudent, updateStudent, createAndLinkParent } from '@/modules/students/student.service';
 import { handleError, UnauthorizedError } from '@/utils/errors';
 
 async function getUser(request: Request) {
@@ -28,8 +28,24 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    await getUser(request);
-    const student = await updateStudent(await request.json());
+    const user        = await getUser(request);
+    const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
+    const body        = await request.json();
+
+    if (body.action === 'add_parent') {
+      const { studentId, parent_name, parent_phone, parent_email } = body;
+      if (!studentId || !parent_name || !parent_phone) {
+        return Response.json({ error: 'studentId, parent_name, and parent_phone are required' }, { status: 400 });
+      }
+      await createAndLinkParent(primaryRole.school_id!, studentId, {
+        name:  parent_name,
+        phone: parent_phone,
+        email: parent_email || null,
+      });
+      return Response.json({ ok: true });
+    }
+
+    const student = await updateStudent(body);
     return Response.json({ student });
   } catch (err) { return handleError(err); }
 }
