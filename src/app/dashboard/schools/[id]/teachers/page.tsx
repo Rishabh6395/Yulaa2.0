@@ -34,7 +34,16 @@ export default function SchoolTeachersPage({ params }: { params: { id: string } 
     setSaving(true); setError('');
     try {
       const res = await fetch(`/api/super-admin/schools/${schoolId}/teachers`, {
-        method: 'POST', headers: headers(), body: JSON.stringify(form),
+        method: 'POST', headers: headers(), body: JSON.stringify({
+          first_name:    form.firstName,
+          last_name:     form.lastName,
+          email:         form.email,
+          password:      form.password,
+          phone:         form.phone         || undefined,
+          employee_id:   form.employeeId    || undefined,
+          qualification: form.qualification || undefined,
+          joining_date:  form.joiningDate   || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
@@ -141,7 +150,7 @@ function TeacherCard({ teacher, onToggle }: { teacher: any; onToggle: () => void
     <div className="card p-5 space-y-3">
       <div className="flex items-start justify-between">
         <div>
-          <div className="font-semibold text-gray-900 dark:text-gray-100">{teacher.firstName} {teacher.lastName}</div>
+          <div className="font-semibold text-gray-900 dark:text-gray-100">{teacher.first_name} {teacher.last_name}</div>
           <div className="text-xs text-surface-400 mt-0.5">{teacher.email}</div>
         </div>
         <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>

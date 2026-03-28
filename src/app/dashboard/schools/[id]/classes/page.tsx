@@ -164,7 +164,7 @@ export default function SchoolClassesPage({ params }: { params: { id: string } }
                 <select className="input" value={form.class_teacher_id} onChange={e => setForm(f => ({ ...f, class_teacher_id: e.target.value }))}>
                   <option value="">— Unassigned —</option>
                   {teachers.map((t: any) => (
-                    <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>
+                    <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>
                   ))}
                 </select>
               </div>

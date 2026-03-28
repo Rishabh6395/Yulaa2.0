@@ -52,6 +52,14 @@ export async function POST(request: Request, { params }: { params: { id: string 
       },
       select: { id: true, email: true, firstName: true, lastName: true, status: true, userRoles: { include: { role: true } } },
     });
+
+    // Sync: if the role is 'teacher', ensure a Teacher profile record exists
+    const role = await prisma.role.findUnique({ where: { id: roleId } });
+    if (role?.code === 'teacher') {
+      const exists = await prisma.teacher.findFirst({ where: { userId: newUser.id, schoolId: params.id } });
+      if (!exists) await prisma.teacher.create({ data: { userId: newUser.id, schoolId: params.id } });
+    }
+
     return Response.json({ user: newUser }, { status: 201 });
   } catch (err) { return handleError(err); }
 }
@@ -64,6 +72,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     if (action === 'addRole' && userId && roleId) {
       const ur = await prisma.userRole.create({ data: { userId, roleId, schoolId: params.id, isPrimary: false }, include: { role: true } });
+      // Sync: if adding teacher role, ensure Teacher profile record exists
+      if (ur.role.code === 'teacher') {
+        const exists = await prisma.teacher.findFirst({ where: { userId, schoolId: params.id } });
+        if (!exists) await prisma.teacher.create({ data: { userId, schoolId: params.id } });
+      }
       return Response.json({ userRole: ur });
     }
     if (action === 'removeRole' && userId && roleId) {

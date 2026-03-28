@@ -66,7 +66,15 @@ export async function createUser(body: Record<string, any>) {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  return repo.createUserWithRole({ firstName, lastName, email, phone, password, passwordHash, roleId, schoolId: schoolId || null });
+  const newUser = await repo.createUserWithRole({ firstName, lastName, email, phone, password, passwordHash, roleId, schoolId: schoolId || null });
+
+  // If the assigned role is 'teacher', also create the Teacher profile record
+  const role = await repo.findRoleById(roleId);
+  if (role?.code === 'teacher' && schoolId) {
+    await repo.ensureTeacherRecord(newUser.id, schoolId);
+  }
+
+  return newUser;
 }
 
 export async function assignRole(body: Record<string, any>) {
@@ -76,7 +84,15 @@ export async function assignRole(body: Record<string, any>) {
   const existing = await repo.findExistingUserRole(userId, roleId, schoolId || null);
   if (existing)   throw new ConflictError('User already has this role');
 
-  return repo.addUserRole(userId, roleId, schoolId || null);
+  const userRole = await repo.addUserRole(userId, roleId, schoolId || null);
+
+  // If the assigned role is 'teacher', also create the Teacher profile record
+  const role = await repo.findRoleById(roleId);
+  if (role?.code === 'teacher' && schoolId) {
+    await repo.ensureTeacherRecord(userId, schoolId);
+  }
+
+  return userRole;
 }
 
 export async function removeRole(userId: string, roleId: string) {

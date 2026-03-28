@@ -138,3 +138,14 @@ export async function updateUserStatus(userId: string, status: string) {
 export async function findExistingUserRole(userId: string, roleId: string, schoolId: string | null) {
   return prisma.userRole.findFirst({ where: { userId, roleId, schoolId } });
 }
+
+export async function findRoleById(roleId: string) {
+  return prisma.role.findUnique({ where: { id: roleId } });
+}
+
+/** Creates a Teacher row if one doesn't already exist for this user+school. */
+export async function ensureTeacherRecord(userId: string, schoolId: string) {
+  const existing = await prisma.teacher.findFirst({ where: { userId, schoolId } });
+  if (existing) return existing;
+  return prisma.teacher.create({ data: { userId, schoolId } });
+}
