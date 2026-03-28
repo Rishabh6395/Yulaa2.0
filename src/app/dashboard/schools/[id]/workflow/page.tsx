@@ -53,7 +53,7 @@ function StepRow({
   onMove: (dir: -1 | 1) => void;
 }) {
   const filteredUsers = step.approverRole
-    ? users.filter((u: any) => u.roles?.some((r: any) => r.role_code === step.approverRole))
+    ? users.filter((u: any) => u.userRoles?.some((r: any) => r.role?.code === step.approverRole))
     : users;
 
   return (
@@ -89,7 +89,7 @@ function StepRow({
         >
           <option value="">— Any user —</option>
           {filteredUsers.map((u: any) => (
-            <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>
+            <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
           ))}
         </select>
 

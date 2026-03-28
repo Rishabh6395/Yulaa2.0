@@ -44,6 +44,7 @@ model School {
   leaveTypeMasters      LeaveTypeMaster[]
   leaveWorkflows        LeaveWorkflow[]
   queries               StudentQuery[]
+  supportQueries        SupportQuery[]
   students              Student[]
   teacherLeaveBalances  TeacherLeaveBalance[]
   teachers              Teacher[]
@@ -88,6 +89,8 @@ model User {
   leaveRequests         LeaveRequest[]
   parents               Parent?
   respondedQueries      StudentQuery[]         @relation("RespondedBy")
+  raisedSupportQueries  SupportQuery[]         @relation("SupportQueryRaisedBy")
+  supportQueryReplies   SupportQueryReply[]    @relation("SupportQueryReplyUser")
   teachers              Teacher[]
   userRoles             UserRole[]
   vendors               Vendor?
@@ -474,6 +477,43 @@ model StudentQuery {
   @@index([schoolId, status])
   @@index([parentId])
   @@map("queries")
+}
+
+model SupportQuery {
+  id           String   @id @default(uuid())
+  ticketNo     String   @unique @map("ticket_no") @db.VarChar(20)
+  schoolId     String   @map("school_id")
+  raisedById   String   @map("raised_by_id")
+  raisedByRole String   @map("raised_by_role") @db.VarChar(30)
+  queryType    String?  @map("query_type") @db.VarChar(50)
+  subject      String   @db.VarChar(200)
+  description  String
+  status       String   @default("open") @db.VarChar(20)
+  attachments  String[]
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  school   School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  raisedBy User                 @relation("SupportQueryRaisedBy", fields: [raisedById], references: [id])
+  replies  SupportQueryReply[]
+
+  @@index([schoolId, status])
+  @@index([raisedById])
+  @@map("support_queries")
+}
+
+model SupportQueryReply {
+  id        String   @id @default(uuid())
+  queryId   String   @map("query_id")
+  userId    String   @map("user_id")
+  message   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  query SupportQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  user  User         @relation("SupportQueryReplyUser", fields: [userId], references: [id])
+
+  @@index([queryId])
+  @@map("support_query_replies")
 }
 
 model TransportRoute {

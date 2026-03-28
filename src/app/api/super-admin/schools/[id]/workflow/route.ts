@@ -114,8 +114,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
           create: steps.map((s: any, i: number) => ({
             stepOrder:      i,
             label:          s.label || `Step ${i + 1}`,
-            approverRole:   s.approverRole   ?? null,
-            approverUserId: s.approverUserId ?? null,
+            approverRole:   s.approverRole   || null,
+            approverUserId: s.approverUserId || null,
             emailEnabled:   s.emailEnabled   ?? false,
             notifyEnabled:  s.notifyEnabled  ?? true,
             notifyMessage:  s.notifyMessage  ?? null,
