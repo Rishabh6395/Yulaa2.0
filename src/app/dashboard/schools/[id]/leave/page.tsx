@@ -18,8 +18,8 @@ const STAFF_ROLES = [
 ];
 
 const WORKFLOW_META = {
-  student: { label: 'Student Leave Workflow', desc: 'Approval chain when a parent applies leave for their child' },
-  teacher: { label: 'Teacher Leave Workflow',  desc: 'Approval chain for teacher / HOD / principal leave' },
+  student: { label: 'Student Leave Workflow', desc: 'Approval chain when a parent applies leave for their child', apiType: 'parent' },
+  teacher: { label: 'Teacher Leave Workflow',  desc: 'Approval chain for teacher / HOD / principal leave',      apiType: 'teacher' },
 };
 
 const DEFAULT_WORKFLOWS: Record<string, WorkflowStep[]> = {
@@ -37,6 +37,16 @@ const DEFAULT_WORKFLOWS: Record<string, WorkflowStep[]> = {
 
 const ACADEMIC_YEARS = ['2024-2025', '2025-2026', '2026-2027'];
 
+const WEEKDAYS = [
+  { num: 0, short: 'Sun', full: 'Sunday' },
+  { num: 1, short: 'Mon', full: 'Monday' },
+  { num: 2, short: 'Tue', full: 'Tuesday' },
+  { num: 3, short: 'Wed', full: 'Wednesday' },
+  { num: 4, short: 'Thu', full: 'Thursday' },
+  { num: 5, short: 'Fri', full: 'Friday' },
+  { num: 6, short: 'Sat', full: 'Saturday' },
+];
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LeaveConfigPage({ params }: { params: { id: string } }) {
   const schoolId = params.id;
@@ -47,8 +57,9 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
   const [newLT, setNewLT] = useState({ name: '', code: '', applicableTo: [] as string[] });
   const [ltLoading, setLtLoading] = useState(true);
 
-  // Balance policy matrix
+  // Balance policy matrix + view mode
   const [policies, setPolicies] = useState<Policy[]>([]);
+  const [policyViewMode, setPolicyViewMode] = useState<'annual' | 'monthly'>('annual');
 
   // Holidays
   const [academicYear, setAcademicYear] = useState('2025-2026');
@@ -56,6 +67,11 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
   const [newHoliday, setNewHoliday] = useState({ date: '', name: '', type: 'mandatory' as 'mandatory' | 'optional' });
   const fileRef = useRef<HTMLInputElement>(null);
   const [holidayUploading, setHolidayUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<string>('');
+
+  // Weekoff days
+  const [weekoffDays, setWeekoffDays] = useState<number[]>([0, 6]);
+  const [weekoffSaving, setWeekoffSaving] = useState(false);
 
   // Workflows
   const [workflows, setWorkflows] = useState(DEFAULT_WORKFLOWS);
@@ -94,6 +110,14 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
       .catch(() => {});
   }, [academicYear, schoolId]);
 
+  // Fetch weekoff days
+  useEffect(() => {
+    fetch(`/api/super-admin/schools/${schoolId}/leave-config?resource=weekoffs`, { headers: headers() })
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d.weekoffDays)) setWeekoffDays(d.weekoffDays); })
+      .catch(() => {});
+  }, [schoolId]);
+
   // Fetch roles + users for workflow
   useEffect(() => {
     fetch(`/api/super-admin/schools/${schoolId}/users`, { headers: headers() })
@@ -123,6 +147,8 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
       if (data.leaveType) {
         setLeaveTypes(t => [...t, data.leaveType]);
         setNewLT({ name: '', code: '', applicableTo: [] });
+      } else {
+        setError(data.error || 'Failed to create leave type');
       }
     } catch { setError('Failed to create leave type'); }
   }
@@ -140,6 +166,16 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
   // ── Policy helpers ───────────────────────────────────────────────────────
   function getPolicy(ltId: string, role: string) {
     return policies.find(p => p.leaveTypeId === ltId && p.roleCode === role);
+  }
+
+  // Convert between annual and monthly for display / storage
+  function toDisplay(daysPerYear: number) {
+    if (policyViewMode === 'annual') return daysPerYear;
+    return parseFloat((daysPerYear / 12).toFixed(1));
+  }
+  function fromDisplay(val: number) {
+    if (policyViewMode === 'annual') return val;
+    return Math.round(val * 12);
   }
 
   async function updatePolicy(ltId: string, roleCode: string, field: string, value: any) {
@@ -179,6 +215,8 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
       if (data.holiday) {
         setHolidays(h => [...h, data.holiday].sort((a, b) => a.date.localeCompare(b.date)));
         setNewHoliday({ date: '', name: '', type: 'mandatory' });
+      } else {
+        setError(data.error || 'Failed to add holiday');
       }
     } catch { setError('Failed to add holiday'); }
   }
@@ -193,11 +231,56 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
   }
 
   async function handleHolidayFile(e: React.ChangeEvent<HTMLInputElement>) {
-    if (!e.target.files?.length) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
     setHolidayUploading(true);
-    await new Promise(r => setTimeout(r, 800));
-    setHolidayUploading(false);
-    e.target.value = '';
+    setUploadResult('');
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      const fileExt = ext === 'csv' ? 'csv' : 'xlsx';
+      const buf = await file.arrayBuffer();
+      // Convert ArrayBuffer → base64
+      let binary = '';
+      const bytes = new Uint8Array(buf);
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      const fileData = btoa(binary);
+
+      const res = await fetch(`/api/super-admin/schools/${schoolId}/leave-config`, {
+        method: 'POST', headers: headers(),
+        body: JSON.stringify({ action: 'bulk_holidays', fileData, fileExt, academicYear }),
+      });
+      const data = await res.json();
+      if (typeof data.added === 'number') {
+        setUploadResult(`${data.added} holiday(s) imported successfully`);
+        // Refresh holiday list
+        const refreshed = await fetch(
+          `/api/super-admin/schools/${schoolId}/leave-config?resource=holidays&year=${academicYear}`,
+          { headers: headers() },
+        ).then(r => r.json());
+        setHolidays(refreshed.holidays || []);
+      } else {
+        setError(data.error || 'Upload failed');
+      }
+    } catch { setError('Failed to upload file'); }
+    finally { setHolidayUploading(false); e.target.value = ''; }
+  }
+
+  // ── Weekoff helpers ──────────────────────────────────────────────────────
+  function toggleWeekoff(day: number) {
+    setWeekoffDays(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day],
+    );
+  }
+
+  async function saveWeekoffs() {
+    setWeekoffSaving(true);
+    try {
+      await fetch(`/api/super-admin/schools/${schoolId}/leave-config`, {
+        method: 'POST', headers: headers(),
+        body: JSON.stringify({ action: 'upsert_weekoffs', days: weekoffDays }),
+      });
+    } catch { setError('Failed to save weekly off days'); }
+    finally { setWeekoffSaving(false); }
   }
 
   // ── Workflow helpers ─────────────────────────────────────────────────────
@@ -230,10 +313,26 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
   }
 
   async function save() {
-    setSaving(true);
-    await new Promise(r => setTimeout(r, 500));
-    setSaving(false); setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setSaving(true); setError('');
+    try {
+      const apiType = WORKFLOW_META[activeWF].apiType;
+      const res = await fetch(`/api/super-admin/schools/${schoolId}/leave-config`, {
+        method: 'PUT', headers: headers(),
+        body: JSON.stringify({
+          action: 'upsert_workflow',
+          type: apiType,
+          steps: steps.map(s => ({
+            label:          s.label,
+            approverRole:   s.roleId   || undefined,
+            approverUserId: s.userId   || undefined,
+          })),
+        }),
+      });
+      if (!res.ok) throw new Error('Save failed');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch { setError('Failed to save workflow'); }
+    finally { setSaving(false); }
   }
 
   const TABS: { id: Tab; label: string }[] = [
@@ -313,7 +412,7 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
                       }
                     </div>
                     <button onClick={() => deleteLeaveType(lt.id)} className="w-6 text-surface-300 hover:text-red-500 transition-colors">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"/></svg>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2-2v2"/></svg>
                     </button>
                   </div>
                 ))}
@@ -324,9 +423,9 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
             <div className="border-t border-surface-100 dark:border-gray-700 pt-4 space-y-3">
               <p className="text-xs font-semibold text-surface-400 uppercase tracking-wide">Add New Leave Type</p>
               <div className="grid grid-cols-2 gap-3">
-                <input className="input" placeholder="Name (e.g. Sick Leave)" value={newLT.name}
+                <input className="input-field" placeholder="Name (e.g. Sick Leave)" value={newLT.name}
                   onChange={e => setNewLT(n => ({ ...n, name: e.target.value, code: e.target.value.toLowerCase().replace(/\s+/g, '_') }))} />
-                <input className="input font-mono" placeholder="Code (e.g. sick_leave)" value={newLT.code}
+                <input className="input-field font-mono" placeholder="Code (e.g. sick_leave)" value={newLT.code}
                   onChange={e => setNewLT(n => ({ ...n, code: e.target.value.toLowerCase().replace(/\s+/g, '_') }))} />
               </div>
               <div className="space-y-1">
@@ -350,16 +449,29 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
       {tab === 'balance-policy' && (
         <div className="space-y-4 max-w-5xl">
           <div className="card p-6 space-y-4">
-            <div>
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Leave Balance Policy</h2>
-              <p className="text-xs text-surface-400 mt-0.5">
-                Set annual balance per leave type per role. Students have no balance — all leave is approval-only.
-              </p>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div>
+                <h2 className="font-semibold text-gray-900 dark:text-gray-100">Leave Balance Policy</h2>
+                <p className="text-xs text-surface-400 mt-0.5">
+                  Set balance per leave type per role. Students have no balance — all leave is approval-only.
+                </p>
+              </div>
+              {/* Annual / Monthly toggle */}
+              <div className="flex items-center gap-1 p-1 bg-surface-100 dark:bg-gray-700 rounded-lg shrink-0">
+                {(['annual', 'monthly'] as const).map(m => (
+                  <button key={m} onClick={() => setPolicyViewMode(m)}
+                    className={`px-3 py-1 rounded text-xs font-medium transition-all capitalize ${policyViewMode === m ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-surface-400'}`}>
+                    {m}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800 rounded-xl p-3 text-xs text-blue-700 dark:text-blue-400 flex items-center gap-2">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              Changes sync instantly to teacher, HOD, principal, and school admin leave balances. Student leave is always balance-free.
+              {policyViewMode === 'annual'
+                ? 'Showing annual days. Switch to Monthly to set monthly accrual (auto-converts: 1 day/month = 12 days/year).'
+                : 'Showing monthly accrual. Values are stored as annual total (monthly × 12). Student leave is always balance-free.'}
             </div>
 
             {leaveTypes.length === 0 ? (
@@ -371,7 +483,7 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
                     <tr className="text-xs text-surface-400 uppercase tracking-wide">
                       <th className="text-left py-2 pr-4 font-semibold min-w-[140px]">Leave Type</th>
                       {STAFF_ROLES.map(r => (
-                        <th key={r.code} className="text-center py-2 px-3 font-semibold min-w-[110px]">{r.label}</th>
+                        <th key={r.code} className="text-center py-2 px-3 font-semibold min-w-[120px]">{r.label}</th>
                       ))}
                     </tr>
                   </thead>
@@ -393,19 +505,26 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
                               <span className="text-xs text-surface-300">N/A</span>
                             </td>
                           );
+                          const displayVal = toDisplay(p?.daysPerYear ?? 0);
                           return (
                             <td key={r.code} className="py-3 px-3">
                               <div className="space-y-1.5">
                                 <div className="flex items-center gap-1.5">
                                   <input
-                                    type="number" min={0} max={365}
+                                    type="number" min={0} max={policyViewMode === 'annual' ? 365 : 31}
+                                    step={policyViewMode === 'monthly' ? 0.5 : 1}
                                     className="input text-center w-16 text-sm py-1"
                                     placeholder="0"
-                                    value={p?.daysPerYear ?? ''}
-                                    onChange={e => updatePolicy(lt.id, r.code, 'daysPerYear', Number(e.target.value))}
+                                    value={displayVal || ''}
+                                    onChange={e => updatePolicy(lt.id, r.code, 'daysPerYear', fromDisplay(Number(e.target.value)))}
                                   />
-                                  <span className="text-xs text-surface-400">days</span>
+                                  <span className="text-xs text-surface-400">
+                                    {policyViewMode === 'annual' ? 'days/yr' : 'days/mo'}
+                                  </span>
                                 </div>
+                                {policyViewMode === 'monthly' && (p?.daysPerYear ?? 0) > 0 && (
+                                  <span className="text-xs text-surface-300 ml-0.5">= {p?.daysPerYear ?? 0} days/yr</span>
+                                )}
                                 <label className="flex items-center gap-1.5 cursor-pointer">
                                   <input type="checkbox" className="rounded" checked={p?.carryForward ?? false}
                                     onChange={e => updatePolicy(lt.id, r.code, 'carryForward', e.target.checked)} />
@@ -431,13 +550,35 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
               </div>
             )}
           </div>
-          <SaveBar saving={saving} saved={saved} onSave={save} />
         </div>
       )}
 
       {/* ── Holiday Calendar ──────────────────────────────────────────────── */}
       {tab === 'holidays' && (
         <div className="space-y-6 max-w-3xl">
+          {/* Weekly Off Configuration */}
+          <div className="card p-6 space-y-4">
+            <div>
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Weekly Off Days</h2>
+              <p className="text-xs text-surface-400 mt-0.5">Mark which days of the week are weekly offs. These reflect across all attendance calendars.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {WEEKDAYS.map(d => (
+                <button key={d.num} onClick={() => toggleWeekoff(d.num)}
+                  className={`flex flex-col items-center px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${weekoffDays.includes(d.num) ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300' : 'border-surface-200 dark:border-gray-700 text-surface-400 hover:border-brand-300'}`}>
+                  <span className="font-semibold">{d.short}</span>
+                </button>
+              ))}
+            </div>
+            <button onClick={saveWeekoffs} disabled={weekoffSaving}
+              className="btn btn-secondary text-xs flex items-center gap-1.5 w-fit">
+              {weekoffSaving
+                ? <><svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Saving...</>
+                : 'Save Weekly Off Days'
+              }
+            </button>
+          </div>
+
           {/* Year + upload */}
           <div className="card p-6 space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
@@ -458,17 +599,25 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
             {/* Upload */}
             <div className="flex flex-wrap items-center gap-3 p-3 bg-surface-50 dark:bg-gray-700/40 rounded-xl">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-surface-400"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-              <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">Upload holiday list for {academicYear}</span>
+              <div className="flex-1 min-w-0">
+                <span className="text-sm text-gray-700 dark:text-gray-300">Upload holiday list for {academicYear}</span>
+                <p className="text-xs text-surface-400 mt-0.5">Columns: Date (YYYY-MM-DD), Name, Type (mandatory/optional)</p>
+              </div>
               <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleHolidayFile} />
-              <button onClick={() => fileRef.current?.click()} disabled={holidayUploading}
-                className="btn btn-secondary text-xs flex items-center gap-1.5">
+              <button onClick={() => { setUploadResult(''); fileRef.current?.click(); }} disabled={holidayUploading}
+                className="btn btn-secondary text-xs flex items-center gap-1.5 shrink-0">
                 {holidayUploading
                   ? <><svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Uploading...</>
                   : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Upload Excel/CSV</>
                 }
               </button>
-              <span className="text-xs text-surface-400">Columns: Date, Name, Type (mandatory/optional)</span>
             </div>
+            {uploadResult && (
+              <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 px-1">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20,6 9,17 4,12"/></svg>
+                {uploadResult}
+              </div>
+            )}
           </div>
 
           {/* Holiday list */}

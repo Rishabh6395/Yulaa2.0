@@ -90,9 +90,10 @@ export async function submitLeaveRequest(
   const leaveType = leave_type || 'other';
 
   // Block if any pending or approved leave overlaps with the requested dates
+  const sd = new Date(start_date); sd.setUTCHours(0, 0, 0, 0);
+  const ed = new Date(end_date);   ed.setUTCHours(0, 0, 0, 0);
   const overlap = await repo.findOverlappingLeave(
-    schoolId, userId, student_id || null,
-    new Date(start_date), new Date(end_date),
+    schoolId, userId, student_id || null, sd, ed,
   );
   if (overlap) {
     const who   = student_id ? 'This student already has' : 'You already have';
@@ -116,8 +117,8 @@ export async function submitLeaveRequest(
     studentId: student_id || null,
     roleCode,
     leaveType,
-    startDate: new Date(start_date),
-    endDate:   new Date(end_date),
+    startDate: sd,
+    endDate:   ed,
     reason:    reason || `${leaveType} leave`,
   });
 }
