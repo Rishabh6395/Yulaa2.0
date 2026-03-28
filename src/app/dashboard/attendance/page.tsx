@@ -12,14 +12,50 @@ const STATUS_CFG: Record<string, { label: string; bg: string; text: string; ring
   excused:  { label: 'E', bg: 'bg-blue-100',    text: 'text-blue-700',    ring: 'ring-blue-300',    full: 'Excused' },
 };
 
+// ─── Subject keys matching the teacher's SUBJECTS array ────────────────────────
+
+const PARENT_SUBJECTS = [
+  { key: 'eng',   label: 'Eng' },
+  { key: 'hindi', label: 'Hindi' },
+  { key: 'maths', label: 'Maths' },
+  { key: 'sc',    label: 'Sci' },
+  { key: 'ss',    label: 'SS' },
+  { key: 'skt',   label: 'SKT' },
+  { key: 'dr',    label: 'DR' },
+  { key: 'it',    label: 'IT' },
+];
+
+const SUB_STATUS_DISPLAY: Record<string, { bg: string; text: string; label: string }> = {
+  present: { bg: 'bg-emerald-100 dark:bg-emerald-950/40', text: 'text-emerald-700 dark:text-emerald-400', label: 'P' },
+  absent:  { bg: 'bg-red-100 dark:bg-red-950/40',         text: 'text-red-700 dark:text-red-400',         label: 'A' },
+  late:    { bg: 'bg-amber-100 dark:bg-amber-950/40',     text: 'text-amber-700 dark:text-amber-400',     label: 'L' },
+};
+
 // ─── Parent view: monthly calendar ─────────────────────────────────────────────
 
 function ParentAttendancePage({ studentId, childName }: { studentId: string; childName: string }) {
   const today = new Date();
-  const [month, setMonth] = useState(today.toISOString().substring(0, 7));
-  const [view, setView] = useState<'daily' | 'classwise'>('daily');
-  const [records, setRecords] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [month,          setMonth]          = useState(today.toISOString().substring(0, 7));
+  const [view,           setView]           = useState<'daily' | 'classwise'>('daily');
+  const [records,        setRecords]        = useState<any[]>([]);
+  const [loading,        setLoading]        = useState(true);
+  const [attendanceMode, setAttendanceMode] = useState('class'); // default shows both tabs while loading
+
+  // Fetch school's attendance mode config
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch('/api/attendance-config', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        const mode = d.attendanceMode ?? 'class';
+        setAttendanceMode(mode);
+        // If daily mode, lock to daily view
+        if (mode === 'daily') setView('daily');
+        else setView('classwise');
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchAttendance = useCallback(async () => {
     setLoading(true);
@@ -35,7 +71,7 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
   useEffect(() => { fetchAttendance(); }, [fetchAttendance]);
 
   const [year, mon] = month.split('-').map(Number);
-  const firstDay = new Date(year, mon - 1, 1).getDay();
+  const firstDay    = new Date(year, mon - 1, 1).getDay();
   const daysInMonth = new Date(year, mon, 0).getDate();
 
   const recordMap: Record<number, any> = {};
@@ -47,28 +83,46 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
   const total   = records.length;
   const rate    = total > 0 ? Math.round((present / total) * 100) : 0;
 
-  const prevMonth = () => { const d = new Date(`${month}-01`); d.setMonth(d.getMonth() - 1); setMonth(d.toISOString().substring(0, 7)); };
-  const nextMonth = () => { const d = new Date(`${month}-01`); d.setMonth(d.getMonth() + 1); if (d <= today) setMonth(d.toISOString().substring(0, 7)); };
+  const prevMonth  = () => { const d = new Date(`${month}-01`); d.setMonth(d.getMonth() - 1); setMonth(d.toISOString().substring(0, 7)); };
+  const nextMonth  = () => { const d = new Date(`${month}-01`); d.setMonth(d.getMonth() + 1); if (d <= today) setMonth(d.toISOString().substring(0, 7)); };
   const monthLabel = new Date(`${month}-01`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+  // Daily mode: show calendar only; class mode: show both Daily + Class-wise tabs
+  const showClasswise = attendanceMode === 'class';
+
+  // Legend for daily mode: School In/Out labels
+  const dailyLegend = attendanceMode === 'daily'
+    ? [{ status: 'present', label: 'School In' }, { status: 'absent', label: 'School Out' }]
+    : null;
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">{childName}&apos;s Attendance</h1>
           <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">Monthly attendance record</p>
         </div>
-        <div className="flex rounded-xl overflow-hidden border border-surface-200 text-sm font-medium">
-          <button onClick={() => setView('daily')} className={`px-4 py-2 transition-colors ${view === 'daily' ? 'bg-brand-500 text-white' : 'bg-white text-surface-500 hover:bg-surface-50'}`}>Daily</button>
-          <button onClick={() => setView('classwise')} className={`px-4 py-2 transition-colors ${view === 'classwise' ? 'bg-brand-500 text-white' : 'bg-white text-surface-500 hover:bg-surface-50'}`}>Class-wise</button>
-        </div>
+        {/* Only show tab switcher in class mode */}
+        {showClasswise && (
+          <div className="flex rounded-xl overflow-hidden border border-surface-200 dark:border-gray-700 text-sm font-medium">
+            <button onClick={() => setView('daily')}
+              className={`px-4 py-2 transition-colors ${view === 'daily' ? 'bg-brand-500 text-white' : 'bg-white dark:bg-gray-800 text-surface-500 hover:bg-surface-50 dark:hover:bg-gray-700'}`}>
+              Daily
+            </button>
+            <button onClick={() => setView('classwise')}
+              className={`px-4 py-2 transition-colors ${view === 'classwise' ? 'bg-brand-500 text-white' : 'bg-white dark:bg-gray-800 text-surface-500 hover:bg-surface-50 dark:hover:bg-gray-700'}`}>
+              Subject-wise
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* Summary stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Attendance Rate', value: `${rate}%`, color: rate >= 75 ? 'text-emerald-600' : 'text-red-600' },
-          { label: 'Present', value: present, color: 'text-emerald-600' },
-          { label: 'Absent',  value: absent,  color: 'text-red-600' },
+          { label: attendanceMode === 'daily' ? 'School In' : 'Present', value: present, color: 'text-emerald-600' },
+          { label: attendanceMode === 'daily' ? 'School Out' : 'Absent',  value: absent,  color: 'text-red-600' },
           { label: 'Late',    value: late,    color: 'text-amber-600' },
         ].map(s => (
           <div key={s.label} className="card p-4">
@@ -78,7 +132,8 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
         ))}
       </div>
 
-      {view === 'daily' ? (
+      {/* Daily calendar view */}
+      {(!showClasswise || view === 'daily') && (
         <div className="card overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-surface-100 dark:border-gray-800">
             <button onClick={prevMonth} className="w-8 h-8 rounded-lg hover:bg-surface-100 dark:hover:bg-gray-800 flex items-center justify-center text-surface-400 transition-colors">
@@ -110,8 +165,12 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
                   const isToday = dateStr === today.toISOString().split('T')[0];
                   const dow     = new Date(dateStr + 'T00:00:00').getDay();
                   const weekend = dow === 0 || dow === 6;
-                  const status  = recordMap[day];
-                  const cfg     = status ? STATUS_CFG[status] : null;
+                  const rec     = recordMap[day];
+                  const cfg     = rec ? STATUS_CFG[rec.status] : null;
+                  // In daily mode use In/Out labels instead of Present/Absent
+                  const cellLabel = attendanceMode === 'daily'
+                    ? (rec?.status === 'present' ? 'In' : rec?.status === 'absent' ? 'Out' : cfg?.full)
+                    : cfg?.full;
                   if (weekend) {
                     return (
                       <div key={day} className="h-12 rounded-xl flex flex-col items-center justify-center bg-surface-50 dark:bg-gray-800/40 opacity-40">
@@ -121,9 +180,9 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
                     );
                   }
                   return (
-                    <div key={day} className={`h-12 rounded-xl flex flex-col items-center justify-center transition-all ${cfg ? `${cfg.bg} ${cfg.ring && `ring-1 ${cfg.ring}`}` : 'bg-surface-50 dark:bg-gray-800/30'} ${isToday ? 'ring-2 ring-brand-400 dark:ring-brand-500' : ''}`}>
+                    <div key={day} className={`h-12 rounded-xl flex flex-col items-center justify-center transition-all ${cfg ? `${cfg.bg} ring-1 ${cfg.ring}` : 'bg-surface-50 dark:bg-gray-800/30'} ${isToday ? 'ring-2 ring-brand-400 dark:ring-brand-500' : ''}`}>
                       <span className={`text-sm font-bold leading-none ${cfg ? cfg.text : 'text-gray-600 dark:text-gray-400'}`}>{day}</span>
-                      {cfg && <span className={`text-[10px] font-semibold mt-0.5 ${cfg.text}`}>{cfg.full}</span>}
+                      {cfg && <span className={`text-[10px] font-semibold mt-0.5 ${cfg.text}`}>{cellLabel}</span>}
                     </div>
                   );
                 })}
@@ -131,55 +190,93 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
             )}
           </div>
           <div className="px-4 pb-4 pt-1 flex flex-wrap gap-3">
-            {Object.entries(STATUS_CFG).map(([key, cfg]) => (
-              <span key={key} className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.bg} ${cfg.text}`}>{cfg.full}</span>
-            ))}
+            {dailyLegend ? (
+              dailyLegend.map(l => {
+                const c = STATUS_CFG[l.status];
+                return <span key={l.status} className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${c.bg} ${c.text}`}>{l.label}</span>;
+              })
+            ) : (
+              Object.entries(STATUS_CFG).map(([key, cfg]) => (
+                <span key={key} className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.bg} ${cfg.text}`}>{cfg.full}</span>
+              ))
+            )}
           </div>
         </div>
-      ) : (
+      )}
+
+      {/* Subject-wise table — only in class mode */}
+      {showClasswise && view === 'classwise' && (
         <div className="card overflow-hidden">
-          <div className="p-4 border-b border-surface-100 dark:border-gray-800">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Class-wise Attendance</h3>
-            <p className="text-xs text-surface-400 mt-0.5">Subject-wise attendance for {monthLabel}</p>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-surface-100 dark:border-gray-800">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Subject-wise Attendance</h3>
+              <p className="text-xs text-surface-400 mt-0.5">{monthLabel}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={prevMonth} className="w-8 h-8 rounded-lg hover:bg-surface-100 dark:hover:bg-gray-800 flex items-center justify-center text-surface-400 transition-colors">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15,18 9,12 15,6"/></svg>
+              </button>
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{monthLabel}</span>
+              <button onClick={nextMonth} disabled={month >= today.toISOString().substring(0, 7)} className="w-8 h-8 rounded-lg hover:bg-surface-100 dark:hover:bg-gray-800 flex items-center justify-center text-surface-400 transition-colors disabled:opacity-30">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9,18 15,12 9,6"/></svg>
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="data-table text-xs">
+            <table className="data-table text-xs" style={{ minWidth: '640px' }}>
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>School In</th>
-                  <th>Eng</th><th>Hindi</th><th>SC</th><th>SS</th><th>SKT</th><th>DR</th><th>IT</th><th>OT</th>
-                  <th>School Out</th>
+                  <th className="min-w-[80px]">Date</th>
+                  <th>Overall</th>
+                  {PARENT_SUBJECTS.map(s => <th key={s.key} className="text-center">{s.label}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}>{Array.from({ length: 11 }).map((_, j) => <td key={j}><div className="h-3 bg-surface-100 rounded animate-pulse w-10"/></td>)}</tr>
+                    <tr key={i}>{Array.from({ length: 10 }).map((_, j) => <td key={j}><div className="h-4 bg-surface-100 dark:bg-gray-800 rounded animate-pulse"/></td>)}</tr>
                   ))
                 ) : records.length === 0 ? (
-                  <tr><td colSpan={11} className="text-center py-8 text-surface-400">No attendance records</td></tr>
+                  <tr><td colSpan={10} className="text-center py-8 text-surface-400">No attendance records for this month</td></tr>
                 ) : records.map(r => {
-                  const cfg = STATUS_CFG[r.status];
+                  const overallCfg = STATUS_CFG[r.status];
+                  const subData = (r.subject_attendance ?? {}) as Record<string, string>;
                   return (
-                    <tr key={r.date}>
-                      <td>{new Date(r.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
-                      <td>{r.punch_in || '—'}</td>
-                      {['eng','hindi','sc','ss','skt','dr','it','ot'].map(sub => (
-                        <td key={sub}>
-                          {r.subjects?.[sub] ? (
-                            <span className={`inline-block w-5 h-5 rounded text-center text-[9px] font-bold leading-5 ${STATUS_CFG[r.subjects[sub]]?.bg} ${STATUS_CFG[r.subjects[sub]]?.text}`}>
-                              {STATUS_CFG[r.subjects[sub]]?.label}
-                            </span>
-                          ) : <span className="text-surface-300">—</span>}
-                        </td>
-                      ))}
-                      <td>{r.punch_out || '—'}</td>
+                    <tr key={String(r.date)}>
+                      <td className="font-medium text-gray-700 dark:text-gray-300">
+                        {new Date(r.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      </td>
+                      <td>
+                        {overallCfg ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ${overallCfg.bg} ${overallCfg.text}`}>
+                            {overallCfg.full}
+                          </span>
+                        ) : <span className="text-surface-300 dark:text-gray-600">—</span>}
+                      </td>
+                      {PARENT_SUBJECTS.map(sub => {
+                        const subStatus = subData[sub.key];
+                        const disp = subStatus ? SUB_STATUS_DISPLAY[subStatus] : null;
+                        return (
+                          <td key={sub.key} className="text-center">
+                            {disp ? (
+                              <span className={`inline-block w-6 h-6 rounded text-[10px] font-bold leading-6 text-center ${disp.bg} ${disp.text}`}>
+                                {disp.label}
+                              </span>
+                            ) : <span className="text-surface-200 dark:text-gray-700">·</span>}
+                          </td>
+                        );
+                      })}
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+          </div>
+          {/* Legend */}
+          <div className="px-4 pb-3 pt-2 flex flex-wrap gap-3">
+            {Object.entries(SUB_STATUS_DISPLAY).map(([key, d]) => (
+              <span key={key} className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${d.bg} ${d.text}`}>{d.label} = {key.charAt(0).toUpperCase() + key.slice(1)}</span>
+            ))}
           </div>
         </div>
       )}

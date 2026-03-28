@@ -147,6 +147,18 @@ export async function incrementUsedDays(schoolId: string, teacherId: string, lea
   });
 }
 
+export async function findStudentApprovedLeaveDays(
+  schoolId: string, studentId: string, yearStart: Date, yearEnd: Date,
+): Promise<number> {
+  const leaves = await prisma.leaveRequest.findMany({
+    where: { schoolId, studentId, status: 'approved', startDate: { gte: yearStart, lte: yearEnd } },
+    select: { startDate: true, endDate: true },
+  });
+  return leaves.reduce((sum, l) => {
+    return sum + Math.max(1, Math.round((l.endDate.getTime() - l.startDate.getTime()) / 86400000) + 1);
+  }, 0);
+}
+
 export async function bulkUpsertTeacherBalances(
   rows: { schoolId: string; teacherId: string; leaveType: string; academicYear: string; totalDays: number }[],
 ) {

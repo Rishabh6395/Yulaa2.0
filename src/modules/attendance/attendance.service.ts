@@ -163,7 +163,12 @@ export async function getAttendance(schoolId: string, searchParams: URLSearchPar
     const [year, monthNum] = month.split('-').map(Number);
     const firstDay = new Date(year, monthNum - 1, 1);
     const lastDay  = new Date(year, monthNum, 0);
-    const attendance = await repo.findMonthlyAttendance(studentId, firstDay, lastDay);
+    const rows = await repo.findMonthlyAttendance(studentId, firstDay, lastDay);
+    const attendance = rows.map(r => ({
+      date:               r.date,
+      status:             r.status,
+      subject_attendance: r.subjectAttendance ?? null,
+    }));
     return { attendance };
   }
 

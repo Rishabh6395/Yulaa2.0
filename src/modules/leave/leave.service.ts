@@ -2,6 +2,19 @@ import { AppError } from '@/utils/errors';
 import * as repo from './leave.repo';
 import type { LeaveRow, LeaveBalanceRow } from './leave.types';
 
+// ── Academic year helper (April–March, India) ─────────────────────────────────
+
+function currentAcademicYear(): { yearStart: Date; yearEnd: Date; label: string } {
+  const now = new Date();
+  const aprilStart = now.getMonth() >= 3
+    ? new Date(now.getFullYear(), 3, 1)
+    : new Date(now.getFullYear() - 1, 3, 1);
+  const marchEnd = new Date(aprilStart.getFullYear() + 1, 2, 31);
+  const y1 = aprilStart.getFullYear();
+  const y2 = marchEnd.getFullYear();
+  return { yearStart: aprilStart, yearEnd: marchEnd, label: `${y1}-${String(y2).slice(2)}` };
+}
+
 // Fallback leave types used only when school hasn't configured any
 const FALLBACK_PARENT_TYPES  = [
   { code: 'sick', name: 'Sick Leave' },
@@ -33,6 +46,7 @@ export async function listLeaveRequests(
     role_code:        lr.roleCode,
     leave_type:       lr.leaveType || 'other',
     user_id:          lr.userId,
+    student_id:       lr.studentId ?? null,
     start_date:       lr.startDate,
     end_date:         lr.endDate,
     reason:           lr.reason,
@@ -119,7 +133,20 @@ export async function reviewLeaveStep(
   const wf = await repo.findLeaveWorkflow(schoolId, leave.roleCode);
   const totalSteps = wf?.steps.length ?? 1;
 
-  return repo.advanceLeaveStep(id, action as 'approved' | 'rejected', reviewerId, leave.currentStep, totalSteps, comment);
+  const result = await repo.advanceLeaveStep(id, action as 'approved' | 'rejected', reviewerId, leave.currentStep, totalSteps, comment);
+
+  // Deduct from TeacherLeaveBalance when an employee leave is finally approved
+  const EMPLOYEE_ROLES_BAL = ['teacher', 'school_admin', 'principal', 'hod'];
+  if (action === 'approved' && result.status === 'approved' && EMPLOYEE_ROLES_BAL.includes(leave.roleCode) && !leave.studentId) {
+    const days = daysBetween(leave.startDate, leave.endDate);
+    const teacherId = await repo.findTeacherIdByUserId(schoolId, leave.userId);
+    if (teacherId) {
+      const { label: academicYear } = currentAcademicYear();
+      await repo.incrementUsedDays(schoolId, teacherId, leave.leaveType, academicYear, days);
+    }
+  }
+
+  return result;
 }
 
 export async function getTeacherBalances(
@@ -154,6 +181,22 @@ export async function getTeacherBalances(
   });
 
   return { balances: result };
+}
+
+// ── Student leave balance (dynamic — counts approved leave days per student) ───
+
+export async function getStudentLeaveBalance(
+  schoolId: string, studentId: string,
+): Promise<{ total_days: number; used_days: number; remaining: number }> {
+  const { yearStart, yearEnd } = currentAcademicYear();
+  const [usedDays, policies] = await Promise.all([
+    repo.findStudentApprovedLeaveDays(schoolId, studentId, yearStart, yearEnd),
+    repo.findLeaveBalancePoliciesByRole(schoolId, 'parent'),
+  ]);
+  const totalDays = policies.length > 0
+    ? policies.reduce((s, p) => s + p.daysPerYear, 0)
+    : 30; // default 30 days/year when school hasn't configured policy
+  return { total_days: totalDays, used_days: usedDays, remaining: Math.max(0, totalDays - usedDays) };
 }
 
 // Exported for use by /api/leave/types

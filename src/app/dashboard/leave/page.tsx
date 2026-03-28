@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useApi } from '@/hooks/useApi';
 
@@ -99,6 +99,10 @@ export default function LeavePage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [reviewModal,  setReviewModal]  = useState<any>(null);
   const [activeTab,    setActiveTab]    = useState<'employee' | 'student'>('employee');
+  const [teacherTab,   setTeacherTab]   = useState<'employee' | 'student'>('employee');
+  const [studentBalances, setStudentBalances] = useState<Record<string, { total_days: number; used_days: number; remaining: number }>>({});
+  const [balLoading,   setBalLoading]   = useState(false);
+  const fetchedStudentIds = useRef<Set<string>>(new Set());
   const [form, setForm] = useState({ leave_type: 'sick', start_date: '', end_date: '', reason: '' });
   const [reviewComment, setReviewComment] = useState('');
   const [saving, setSaving] = useState(false);
@@ -143,11 +147,36 @@ export default function LeavePage() {
   // Filter leaves by tab / role
   const EMPLOYEE_ROLES = ['teacher', 'school_admin', 'principal', 'hod', 'employee'];
   const leaves = isAdmin
-    ? activeTab === 'student'  ? allLeaves.filter(l => l.role_code === 'parent')
-    : activeTab === 'employee' ? allLeaves.filter(l => EMPLOYEE_ROLES.includes(l.role_code))
+    ? activeTab === 'student'  ? allLeaves.filter((l: any) => l.role_code === 'parent')
+    : activeTab === 'employee' ? allLeaves.filter((l: any) => EMPLOYEE_ROLES.includes(l.role_code))
     : allLeaves
-    : isTeacher ? allLeaves.filter(l => l.user_id === userId || l.status === 'pending')
+    : isTeacher
+    ? teacherTab === 'employee'
+      ? allLeaves.filter((l: any) => l.user_id === userId)
+      : allLeaves.filter((l: any) => l.role_code === 'parent')
     : allLeaves;
+
+  // Fetch student leave balances when teacher is on student tab
+  useEffect(() => {
+    if (!isTeacher || teacherTab !== 'student' || isLoading) return;
+    const sLeaves = allLeaves.filter((l: any) => l.role_code === 'parent' && l.student_id);
+    const toFetch = [...new Set(sLeaves.map((l: any) => l.student_id as string))]
+      .filter(id => !fetchedStudentIds.current.has(id));
+    if (!toFetch.length) return;
+    toFetch.forEach(id => fetchedStudentIds.current.add(id));
+    setBalLoading(true);
+    Promise.all(
+      toFetch.map((sid: string) =>
+        fetch(`/api/leave/balance?student_id=${sid}`, { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.json())
+          .then(d => [sid, d] as const)
+          .catch(() => [sid, { total_days: 30, used_days: 0, remaining: 30 }] as const)
+      )
+    ).then(entries => {
+      setStudentBalances(prev => ({ ...prev, ...Object.fromEntries(entries) }));
+      setBalLoading(false);
+    });
+  }, [isTeacher, teacherTab, isLoading, allLeaves, token]);
 
   // Determine current workflow steps for a leave
   function getWorkflowSteps(leave: any) {
@@ -232,20 +261,23 @@ export default function LeavePage() {
         <div>
           <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Leave Requests</h1>
           <p className="text-sm text-surface-400 mt-0.5">
-            {isParent  ? `Leave applications for ${childName}` :
-             isTeacher ? 'Your leave applications' :
+            {isParent                                  ? `Leave applications for ${childName}` :
+             isTeacher && teacherTab === 'student'     ? 'Review student leave applications' :
+             isTeacher                                 ? 'Your leave applications & balance' :
              'Manage all leave applications'}
           </p>
         </div>
-        <button onClick={() => { setForm({ leave_type: leaveTypes[0]?.value ?? 'other', start_date: '', end_date: '', reason: '' }); setShowAddModal(true); }}
-          className="btn-primary flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          {isParent ? `Apply for ${childName}` : 'Apply Leave'}
-        </button>
+        {(!isTeacher || teacherTab === 'employee') && (
+          <button onClick={() => { setForm({ leave_type: leaveTypes[0]?.value ?? 'other', start_date: '', end_date: '', reason: '' }); setShowAddModal(true); }}
+            className="btn-primary flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            {isParent ? `Apply for ${childName}` : 'Apply Leave'}
+          </button>
+        )}
       </div>
 
-      {/* Teacher balance cards */}
-      {isTeacher && balances.length > 0 && <BalanceCards balances={balances} />}
+      {/* Teacher balance cards — employee tab only */}
+      {isTeacher && teacherTab === 'employee' && balances.length > 0 && <BalanceCards balances={balances} />}
 
       {/* Admin tab filter */}
       {isAdmin && (
@@ -257,6 +289,58 @@ export default function LeavePage() {
             </button>
           ))}
         </div>
+      )}
+
+      {/* Teacher tab filter */}
+      {isTeacher && (
+        <div className="flex gap-1 p-1 bg-surface-100 dark:bg-gray-800 rounded-xl w-fit">
+          {([['employee', 'My Leave'], ['student', 'Student Leave']] as const).map(([t, label]) => (
+            <button key={t} onClick={() => setTeacherTab(t)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${teacherTab === t ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-surface-400 hover:text-gray-700'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Student leave balance cards — teacher Student tab */}
+      {isTeacher && teacherTab === 'student' && (
+        <>
+          {balLoading && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[1,2,3,4].map(i => <div key={i} className="card p-4 h-24 animate-pulse bg-surface-50 dark:bg-gray-700/40" />)}
+            </div>
+          )}
+          {!balLoading && Object.keys(studentBalances).length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Student Leave Balance</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {Object.entries(studentBalances).map(([sid, bal]) => {
+                  const leaf = allLeaves.find((l: any) => l.student_id === sid);
+                  const name = (leaf as any)?.student_name ?? 'Student';
+                  const pct = bal.total_days > 0 ? Math.round((bal.remaining / bal.total_days) * 100) : 0;
+                  const barColor = pct > 50 ? 'bg-emerald-500' : pct > 20 ? 'bg-amber-400' : 'bg-red-500';
+                  return (
+                    <div key={sid} className="card p-4 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-surface-500 dark:text-gray-400 truncate">{name}</span>
+                        <span className="text-base shrink-0">🎓</span>
+                      </div>
+                      <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                        {bal.remaining}
+                        <span className="text-sm font-normal text-surface-400 ml-1">/ {bal.total_days}</span>
+                      </div>
+                      <div className="w-full bg-surface-100 dark:bg-gray-700 rounded-full h-1.5">
+                        <div className={`${barColor} h-1.5 rounded-full`} style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="text-xs text-surface-400">{bal.used_days} used · {bal.remaining} remaining</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Leave list */}
@@ -298,6 +382,19 @@ export default function LeavePage() {
                     </div>
                     {l.reason && <p className="text-xs text-surface-400 mt-0.5 line-clamp-1">{l.reason}</p>}
                     <WorkflowProgress steps={steps} currentStep={l.current_step} status={l.status} actions={l.actions} />
+                    {/* Inline student balance indicator — teacher student tab */}
+                    {isTeacher && teacherTab === 'student' && l.student_id && studentBalances[l.student_id] && (() => {
+                      const b = studentBalances[l.student_id];
+                      return (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-surface-400 shrink-0"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+                          <span className="text-[11px] text-surface-400">Leave balance: </span>
+                          <span className={`text-[11px] font-semibold ${b.remaining > 5 ? 'text-emerald-600 dark:text-emerald-400' : b.remaining > 0 ? 'text-amber-500' : 'text-red-500'}`}>
+                            {b.remaining}/{b.total_days} days left
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
