@@ -7,7 +7,7 @@ export async function GET(request: Request) {
     const user        = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
-    return Response.json(await listQueries(primaryRole.school_id!));
+    return Response.json(await listQueries(primaryRole.school_id!, user.id, primaryRole.role_code));
   } catch (err) { return handleError(err); }
 }
 

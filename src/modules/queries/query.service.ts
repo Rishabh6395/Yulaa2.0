@@ -4,8 +4,19 @@ import type { QueryRow } from './query.types';
 
 export { QueryRow };
 
-export async function listQueries(schoolId: string): Promise<{ queries: QueryRow[] }> {
-  const items = await repo.findQueries(schoolId);
+const QUERY_REVIEWER_ROLES = ['super_admin', 'school_admin', 'principal', 'hod', 'teacher'];
+
+export async function listQueries(
+  schoolId: string, userId: string, roleCode: string,
+): Promise<{ queries: QueryRow[] }> {
+  // Reviewers (admins + teachers) see all queries; others see only their own
+  let parentId: string | undefined | null;
+  if (!QUERY_REVIEWER_ROLES.includes(roleCode)) {
+    const parent = await repo.findParentByUser(userId);
+    parentId = parent?.id ?? null; // null → user has no parent record → show nothing
+  }
+
+  const items = await repo.findQueries(schoolId, parentId ?? undefined);
   return {
     queries: items.map((q) => ({
       id:               q.id,

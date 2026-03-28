@@ -10,9 +10,11 @@ export async function GET(request: Request) {
     const user        = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
-    const isAdmin     = ADMIN_ROLES.includes(primaryRole.role_code);
+    // Reviewers (admins + teachers) see all school leaves so they can approve.
+    // Non-reviewers (parent, student, etc.) see only their own.
+    const canSeeAll = REVIEWER_ROLES.includes(primaryRole.role_code);
     return Response.json(
-      await listLeaveRequests(primaryRole.school_id!, user.id, primaryRole.role_code, isAdmin),
+      await listLeaveRequests(primaryRole.school_id!, user.id, primaryRole.role_code, canSeeAll),
     );
   } catch (err) { return handleError(err); }
 }

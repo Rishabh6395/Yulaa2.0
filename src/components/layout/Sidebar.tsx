@@ -26,9 +26,10 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone' },
     { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar' },
     { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare' },
+    { label: 'Transport',      href: '/dashboard/transport',     icon: 'Bus' },
     { label: 'Compliance',     href: '/dashboard/compliance',    icon: 'ShieldCheck' },
     { label: 'Reports',        href: '/dashboard/reports',       icon: 'BarChart' },
-    { label: 'Settings',       href: '/dashboard/settings',      icon: 'Settings' },
+    { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle' },
   ],
   teacher: [
     { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard' },
@@ -36,6 +37,8 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Performance',    href: '/dashboard/performance',   icon: 'TrendingUp' },
     { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen' },
     { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar' },
+    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare' },
+    { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle' },
   ],
   student: [
     { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard' },
@@ -203,6 +206,13 @@ const icons: Record<string, React.ReactNode> = {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/>
       <polyline points="17,6 23,6 23,12"/>
+    </svg>
+  ),
+  UserCircle: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <circle cx="12" cy="10" r="3"/>
+      <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/>
     </svg>
   ),
 };

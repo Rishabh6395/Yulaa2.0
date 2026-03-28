@@ -1,8 +1,8 @@
 import prisma from '@/lib/prisma';
 
-export async function findQueries(schoolId: string) {
+export async function findQueries(schoolId: string, parentId?: string) {
   return prisma.studentQuery.findMany({
-    where: { schoolId },
+    where: { schoolId, ...(parentId !== undefined ? { parentId } : {}) },
     include: {
       student:        { select: { firstName: true, lastName: true } },
       parent:         { include: { user: { select: { firstName: true, lastName: true } } } },

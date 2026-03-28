@@ -66,6 +66,60 @@ function NotifyModal({ open, onClose, token }: { open: boolean; onClose: () => v
   );
 }
 
+// ── Fee Receipt ───────────────────────────────────────────────────────────────
+
+function downloadReceipt(inv: any, schoolName: string) {
+  const fmt    = (n: any) => `₹${parseFloat(n || 0).toLocaleString('en-IN')}`;
+  const due    = parseFloat(inv.amount || 0) - parseFloat(inv.paid_amount || 0);
+  const today  = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+  const dueStr = new Date(inv.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const grade  = inv.grade ? `${inv.grade}${inv.section ? ' - ' + inv.section : ''}` : '—';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<title>Fee Receipt – ${inv.invoice_no}</title>
+<style>
+  @media print { body { margin: 0; } }
+  body { font-family: Arial, sans-serif; max-width: 400px; margin: 30px auto; padding: 20px; color: #111; }
+  .header { text-align: center; border-bottom: 2px solid #111; padding-bottom: 12px; margin-bottom: 12px; }
+  .header h1 { margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; }
+  .header h2 { margin: 4px 0 0; font-size: 13px; font-weight: normal; color: #555; }
+  .section { border-bottom: 1px dashed #ccc; padding: 10px 0; }
+  .row { display: flex; justify-content: space-between; font-size: 13px; margin: 4px 0; }
+  .row .label { color: #555; }
+  .row .val { font-weight: 600; }
+  .total-row { font-size: 15px; font-weight: 700; }
+  .due-row .val { color: ${due > 0 ? '#dc2626' : '#16a34a'}; }
+  .footer { text-align: center; margin-top: 16px; font-size: 11px; color: #888; }
+  .print-btn { display: block; margin: 20px auto; padding: 8px 24px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; }
+  @media print { .print-btn { display: none; } }
+</style></head><body>
+<div class="header">
+  <h1>${schoolName}</h1>
+  <h2>Fee Receipt</h2>
+</div>
+<div class="section">
+  <div class="row"><span class="label">Student</span><span class="val">${inv.student_name || '—'}</span></div>
+  <div class="row"><span class="label">Class</span><span class="val">${grade}</span></div>
+  <div class="row"><span class="label">Due Date</span><span class="val">${dueStr}</span></div>
+</div>
+<div class="section">
+  <div class="row total-row"><span class="label">Total Amount</span><span class="val">${fmt(inv.amount)}</span></div>
+  <div class="row"><span class="label">Amount Paid</span><span class="val" style="color:#16a34a">${fmt(inv.paid_amount)}</span></div>
+  <div class="row due-row"><span class="label">Balance Due</span><span class="val">${fmt(due)}</span></div>
+</div>
+<div class="section" style="border-bottom:none">
+  <div class="row"><span class="label">Receipt No.</span><span class="val">${inv.invoice_no}</span></div>
+  <div class="row"><span class="label">Status</span><span class="val" style="text-transform:capitalize">${inv.status}</span></div>
+  <div class="row"><span class="label">Generated</span><span class="val">${today}</span></div>
+</div>
+<div class="footer">This is a computer-generated receipt and does not require a signature.</div>
+<button class="print-btn" onclick="window.print()">Print Receipt</button>
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=480,height=620');
+  if (win) { win.document.write(html); win.document.close(); }
+}
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     paid:    'badge-success',
@@ -276,20 +330,20 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
                 <th>Due Date</th>
                 <th>Paid</th>
                 <th>Status</th>
-                {isParent && <th>Action</th>}
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: isParent ? 6 : 7 }).map((_, j) => (
+                    {Array.from({ length: isParent ? 7 : 8 }).map((_, j) => (
                       <td key={j}><div className="h-4 bg-surface-100 rounded animate-pulse w-16"/></td>
                     ))}
                   </tr>
                 ))
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={isParent ? 6 : 7} className="text-center py-8 text-surface-400">No invoices found</td></tr>
+                <tr><td colSpan={isParent ? 7 : 8} className="text-center py-8 text-surface-400">No invoices found</td></tr>
               ) : filtered.map(inv => (
                 <tr key={inv.id}>
                   <td><span className="font-mono text-xs bg-surface-50 px-2 py-1 rounded">{inv.invoice_no}</span></td>
@@ -299,9 +353,9 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
                   <td>{new Date(inv.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                   <td className={parseFloat(inv.paid_amount) > 0 ? 'text-emerald-600 font-medium' : 'text-surface-400'}>{fmt(inv.paid_amount)}</td>
                   <td><StatusBadge status={inv.status} /></td>
-                  {isParent && (
-                    <td>
-                      {(inv.status === 'unpaid' || inv.status === 'overdue') && (
+                  <td>
+                    <div className="flex items-center gap-2">
+                      {isParent && (inv.status === 'unpaid' || inv.status === 'overdue') && (
                         <a
                           href={`/dashboard/fees/pay?invoice=${inv.id}`}
                           className="text-xs bg-brand-500 text-white px-3 py-1.5 rounded-lg hover:bg-brand-600 font-medium transition-colors inline-block"
@@ -309,8 +363,21 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
                           Pay Now
                         </a>
                       )}
-                    </td>
-                  )}
+                      {(inv.status === 'paid' || inv.status === 'partial') && (
+                        <button
+                          onClick={() => {
+                            const user = JSON.parse(localStorage.getItem('user') || '{}');
+                            downloadReceipt(inv, user.schoolName || 'School');
+                          }}
+                          className="text-xs flex items-center gap-1 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-lg hover:bg-emerald-100 font-medium transition-colors"
+                          title="Download receipt"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                          Receipt
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
