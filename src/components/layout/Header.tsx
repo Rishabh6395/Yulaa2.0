@@ -18,7 +18,7 @@ interface HeaderProps {
 
 interface NotifItem {
   id:    string;
-  type:  'announcement' | 'leave' | 'fee';
+  type:  'announcement' | 'leave' | 'fee' | 'homework' | 'query';
   title: string;
   sub:   string;
   href:  string;
@@ -29,6 +29,8 @@ const TYPE_ICON: Record<string, string> = {
   announcement: '📢',
   leave:        '🗓️',
   fee:          '💰',
+  homework:     '📚',
+  query:        '💬',
 };
 
 function timeAgo(dateStr: string) {
@@ -40,81 +42,37 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+// Module-level client-side cache — survives panel open/close within the tab
+let _notifCache: { items: NotifItem[]; ts: number } | null = null;
+const CLIENT_CACHE_TTL = 30_000; // 30 s
+
 // ── Notification panel ────────────────────────────────────────────────────────
 
-function NotificationPanel({ onClose }: { onClose: () => void }) {
+function NotificationPanel({ onClose, onLoad }: { onClose: () => void; onLoad: (count: number) => void }) {
   const router  = useRouter();
-  const [items, setItems] = useState<NotifItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items,   setItems]   = useState<NotifItem[]>(_notifCache?.items ?? []);
+  const [loading, setLoading] = useState(!_notifCache);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const headers = { Authorization: `Bearer ${token}` };
-
-    Promise.allSettled([
-      fetch('/api/announcements', { headers }).then(r => r.json()),
-      fetch('/api/leave',         { headers }).then(r => r.json()),
-      fetch('/api/fees',          { headers }).then(r => r.json()),
-    ]).then(results => {
-      const notifs: NotifItem[] = [];
-
-      // Announcements (recent 3, not expired)
-      const annData = results[0].status === 'fulfilled' ? results[0].value : null;
-      (annData?.announcements ?? [])
-        .filter((a: any) => {
-          const age = Math.floor((Date.now() - new Date(a.published_at).getTime()) / 86400000);
-          return age < 20;
-        })
-        .slice(0, 3)
-        .forEach((a: any) => {
-          notifs.push({
-            id:    `ann-${a.id}`,
-            type:  'announcement',
-            title: a.title,
-            sub:   a.type?.replace('_', ' ') ?? 'General',
-            href:  '/dashboard/announcements',
-            time:  a.published_at,
-          });
-        });
-
-      // Pending leaves
-      const leaveData = results[1].status === 'fulfilled' ? results[1].value : null;
-      (leaveData?.leaves ?? [])
-        .filter((l: any) => l.status === 'pending')
-        .slice(0, 3)
-        .forEach((l: any) => {
-          notifs.push({
-            id:    `leave-${l.id}`,
-            type:  'leave',
-            title: `${l.leave_type} Leave — ${l.status}`,
-            sub:   l.requester_name ?? '',
-            href:  '/dashboard/leave',
-            time:  l.created_at,
-          });
-        });
-
-      // Overdue or unpaid fees
-      const feeData = results[2].status === 'fulfilled' ? results[2].value : null;
-      (feeData?.invoices ?? [])
-        .filter((f: any) => ['overdue', 'unpaid'].includes(f.status))
-        .slice(0, 2)
-        .forEach((f: any) => {
-          notifs.push({
-            id:    `fee-${f.id}`,
-            type:  'fee',
-            title: `Fee ${f.status} — ₹${parseFloat(f.amount || 0).toLocaleString('en-IN')}`,
-            sub:   f.invoice_no ?? '',
-            href:  '/dashboard/fees',
-            time:  f.due_date,
-          });
-        });
-
-      // Sort by time desc
-      notifs.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-      setItems(notifs.slice(0, 8));
+    // Serve from module-level cache if still fresh
+    if (_notifCache && Date.now() - _notifCache.ts < CLIENT_CACHE_TTL) {
+      setItems(_notifCache.items);
       setLoading(false);
-    });
-  }, []);
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    fetch('/api/notifications', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        const notifs: NotifItem[] = data.notifications ?? [];
+        _notifCache = { items: notifs, ts: Date.now() };
+        setItems(notifs);
+        onLoad(notifs.length);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [onLoad]);
 
   const go = (href: string) => {
     onClose();
@@ -167,20 +125,13 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
       </div>
 
       {!loading && items.length > 0 && (
-        <div className="px-4 py-2.5 border-t border-surface-100 dark:border-gray-800 grid grid-cols-3 gap-2">
-          {[
-            { label: 'Announcements', href: '/dashboard/announcements' },
-            { label: 'Leave',         href: '/dashboard/leave' },
-            { label: 'Fees',          href: '/dashboard/fees' },
-          ].map(link => (
-            <button
-              key={link.href}
-              onClick={() => go(link.href)}
-              className="text-[11px] text-brand-600 dark:text-brand-400 font-medium hover:underline text-center"
-            >
-              {link.label}
-            </button>
-          ))}
+        <div className="px-4 py-2.5 border-t border-surface-100 dark:border-gray-800 flex justify-end">
+          <button
+            onClick={() => go('/dashboard/announcements')}
+            className="text-[11px] text-brand-600 dark:text-brand-400 font-medium hover:underline"
+          >
+            View all →
+          </button>
         </div>
       )}
     </div>
@@ -192,8 +143,11 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
 export default function Header({ user, collapsed, onToggle, parentChildren, activeChild, onChildSwitch }: HeaderProps) {
   const router = useRouter();
   const isParent = user?.primaryRole === 'parent';
-  const [showNotif, setShowNotif] = useState(false);
-  const notifRef  = useRef<HTMLDivElement>(null);
+  const [showNotif,  setShowNotif]  = useState(false);
+  const [notifCount, setNotifCount] = useState(_notifCache?.items.length ?? 0);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  const handleNotifLoad = useCallback((count: number) => setNotifCount(count), []);
 
   // Close on outside click
   useEffect(() => {
@@ -270,10 +224,16 @@ export default function Header({ user, collapsed, onToggle, parentChildren, acti
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
             </svg>
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger"/>
+            {notifCount > 0 ? (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full bg-danger flex items-center justify-center text-[9px] font-bold text-white px-0.5">
+                {notifCount > 9 ? '9+' : notifCount}
+              </span>
+            ) : (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger"/>
+            )}
           </button>
 
-          {showNotif && <NotificationPanel onClose={() => setShowNotif(false)} />}
+          {showNotif && <NotificationPanel onClose={() => setShowNotif(false)} onLoad={handleNotifLoad} />}
         </div>
 
         <div className="w-px h-6 bg-surface-200 dark:bg-gray-700 mx-1"/>

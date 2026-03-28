@@ -3,9 +3,10 @@ import { cacheGet, cacheSet, cacheInvalidate } from '@/lib/redis';
 export { cacheInvalidate };
 
 export const CacheTTL = {
-  dashboard:       60,   // 1 min
-  dashboardParent: 30,   // 30 s
-  list:            120,  // 2 min
+  dashboard:       120,  // 2 min
+  dashboardParent:  60,  // 1 min
+  notifications:    60,  // 1 min — notification bell
+  list:            300,  // 5 min
 } as const;
 
 /**

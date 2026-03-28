@@ -27,8 +27,10 @@ export const redis: Redis | null =
 
 /** TTL presets in seconds */
 export const TTL = {
-  dashboard: 60,        // 1 min — analytics cards
-  dashboardParent: 30,  // 30 s  — per-child view
+  dashboard:       120,  // 2 min  — analytics cards
+  dashboardParent:  60,  // 1 min  — per-child view
+  notifications:    60,  // 1 min  — notification bell
+  list:            300,  // 5 min  — paginated lists
 } as const;
 
 /**
@@ -58,12 +60,17 @@ export async function cacheSet(key: string, value: unknown, ttl: number): Promis
 
 /**
  * Invalidate all keys matching a glob pattern.
+ * Uses SCAN (non-blocking) instead of KEYS to avoid stalling Redis.
  */
 export async function cacheInvalidate(pattern: string): Promise<void> {
   if (!redis) return;
   try {
-    const keys = await redis.keys(pattern);
-    if (keys.length) await redis.del(...keys);
+    let cursor = '0';
+    do {
+      const [next, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+      cursor = next;
+      if (keys.length) await redis.del(...keys);
+    } while (cursor !== '0');
   } catch {
     // Ignore
   }
