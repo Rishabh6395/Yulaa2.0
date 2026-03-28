@@ -17,6 +17,22 @@ export async function findLeaveRequests(schoolId: string, userId?: string) {
   });
 }
 
+// Returns the first pending leave for a user OR for a specific student
+export async function findPendingLeave(
+  schoolId: string, userId: string, studentId: string | null,
+) {
+  if (studentId) {
+    return prisma.leaveRequest.findFirst({
+      where: { schoolId, studentId, status: 'pending' },
+      select: { id: true, leaveType: true, startDate: true, endDate: true },
+    });
+  }
+  return prisma.leaveRequest.findFirst({
+    where: { schoolId, userId, status: 'pending', studentId: null },
+    select: { id: true, leaveType: true, startDate: true, endDate: true },
+  });
+}
+
 export async function withdrawLeaveRequest(id: string, userId: string) {
   return prisma.leaveRequest.updateMany({
     where: { id, userId, status: 'pending' },

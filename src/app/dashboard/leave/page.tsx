@@ -144,6 +144,19 @@ export default function LeavePage() {
   );
   const leaveTypes = (typesData?.types ?? []).map(t => ({ value: t.code, label: t.name, icon: leaveIcon(t.code) }));
 
+  // ── Pending-leave guard ───────────────────────────────────────────────────
+  // Parent: block if the active child already has a pending leave
+  const parentHasPending = isParent && activeChild
+    ? allLeaves.some((l: any) => l.student_id === activeChild.id && l.status === 'pending')
+    : false;
+
+  // Teacher: block on own-leave tab if teacher already has a pending leave
+  const teacherHasPending = isTeacher
+    ? allLeaves.some((l: any) => l.user_id === userId && l.status === 'pending')
+    : false;
+
+  const canApply = isParent ? !parentHasPending : isTeacher ? !teacherHasPending : true;
+
   // Filter leaves by tab / role
   const EMPLOYEE_ROLES = ['teacher', 'school_admin', 'principal', 'hod', 'employee'];
   const leaves = isAdmin
@@ -268,8 +281,15 @@ export default function LeavePage() {
           </p>
         </div>
         {(!isTeacher || teacherTab === 'employee') && (
-          <button onClick={() => { setForm({ leave_type: leaveTypes[0]?.value ?? 'other', start_date: '', end_date: '', reason: '' }); setShowAddModal(true); }}
-            className="btn-primary flex items-center gap-2">
+          <button
+            onClick={() => {
+              if (!canApply) return;
+              setForm({ leave_type: leaveTypes[0]?.value ?? 'other', start_date: '', end_date: '', reason: '' });
+              setShowAddModal(true);
+            }}
+            disabled={!canApply}
+            title={!canApply ? 'A leave request is already pending review' : undefined}
+            className={`btn-primary flex items-center gap-2 ${!canApply ? 'opacity-50 cursor-not-allowed' : ''}`}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             {isParent ? `Apply for ${childName}` : 'Apply Leave'}
           </button>
@@ -341,6 +361,21 @@ export default function LeavePage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Pending-leave block banner */}
+      {!canApply && (isParent || (isTeacher && teacherTab === 'employee')) && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-600 dark:text-amber-400 mt-0.5 shrink-0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div>
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Leave application blocked</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+              {isParent
+                ? `${childName} already has a leave request pending review. A new one cannot be submitted until the current request is approved, rejected, or withdrawn.`
+                : 'You already have a leave request pending review. A new one cannot be submitted until the current request is actioned.'}
+            </p>
+          </div>
+        </div>
       )}
 
       {/* Leave list */}

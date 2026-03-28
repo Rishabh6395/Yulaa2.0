@@ -89,6 +89,13 @@ export async function submitLeaveRequest(
 
   const leaveType = leave_type || 'other';
 
+  // Block if a pending leave already exists for this user / student
+  const existing = await repo.findPendingLeave(schoolId, userId, student_id || null);
+  if (existing) {
+    const who = student_id ? 'This student already has' : 'You already have';
+    throw new AppError(`${who} a pending leave request awaiting review. Please wait for it to be actioned before submitting a new one.`);
+  }
+
   // Validate leave type is allowed for this role (check DB first, then fallback)
   const dbTypes = await repo.findLeaveTypesByRole(schoolId, roleCode);
   if (dbTypes.length > 0) {
