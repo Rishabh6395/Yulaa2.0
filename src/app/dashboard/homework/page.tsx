@@ -216,23 +216,16 @@ export default function HomeworkPage() {
                     </>
                   )}
 
-                  {/* Parent: Done/Not Done toggle + Note */}
-                  {isParent && (
+                  {/* Parent: Done/Not Done toggle + Note — locked once done */}
+                  {isParent && hw.student_status !== 'done' && (
                     <>
                       <button
                         onClick={() => handleToggleDone(hw)}
                         disabled={toggling === hw.id}
-                        className={`flex-1 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-1.5 border ${
-                          hw.student_status === 'done'
-                            ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
-                            : 'bg-surface-50 dark:bg-gray-800 text-surface-600 dark:text-gray-400 border-surface-200 dark:border-gray-700 hover:bg-surface-100'
-                        }`}
+                        className="flex-1 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-1.5 border bg-surface-50 dark:bg-gray-800 text-surface-600 dark:text-gray-400 border-surface-200 dark:border-gray-700 hover:bg-surface-100"
                       >
-                        {hw.student_status === 'done' ? (
-                          <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20,6 9,17 4,12"/></svg>Done</>
-                        ) : (
-                          <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Mark Done</>
-                        )}
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                        Mark Done
                       </button>
                       <button
                         onClick={() => openNote(hw)}

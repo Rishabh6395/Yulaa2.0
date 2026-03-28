@@ -93,6 +93,60 @@ export async function getAdminDashboard(schoolId: string) {
   });
 }
 
+export async function getTeacherDashboard(userId: string, schoolId: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Find teacher record for this user in this school
+  const teacher = await prisma.teacher.findUnique({
+    where: { userId_schoolId: { userId, schoolId } },
+  });
+
+  if (!teacher) {
+    const announcements = await prisma.announcement.findMany({
+      where: { schoolId }, orderBy: { createdAt: 'desc' }, take: 5,
+      select: { id: true, title: true, content: true, priority: true, createdAt: true },
+    });
+    return {
+      stats: { totalStudents: 0, todayAttendance: { present: 0, absent: 0, late: 0, total: 0, rate: 0 } },
+      recentAnnouncements: announcements,
+    };
+  }
+
+  // Find class where this teacher is the class teacher
+  const myClass = await prisma.class.findFirst({
+    where: { classTeacherId: teacher.id, schoolId },
+  });
+
+  const [totalStudents, todayAttendanceRows, announcements] = await Promise.all([
+    myClass
+      ? prisma.student.count({ where: { classId: myClass.id, status: 'active' } })
+      : 0,
+    myClass
+      ? prisma.attendance.findMany({ where: { classId: myClass.id, date: today }, select: { status: true } })
+      : [],
+    prisma.announcement.findMany({
+      where: { schoolId }, orderBy: { createdAt: 'desc' }, take: 5,
+      select: { id: true, title: true, content: true, priority: true, createdAt: true },
+    }),
+  ]);
+
+  const present = (todayAttendanceRows as any[]).filter((a) => a.status === 'present').length;
+  const absent  = (todayAttendanceRows as any[]).filter((a) => a.status === 'absent').length;
+  const late    = (todayAttendanceRows as any[]).filter((a) => a.status === 'late').length;
+  const total   = (todayAttendanceRows as any[]).length;
+
+  return {
+    stats: {
+      totalStudents,
+      className:   myClass ? `${myClass.grade} ${myClass.section}` : null,
+      sectionName: myClass?.section ?? null,
+      todayAttendance: { present, absent, late, total, rate: total > 0 ? Math.round((present / total) * 100) : 0 },
+    },
+    recentAnnouncements: announcements,
+  };
+}
+
 export async function getParentDashboard(userId: string, studentId: string) {
   return withCache(`dashboard:parent:${userId}:${studentId}`, CacheTTL.dashboardParent, async () => {
     const parent = await prisma.parent.findUnique({ where: { userId } });

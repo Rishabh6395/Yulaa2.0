@@ -156,14 +156,14 @@ export default function QueriesPage() {
                       </button>
                     )}
 
-                    {/* Reopen — for resolved/closed queries */}
-                    {canReopen && isResolvable && (
+                    {/* Reopen — for resolved/closed queries, OR when submitter isn't satisfied with in_progress response */}
+                    {canReopen && (isResolvable || (isSubmitter && q.response && q.status === 'in_progress')) && (
                       <button
                         onClick={() => openReopen(q)}
                         className="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 font-medium transition-colors flex items-center gap-1.5"
                       >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
-                        Reopen
+                        {isResolvable ? 'Reopen' : 'Not Resolved'}
                       </button>
                     )}
                   </div>

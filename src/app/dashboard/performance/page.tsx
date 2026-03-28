@@ -89,8 +89,12 @@ function TeacherView({ userId }: { userId: string }) {
   const [students,  setStudents]  = useState<any[]>([]);
   const [loadingStu, setLoadingStu] = useState(false);
 
-  const { data: classData } = useApi<{ classes: any[] }>('/api/classes');
+  const { data: classData }    = useApi<{ classes: any[] }>('/api/classes');
+  const { data: subjectsData } = useApi<{ subjects: string[] }>('/api/teacher/subjects');
   const classes = classData?.classes || [];
+
+  // Subjects from teacher's timetable; fall back to full list if none assigned
+  const teacherSubjects: string[] = subjectsData?.subjects?.length ? subjectsData.subjects : SUBJECTS;
 
   // Find the class where this user is the class teacher
   const myClass = classes.find((c: any) => c.class_teacher_user_id === userId);
@@ -111,7 +115,7 @@ function TeacherView({ userId }: { userId: string }) {
     if (myClass?.id) fetchStudents(myClass.id);
   }, [myClass?.id, fetchStudents]);
 
-  const displaySubjects = subject ? [subject] : SUBJECTS;
+  const displaySubjects = subject ? [subject] : teacherSubjects;
 
   // For each student, compute scores for displayed subjects
   const tableData = students.map(s => {
@@ -147,7 +151,7 @@ function TeacherView({ userId }: { userId: string }) {
         <div className="flex items-center gap-2 flex-wrap">
           <select className="input-field max-w-[140px] text-sm" value={subject} onChange={e => setSubject(e.target.value)}>
             <option value="">All Subjects</option>
-            {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+            {teacherSubjects.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           <select className="input-field max-w-[130px] text-sm" value={term} onChange={e => setTerm(e.target.value)}>
             {TERMS.map(t => <option key={t}>{t}</option>)}

@@ -318,7 +318,7 @@ export default function LeavePage() {
                       disabled={withdrawing === l.id}
                       className="text-xs bg-red-50 dark:bg-red-950/30 text-red-600 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-lg hover:bg-red-100 font-medium transition-colors disabled:opacity-60"
                     >
-                      {withdrawing === l.id ? 'Withdrawing…' : 'Withdraw'}
+                      {withdrawing === l.id ? 'Assigning back…' : 'Leave Assign Back'}
                     </button>
                   )}
 
