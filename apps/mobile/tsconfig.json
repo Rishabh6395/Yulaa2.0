@@ -1,0 +1,10 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": false,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@api-types": ["../../packages/api-types/src/index.ts"]
+    }
+  }
+}

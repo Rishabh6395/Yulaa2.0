@@ -1,8 +1,32 @@
-node_modules/
-.next/
-.env.local
-.env*.local
-out/
-.env
+# dependencies
+node_modules
+.pnp
+.pnp.js
 
-/src/generated/prisma
+# turbo
+.turbo
+
+# build outputs
+.next
+dist
+out
+expo-build
+.expo
+
+# env files
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# misc
+.DS_Store
+*.pem
+*.log
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
