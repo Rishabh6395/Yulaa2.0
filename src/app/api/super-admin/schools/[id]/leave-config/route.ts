@@ -134,7 +134,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         // Excel via ExcelJS
         const ExcelJS = (await import('exceljs')).default;
         const wb = new ExcelJS.Workbook();
-        await wb.xlsx.load(buf);
+        await wb.xlsx.load(buf as unknown as Buffer);
         const ws = wb.worksheets[0];
         ws.eachRow((row: any, rowNum: number) => {
           if (rowNum === 1) return;
