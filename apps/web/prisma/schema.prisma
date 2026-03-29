@@ -54,6 +54,11 @@ model School {
   transportRoutes       TransportRoute[]
   userRoles             UserRole[]
   vendorInventory       VendorInventory[]
+  // New modules
+  schoolEvents          SchoolEvent[]
+  syllabusItems         SyllabusItem[]
+  exams                 Exam[]
+  inventoryItems        InventoryItem[]
 
   @@map("schools")
 }
@@ -95,6 +100,7 @@ model User {
   teachers              Teacher[]
   userRoles             UserRole[]
   vendors               Vendor?
+  createdEvents         SchoolEvent[]
 
   @@map("users")
 }
@@ -135,6 +141,9 @@ model Teacher {
   school          School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   timetableSlots  TimetableSlot[]
+  timetableLogs   TimetableLog[]
+  eventTasks      EventTask[]
+  syllabusItems   SyllabusItem[]
 
   @@unique([userId, schoolId])
   @@index([schoolId])
@@ -168,6 +177,8 @@ model Student {
   queries             StudentQuery[]
   class               Class?               @relation(fields: [classId], references: [id])
   school              School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  eventParticipants   EventParticipant[]
+  examResults         ExamResult[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -219,6 +230,9 @@ model Class {
   homework       Homework[]
   students       Student[]
   timetables     Timetable[]
+  syllabusItems  SyllabusItem[]
+  exams          Exam[]
+  examEntries    ExamTimetableEntry[]
 
   @@unique([schoolId, grade, section, academicYear])
   @@map("classes")
@@ -323,10 +337,11 @@ model Homework {
   dueDate     DateTime             @map("due_date") @db.Date
   maxMarks    Int?                 @map("max_marks")
   createdAt   DateTime             @default(now()) @map("created_at")
-  class       Class                @relation(fields: [classId], references: [id], onDelete: Cascade)
-  school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  teacher     Teacher              @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  submissions HomeworkSubmission[]
+  class         Class                @relation(fields: [classId], references: [id], onDelete: Cascade)
+  school        School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher       Teacher              @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  submissions   HomeworkSubmission[]
+  timetableLogs TimetableLog[]
 
   @@index([schoolId])
   @@index([classId])
@@ -830,17 +845,18 @@ model Timetable {
 }
 
 model TimetableSlot {
-  id          String    @id @default(uuid())
-  timetableId String    @map("timetable_id")
-  dayOfWeek   Int       @map("day_of_week")
-  periodNo    Int       @map("period_no")
-  startTime   String    @map("start_time") @db.VarChar(10)
-  endTime     String    @map("end_time") @db.VarChar(10)
-  subject     String    @db.VarChar(100)
-  teacherId   String?   @map("teacher_id")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  teacher     Teacher?  @relation(fields: [teacherId], references: [id])
-  timetable   Timetable @relation(fields: [timetableId], references: [id], onDelete: Cascade)
+  id          String         @id @default(uuid())
+  timetableId String         @map("timetable_id")
+  dayOfWeek   Int            @map("day_of_week")
+  periodNo    Int            @map("period_no")
+  startTime   String         @map("start_time") @db.VarChar(10)
+  endTime     String         @map("end_time") @db.VarChar(10)
+  subject     String         @db.VarChar(100)
+  teacherId   String?        @map("teacher_id")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  logs        TimetableLog[]
+  teacher     Teacher?       @relation(fields: [teacherId], references: [id])
+  timetable   Timetable      @relation(fields: [timetableId], references: [id], onDelete: Cascade)
 
   @@unique([timetableId, dayOfWeek, periodNo])
   @@map("timetable_slots")
@@ -858,4 +874,240 @@ model MenuPermission {
   @@unique([schoolId, roleCode, menuKey])
   @@index([schoolId, roleCode])
   @@map("menu_permissions")
+}
+
+// ─── Timetable Log ────────────────────────────────────────────────────────────
+// Tracks what topic was taught each day for a given timetable slot.
+model TimetableLog {
+  id         String        @id @default(uuid())
+  slotId     String        @map("slot_id")
+  date       DateTime      @db.Date
+  topic      String?       @db.VarChar(200)
+  notes      String?
+  homeworkId String?       @map("homework_id")
+  teacherId  String        @map("teacher_id")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @default(now()) @updatedAt @map("updated_at")
+  slot       TimetableSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  homework   Homework?     @relation(fields: [homeworkId], references: [id])
+  teacher    Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([slotId, date])
+  @@index([slotId])
+  @@index([teacherId])
+  @@map("timetable_logs")
+}
+
+// ─── Events Management ────────────────────────────────────────────────────────
+model SchoolEvent {
+  id           String             @id @default(uuid())
+  schoolId     String             @map("school_id")
+  title        String             @db.VarChar(200)
+  description  String?
+  eventType    String             @map("event_type") @db.VarChar(50)
+  startDate    DateTime           @map("start_date")
+  endDate      DateTime           @map("end_date")
+  venue        String?            @db.VarChar(200)
+  status       String             @default("upcoming") @db.VarChar(20)
+  academicYear String             @map("academic_year") @db.VarChar(9)
+  createdBy    String             @map("created_by")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @default(now()) @updatedAt @map("updated_at")
+  tasks        EventTask[]
+  participants EventParticipant[]
+  school       School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  creator      User               @relation(fields: [createdBy], references: [id])
+
+  @@index([schoolId])
+  @@index([schoolId, academicYear])
+  @@map("school_events")
+}
+
+model EventTask {
+  id          String      @id @default(uuid())
+  eventId     String      @map("event_id")
+  title       String      @db.VarChar(200)
+  description String?
+  assignedTo  String?     @map("assigned_to")
+  role        String?     @db.VarChar(100)
+  status      String      @default("pending") @db.VarChar(20)
+  dueDate     DateTime?   @map("due_date") @db.Date
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @default(now()) @updatedAt @map("updated_at")
+  event       SchoolEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  teacher     Teacher?    @relation(fields: [assignedTo], references: [id])
+
+  @@index([eventId])
+  @@map("event_tasks")
+}
+
+model EventParticipant {
+  id        String      @id @default(uuid())
+  eventId   String      @map("event_id")
+  studentId String      @map("student_id")
+  status    String      @default("registered") @db.VarChar(20)
+  role      String?     @db.VarChar(100)
+  attended  Boolean     @default(false)
+  createdAt DateTime    @default(now()) @map("created_at")
+  event     SchoolEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  student   Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, studentId])
+  @@index([eventId])
+  @@map("event_participants")
+}
+
+// ─── Syllabus ─────────────────────────────────────────────────────────────────
+model SyllabusItem {
+  id           String   @id @default(uuid())
+  schoolId     String   @map("school_id")
+  classId      String   @map("class_id")
+  subject      String   @db.VarChar(100)
+  chapter      String   @db.VarChar(200)
+  topic        String   @db.VarChar(200)
+  orderNo      Int      @default(0) @map("order_no")
+  academicYear String   @map("academic_year") @db.VarChar(9)
+  status       String   @default("pending") @db.VarChar(20)
+  completedAt  DateTime? @map("completed_at")
+  teacherId    String?  @map("teacher_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class        Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher      Teacher? @relation(fields: [teacherId], references: [id])
+
+  @@index([schoolId, classId, subject])
+  @@map("syllabus_items")
+}
+
+// ─── Exam Management ─────────────────────────────────────────────────────────
+model Exam {
+  id           String               @id @default(uuid())
+  schoolId     String               @map("school_id")
+  title        String               @db.VarChar(200)
+  examType     String               @map("exam_type") @db.VarChar(50)
+  academicYear String               @map("academic_year") @db.VarChar(9)
+  classId      String?              @map("class_id")
+  startDate    DateTime             @map("start_date") @db.Date
+  endDate      DateTime             @map("end_date") @db.Date
+  status       String               @default("scheduled") @db.VarChar(20)
+  gradingType  String               @default("percentage") @map("grading_type") @db.VarChar(20)
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @default(now()) @updatedAt @map("updated_at")
+  entries      ExamTimetableEntry[]
+  results      ExamResult[]
+  school       School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class        Class?               @relation(fields: [classId], references: [id])
+
+  @@index([schoolId])
+  @@index([schoolId, academicYear])
+  @@map("exams")
+}
+
+model ExamTimetableEntry {
+  id        String   @id @default(uuid())
+  examId    String   @map("exam_id")
+  classId   String   @map("class_id")
+  subject   String   @db.VarChar(100)
+  date      DateTime @db.Date
+  startTime String   @map("start_time") @db.VarChar(10)
+  endTime   String   @map("end_time") @db.VarChar(10)
+  maxMarks  Int      @map("max_marks")
+  venue     String?  @db.VarChar(200)
+  createdAt DateTime @default(now()) @map("created_at")
+  exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  class     Class    @relation(fields: [classId], references: [id])
+
+  @@unique([examId, classId, subject])
+  @@index([examId])
+  @@map("exam_timetable_entries")
+}
+
+model ExamResult {
+  id            String   @id @default(uuid())
+  examId        String   @map("exam_id")
+  studentId     String   @map("student_id")
+  subject       String   @db.VarChar(100)
+  marksObtained Decimal  @map("marks_obtained") @db.Decimal(6, 2)
+  maxMarks      Int      @map("max_marks")
+  grade         String?  @db.VarChar(5)
+  remarks       String?  @db.VarChar(200)
+  enteredById   String   @map("entered_by_id")
+  approved      Boolean  @default(false)
+  approvedById  String?  @map("approved_by_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+  exam          Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId, subject])
+  @@index([examId])
+  @@index([studentId])
+  @@map("exam_results")
+}
+
+// ─── School Inventory ─────────────────────────────────────────────────────────
+model InventoryItem {
+  id          String              @id @default(uuid())
+  schoolId    String              @map("school_id")
+  name        String              @db.VarChar(200)
+  category    String              @db.VarChar(50)
+  unit        String              @default("piece") @db.VarChar(20)
+  minStock    Int                 @default(0) @map("min_stock")
+  description String?
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @default(now()) @updatedAt @map("updated_at")
+  stock       InventoryStock[]
+  issues      InventoryIssue[]
+  purchases   InventoryPurchase[]
+  school      School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@map("inventory_items")
+}
+
+model InventoryStock {
+  id        String        @id @default(uuid())
+  itemId    String        @map("item_id")
+  quantity  Int           @default(0)
+  location  String?       @db.VarChar(100)
+  updatedAt DateTime      @default(now()) @updatedAt @map("updated_at")
+  item      InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId])
+  @@map("inventory_stock")
+}
+
+model InventoryIssue {
+  id          String        @id @default(uuid())
+  itemId      String        @map("item_id")
+  issuedTo    String        @map("issued_to")
+  issuedToName String?      @map("issued_to_name") @db.VarChar(200)
+  quantity    Int
+  purpose     String?       @db.VarChar(200)
+  issuedDate  DateTime      @default(now()) @map("issued_date") @db.Date
+  expectedReturn DateTime?  @map("expected_return") @db.Date
+  returnedAt  DateTime?     @map("returned_at")
+  status      String        @default("issued") @db.VarChar(20)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  item        InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@map("inventory_issues")
+}
+
+model InventoryPurchase {
+  id           String        @id @default(uuid())
+  itemId       String        @map("item_id")
+  vendorName   String        @map("vendor_name") @db.VarChar(200)
+  quantity     Int
+  unitPrice    Decimal       @map("unit_price") @db.Decimal(10, 2)
+  totalAmount  Decimal       @map("total_amount") @db.Decimal(10, 2)
+  purchaseDate DateTime      @map("purchase_date") @db.Date
+  invoiceNo    String?       @map("invoice_no") @db.VarChar(50)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  item         InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@map("inventory_purchases")
 }

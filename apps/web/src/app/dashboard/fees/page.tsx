@@ -8,17 +8,25 @@ import Modal from '@/components/ui/Modal';
 function NotifyModal({ open, onClose, token }: { open: boolean; onClose: () => void; token: string }) {
   const [statusFilter, setStatusFilter] = useState('unpaid');
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<{ sent: number } | null>(null);
+  const [result, setResult] = useState<{ notified: number; total: number } | null>(null);
+  const [error, setError] = useState('');
   const [message, setMessage] = useState('Your fee payment is due. Please pay at the earliest to avoid late fees.');
 
   const handleSend = async () => {
     setSending(true);
     setResult(null);
-    // In a real system this would call a push notification API
-    // For now we simulate the action
-    await new Promise(r => setTimeout(r, 1200));
-    setResult({ sent: Math.floor(Math.random() * 20) + 1 });
-    setSending(false);
+    setError('');
+    try {
+      const res = await fetch('/api/fees/notify', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setError(d.error || 'Failed to send'); return; }
+      setResult({ notified: d.notified, total: d.total });
+    } catch { setError('Network error'); }
+    finally { setSending(false); }
   };
 
   return (
@@ -47,8 +55,13 @@ function NotifyModal({ open, onClose, token }: { open: boolean; onClose: () => v
           <textarea className="input-field" rows={3} value={message} onChange={e => setMessage(e.target.value)}/>
         </div>
         {result && (
-          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-700 font-medium">
-            Notification sent to {result.sent} parent{result.sent !== 1 ? 's' : ''} ✓
+          <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-sm text-emerald-700 dark:text-emerald-400 font-medium">
+            In-app notification sent to {result.notified} parent{result.notified !== 1 ? 's' : ''} ({result.total} invoices found) ✓
+          </div>
+        )}
+        {error && (
+          <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400">
+            {error}
           </div>
         )}
         <div className="flex gap-3 pt-2">

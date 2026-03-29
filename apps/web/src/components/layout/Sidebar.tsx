@@ -18,28 +18,36 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Default School Settings', href: '/dashboard/schools/default', icon: 'Settings',        key: 'schools_default' },
   ],
   school_admin: [
-    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard', key: 'dashboard' },
-    { label: 'Admissions',     href: '/dashboard/admissions',    icon: 'ClipboardList',   key: 'admissions' },
-    { label: 'Classes',        href: '/dashboard/classes',       icon: 'LayoutGrid',      key: 'classes' },
-    { label: 'Students',       href: '/dashboard/students',      icon: 'Users',           key: 'students' },
-    { label: 'Teachers',       href: '/dashboard/teachers',      icon: 'GraduationCap',   key: 'teachers' },
-    { label: 'Parents',        href: '/dashboard/parents',       icon: 'Heart',           key: 'parents' },
-    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck',   key: 'attendance' },
-    { label: 'Fees',           href: '/dashboard/fees',          icon: 'CreditCard',      key: 'fees' },
-    { label: 'Scheduling',     href: '/dashboard/scheduling',    icon: 'CalendarDays',    key: 'scheduling' },
-    { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone',       key: 'announcements' },
-    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar',        key: 'leave' },
-    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare',   key: 'queries' },
-    { label: 'Transport',      href: '/dashboard/transport',     icon: 'Bus',             key: 'transport' },
-    { label: 'Compliance',     href: '/dashboard/compliance',    icon: 'ShieldCheck',     key: 'compliance' },
-    { label: 'Reports',        href: '/dashboard/reports',       icon: 'BarChart',        key: 'reports' },
-    { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle',      key: 'settings' },
+    { label: 'Dashboard',        href: '/dashboard',                  icon: 'LayoutDashboard', key: 'dashboard' },
+    { label: 'Admissions',       href: '/dashboard/admissions',       icon: 'ClipboardList',   key: 'admissions' },
+    { label: 'Classes',          href: '/dashboard/classes',          icon: 'LayoutGrid',      key: 'classes' },
+    { label: 'Students',         href: '/dashboard/students',         icon: 'Users',           key: 'students' },
+    { label: 'Teachers',         href: '/dashboard/teachers',         icon: 'GraduationCap',   key: 'teachers' },
+    { label: 'Parents',          href: '/dashboard/parents',          icon: 'Heart',           key: 'parents' },
+    { label: 'Attendance',       href: '/dashboard/attendance',       icon: 'CalendarCheck',   key: 'attendance' },
+    { label: 'Fees',             href: '/dashboard/fees',             icon: 'CreditCard',      key: 'fees' },
+    { label: 'Scheduling',       href: '/dashboard/scheduling',       icon: 'CalendarDays',    key: 'scheduling' },
+    { label: 'Events',           href: '/dashboard/events',           icon: 'CalendarStar',    key: 'events' },
+    { label: 'Exam',             href: '/dashboard/exam',             icon: 'ClipboardCheck',  key: 'exam' },
+    { label: 'Syllabus',         href: '/dashboard/syllabus',         icon: 'BookMarked',      key: 'syllabus' },
+    { label: 'School Inventory', href: '/dashboard/school-inventory', icon: 'Archive',         key: 'school_inventory' },
+    { label: 'Announcements',    href: '/dashboard/announcements',    icon: 'Megaphone',       key: 'announcements' },
+    { label: 'Leave',            href: '/dashboard/leave',            icon: 'Calendar',        key: 'leave' },
+    { label: 'Queries',          href: '/dashboard/queries',          icon: 'MessageSquare',   key: 'queries' },
+    { label: 'Transport',        href: '/dashboard/transport',        icon: 'Bus',             key: 'transport' },
+    { label: 'Compliance',       href: '/dashboard/compliance',       icon: 'ShieldCheck',     key: 'compliance' },
+    { label: 'Reports',          href: '/dashboard/reports',          icon: 'BarChart',        key: 'reports' },
+    { label: 'Profile',          href: '/dashboard/settings',         icon: 'UserCircle',      key: 'settings' },
   ],
   teacher: [
     { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard', key: 'dashboard' },
     { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck',   key: 'attendance' },
+    { label: 'Timetable',      href: '/dashboard/timetable',     icon: 'CalendarList',    key: 'timetable' },
     { label: 'Performance',    href: '/dashboard/performance',   icon: 'TrendingUp',      key: 'performance' },
     { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen',        key: 'homework' },
+    { label: 'Syllabus',       href: '/dashboard/syllabus',      icon: 'BookMarked',      key: 'syllabus' },
+    { label: 'Events',         href: '/dashboard/events',        icon: 'CalendarStar',    key: 'events' },
+    { label: 'Exam',           href: '/dashboard/exam',          icon: 'ClipboardCheck',  key: 'exam' },
     { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar',        key: 'leave' },
     { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare',   key: 'queries' },
     { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle',      key: 'settings' },
@@ -49,6 +57,10 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck',   key: 'attendance' },
     { label: 'Fees',           href: '/dashboard/fees',          icon: 'CreditCard',      key: 'fees' },
     { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen',        key: 'homework' },
+    { label: 'Timetable',      href: '/dashboard/timetable',     icon: 'CalendarList',    key: 'timetable' },
+    { label: 'Syllabus',       href: '/dashboard/syllabus',      icon: 'BookMarked',      key: 'syllabus' },
+    { label: 'Exam Schedule',  href: '/dashboard/exam',          icon: 'ClipboardCheck',  key: 'exam' },
+    { label: 'Events',         href: '/dashboard/events',        icon: 'CalendarStar',    key: 'events' },
     { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone',       key: 'announcements' },
     { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare',   key: 'queries' },
   ],
@@ -58,6 +70,10 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Fees',            href: '/dashboard/fees',           icon: 'CreditCard',      key: 'fees' },
     { label: 'Performance',     href: '/dashboard/performance',    icon: 'TrendingUp',      key: 'performance' },
     { label: 'Homework',        href: '/dashboard/homework',       icon: 'BookOpen',        key: 'homework' },
+    { label: 'Timetable',       href: '/dashboard/timetable',      icon: 'CalendarList',    key: 'timetable' },
+    { label: 'Syllabus',        href: '/dashboard/syllabus',       icon: 'BookMarked',      key: 'syllabus' },
+    { label: 'Exam Schedule',   href: '/dashboard/exam',           icon: 'ClipboardCheck',  key: 'exam' },
+    { label: 'Events',          href: '/dashboard/events',         icon: 'CalendarStar',    key: 'events' },
     { label: 'Announcements',   href: '/dashboard/announcements',  icon: 'Megaphone',       key: 'announcements' },
     { label: 'Leave',           href: '/dashboard/leave',          icon: 'Calendar',        key: 'leave' },
     { label: 'Queries',         href: '/dashboard/queries',        icon: 'MessageSquare',   key: 'queries' },
@@ -73,7 +89,10 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Classes',        href: '/dashboard/classes',       icon: 'LayoutGrid',      key: 'classes' },
     { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck',   key: 'attendance' },
     { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen',        key: 'homework' },
+    { label: 'Syllabus',       href: '/dashboard/syllabus',      icon: 'BookMarked',      key: 'syllabus' },
+    { label: 'Exam',           href: '/dashboard/exam',          icon: 'ClipboardCheck',  key: 'exam' },
     { label: 'Performance',    href: '/dashboard/performance',   icon: 'TrendingUp',      key: 'performance' },
+    { label: 'Events',         href: '/dashboard/events',        icon: 'CalendarStar',    key: 'events' },
     { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone',       key: 'announcements' },
     { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar',        key: 'leave' },
     { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare',   key: 'queries' },
@@ -81,20 +100,24 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle',      key: 'settings' },
   ],
   principal: [
-    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard', key: 'dashboard' },
-    { label: 'Admissions',     href: '/dashboard/admissions',    icon: 'ClipboardList',   key: 'admissions' },
-    { label: 'Classes',        href: '/dashboard/classes',       icon: 'LayoutGrid',      key: 'classes' },
-    { label: 'Students',       href: '/dashboard/students',      icon: 'Users',           key: 'students' },
-    { label: 'Teachers',       href: '/dashboard/teachers',      icon: 'GraduationCap',   key: 'teachers' },
-    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck',   key: 'attendance' },
-    { label: 'Fees',           href: '/dashboard/fees',          icon: 'CreditCard',      key: 'fees' },
-    { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone',       key: 'announcements' },
-    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar',        key: 'leave' },
-    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare',   key: 'queries' },
-    { label: 'Transport',      href: '/dashboard/transport',     icon: 'Bus',             key: 'transport' },
-    { label: 'Compliance',     href: '/dashboard/compliance',    icon: 'ShieldCheck',     key: 'compliance' },
-    { label: 'Reports',        href: '/dashboard/reports',       icon: 'BarChart',        key: 'reports' },
-    { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle',      key: 'settings' },
+    { label: 'Dashboard',        href: '/dashboard',                  icon: 'LayoutDashboard', key: 'dashboard' },
+    { label: 'Admissions',       href: '/dashboard/admissions',       icon: 'ClipboardList',   key: 'admissions' },
+    { label: 'Classes',          href: '/dashboard/classes',          icon: 'LayoutGrid',      key: 'classes' },
+    { label: 'Students',         href: '/dashboard/students',         icon: 'Users',           key: 'students' },
+    { label: 'Teachers',         href: '/dashboard/teachers',         icon: 'GraduationCap',   key: 'teachers' },
+    { label: 'Attendance',       href: '/dashboard/attendance',       icon: 'CalendarCheck',   key: 'attendance' },
+    { label: 'Fees',             href: '/dashboard/fees',             icon: 'CreditCard',      key: 'fees' },
+    { label: 'Events',           href: '/dashboard/events',           icon: 'CalendarStar',    key: 'events' },
+    { label: 'Exam',             href: '/dashboard/exam',             icon: 'ClipboardCheck',  key: 'exam' },
+    { label: 'Syllabus',         href: '/dashboard/syllabus',         icon: 'BookMarked',      key: 'syllabus' },
+    { label: 'School Inventory', href: '/dashboard/school-inventory', icon: 'Archive',         key: 'school_inventory' },
+    { label: 'Announcements',    href: '/dashboard/announcements',    icon: 'Megaphone',       key: 'announcements' },
+    { label: 'Leave',            href: '/dashboard/leave',            icon: 'Calendar',        key: 'leave' },
+    { label: 'Queries',          href: '/dashboard/queries',          icon: 'MessageSquare',   key: 'queries' },
+    { label: 'Transport',        href: '/dashboard/transport',        icon: 'Bus',             key: 'transport' },
+    { label: 'Compliance',       href: '/dashboard/compliance',       icon: 'ShieldCheck',     key: 'compliance' },
+    { label: 'Reports',          href: '/dashboard/reports',          icon: 'BarChart',        key: 'reports' },
+    { label: 'Profile',          href: '/dashboard/settings',         icon: 'UserCircle',      key: 'settings' },
   ],
   employee: [
     { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard', key: 'dashboard' },
@@ -260,6 +283,37 @@ const icons: Record<string, React.ReactNode> = {
       <circle cx="12" cy="12" r="10"/>
       <circle cx="12" cy="10" r="3"/>
       <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/>
+    </svg>
+  ),
+  CalendarStar: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+      <path d="m12 13 1 2.5 2.5.5-1.8 1.7.4 2.5L12 19l-2.1 1.2.4-2.5L8.5 16l2.5-.5z"/>
+    </svg>
+  ),
+  CalendarList: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+      <line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/>
+    </svg>
+  ),
+  BookMarked: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      <polyline points="10,2 10,9 13,6.5 16,9 16,2"/>
+    </svg>
+  ),
+  ClipboardCheck: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+      <rect x="9" y="3" width="6" height="4" rx="1"/>
+      <path d="m9 14 2 2 4-4"/>
+    </svg>
+  ),
+  Archive: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5" rx="1"/>
+      <line x1="10" y1="12" x2="14" y2="12"/>
     </svg>
   ),
 };
