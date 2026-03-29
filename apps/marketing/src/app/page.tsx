@@ -44,7 +44,7 @@ const MOBILE_SCREENS = [
   { screen: 'Announcements', desc: 'School notices and alerts' },
 ];
 
-const WEB_APP_URL = process.env.NEXT_PUBLIC_WEB_APP_URL || 'https://app.yulaa.in';
+const WEB_APP_URL = process.env.NEXT_PUBLIC_WEB_APP_URL || 'https://yulaa2-0.onrender.com/';
 
 export default function HomePage() {
   return (

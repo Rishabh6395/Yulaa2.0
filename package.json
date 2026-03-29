@@ -2,7 +2,8 @@
   "name": "yulaa",
   "private": true,
   "workspaces": [
-    "apps/*",
+    "apps/web",
+    "apps/marketing",
     "packages/*"
   ],
   "scripts": {
