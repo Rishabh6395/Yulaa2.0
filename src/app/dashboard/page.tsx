@@ -31,6 +31,7 @@ function fmtTime(dt: any) {
 
 function PunchCard({ userId }: { userId: string }) {
   const [todayRec,  setTodayRec]  = useState<any>(null);
+  const [loading,   setLoading]   = useState(true);
   const [punching,  setPunching]  = useState<'in' | 'out' | null>(null);
   const [message,   setMessage]   = useState('');
   const today = new Date().toISOString().split('T')[0];
@@ -39,13 +40,15 @@ function PunchCard({ userId }: { userId: string }) {
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   useEffect(() => {
-    if (!userId || !token) return;
+    if (!userId || !token) { setLoading(false); return; }
+    setLoading(true);
     fetch(`/api/attendance?type=employee&teacher_user_id=${userId}&month=${today.substring(0,7)}&date=${today}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.json())
       .then(d => setTodayRec(d.today || null))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [userId, token, today]);
 
   const handlePunch = async (action: 'punch_in' | 'punch_out') => {
@@ -98,7 +101,9 @@ function PunchCard({ userId }: { userId: string }) {
             </div>
             <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">School In</span>
           </div>
-          {hasPunchIn ? (
+          {loading ? (
+            <div className="h-7 rounded-lg bg-surface-100 dark:bg-gray-700 animate-pulse" />
+          ) : hasPunchIn ? (
             <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">{fmtTime(todayRec.punchInTime)}</p>
           ) : (
             <button onClick={() => handlePunch('punch_in')} disabled={punching !== null}
@@ -118,7 +123,9 @@ function PunchCard({ userId }: { userId: string }) {
             </div>
             <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">School Out</span>
           </div>
-          {hasPunchOut ? (
+          {loading ? (
+            <div className="h-7 rounded-lg bg-surface-100 dark:bg-gray-700 animate-pulse" />
+          ) : hasPunchOut ? (
             <p className="text-base font-bold text-red-600 dark:text-red-400">{fmtTime(todayRec.punchOutTime)}</p>
           ) : (
             <button onClick={() => handlePunch('punch_out')} disabled={punching !== null || !hasPunchIn}

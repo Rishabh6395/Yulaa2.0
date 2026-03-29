@@ -25,7 +25,7 @@ export async function findOverlappingLeave(
   startDate: Date,
   endDate: Date,
 ) {
-  const base = { schoolId, status: { in: ['pending', 'approved'] as const }, startDate: { lte: endDate }, endDate: { gte: startDate } };
+  const base = { schoolId, status: { in: ['pending', 'approved'] as string[] }, startDate: { lte: endDate }, endDate: { gte: startDate } };
   const where = studentId
     ? { ...base, studentId }
     : { ...base, userId, studentId: null };
