@@ -2,8 +2,149 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap');
+/* ─── Base ────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
 
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { font-family: 'Source Sans 3', system-ui, sans-serif; }
+html {
+  scroll-behavior: smooth;
+  background: #050505;
+}
+
+body {
+  background: #050505;
+  color: #f0ece4;
+  font-family: var(--font-space), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Typography ──────────────────────────────────────────────────────────── */
+.font-display { font-family: var(--font-cormorant), Georgia, serif; }
+.font-body    { font-family: var(--font-space), system-ui, sans-serif; }
+
+/* ─── Noise texture overlay ───────────────────────────────────────────────── */
+.noise-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+}
+
+/* ─── Video hero ──────────────────────────────────────────────────────────── */
+.hero-video {
+  position: absolute;
+  inset: -20px;
+  width: calc(100% + 40px);
+  height: calc(100% + 40px);
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+  opacity: 0;
+  filter: blur(6px);
+  transition: opacity 1.5s ease;
+}
+.hero-video.loaded { opacity: 1; }
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    linear-gradient(to bottom,
+      rgba(5,5,5,0.55) 0%,
+      rgba(5,5,5,0.3) 40%,
+      rgba(5,5,5,0.55) 75%,
+      rgba(5,5,5,0.95) 100%
+    );
+}
+
+/* Fallback animated gradient when video doesn't load */
+.hero-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 40%, rgba(26,140,165,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 60%, rgba(201,165,102,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 80% at 50% 100%, rgba(139,92,246,0.08) 0%, transparent 70%),
+    #050505;
+  animation: hero-drift 20s ease-in-out infinite;
+}
+@keyframes hero-drift {
+  0%, 100% { background-position: 0 0; }
+  33%       { background-position: 5px -8px; }
+  66%       { background-position: -8px 5px; }
+}
+
+/* ─── Marquee ─────────────────────────────────────────────────────────────── */
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 30s linear infinite;
+}
+.marquee-track:hover { animation-play-state: paused; }
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ─── Section rule lines ─────────────────────────────────────────────────── */
+.rule { height: 1px; background: rgba(240,236,228,0.08); }
+.rule-gold { height: 1px; background: linear-gradient(90deg, transparent, rgba(201,165,102,0.4), transparent); }
+
+/* ─── Product card ────────────────────────────────────────────────────────── */
+.product-card {
+  position: relative;
+  overflow: hidden;
+  background: #0a0a0a;
+  border: 1px solid rgba(240,236,228,0.07);
+  transition: border-color 0.4s ease;
+}
+.product-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background: radial-gradient(ellipse 60% 60% at 50% 0%, rgba(201,165,102,0.06) 0%, transparent 70%);
+}
+.product-card:hover { border-color: rgba(240,236,228,0.15); }
+.product-card:hover::before { opacity: 1; }
+
+/* ─── Gold accent line ────────────────────────────────────────────────────── */
+.gold-line {
+  width: 40px;
+  height: 1px;
+  background: #c9a566;
+  display: inline-block;
+}
+
+/* ─── Classified redaction ────────────────────────────────────────────────── */
+.redacted {
+  background: rgba(240,236,228,0.12);
+  color: transparent;
+  user-select: none;
+  border-radius: 2px;
+  letter-spacing: -0.5px;
+}
+
+/* ─── Stat number ─────────────────────────────────────────────────────────── */
+.stat-num {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-weight: 300;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  color: #c9a566;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #050505; }
+::-webkit-scrollbar-thumb { background: rgba(240,236,228,0.12); border-radius: 2px; }
+
+/* ─── Selection ───────────────────────────────────────────────────────────── */
+::selection { background: rgba(201,165,102,0.25); color: #f0ece4; }

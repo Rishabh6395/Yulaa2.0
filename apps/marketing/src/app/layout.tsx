@@ -1,22 +1,38 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
+import { Cormorant_Garamond, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 
+const cormorant = Cormorant_Garamond({
+  weight: ['300', '400', '500', '600', '700'],
+  style: ['normal', 'italic'],
+  subsets: ['latin'],
+  variable: '--font-cormorant',
+  display: 'swap',
+});
+
+const spaceGrotesk = Space_Grotesk({
+  weight: ['300', '400', '500', '600', '700'],
+  subsets: ['latin'],
+  variable: '--font-space',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
-  title: 'Yulaa — School Management Made Simple',
-  description: 'Yulaa is a complete school management platform covering attendance, leave, fees, admissions, and timetables for modern educational institutions.',
-  keywords: ['school management', 'student management system', 'attendance software', 'school ERP', 'Yulaa'],
+  title: 'Yulix Labs — Engineering the Future of Learning',
+  description: 'Yulix Labs is an education technology laboratory. Makers of Yulaa school management platform and more.',
+  keywords: ['education technology', 'school management', 'EdTech', 'Yulix Labs', 'Yulaa'],
   openGraph: {
-    title: 'Yulaa — School Management Made Simple',
-    description: 'A complete school management platform for modern educational institutions.',
+    title: 'Yulix Labs — Engineering the Future of Learning',
+    description: 'Yulix Labs is an education technology laboratory. Makers of Yulaa and more.',
     type: 'website',
   },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="font-body antialiased bg-white text-gray-900">
+    <html lang="en" className={`${cormorant.variable} ${spaceGrotesk.variable}`}>
+      <body className="antialiased bg-[#050505] text-[#f0ece4]" style={{ fontFamily: 'var(--font-space), system-ui, sans-serif' }}>
         {children}
         <Script
           defer
