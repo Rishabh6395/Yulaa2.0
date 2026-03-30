@@ -17,6 +17,7 @@ const ALL_MENU_ITEMS = [
   { id: 'exam',             label: 'Exam Management' },
   { id: 'syllabus',         label: 'Syllabus' },
   { id: 'school_inventory', label: 'School Inventory' },
+  { id: 'letter_templates', label: 'Letter Templates' },
   { id: 'homework',         label: 'Homework' },
   { id: 'performance',      label: 'Performance' },
   { id: 'announcements',    label: 'Announcements' },
