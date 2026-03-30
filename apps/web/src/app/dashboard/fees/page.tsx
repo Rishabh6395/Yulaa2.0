@@ -252,9 +252,9 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
                 onChange={e => setUploadFile(e.target.files?.[0] ?? null)} />
             </div>
             {uploadResult && (
-              <div className={`rounded-xl border p-3 text-sm space-y-1 ${uploadResult.errors.length > 0 ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'}`}>
+              <div className={`rounded-xl border p-3 text-sm space-y-1 ${(uploadResult.errors ?? []).length > 0 ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'}`}>
                 <p className="font-semibold text-gray-800 dark:text-gray-200">{uploadResult.created} of {uploadResult.total} invoices created</p>
-                {uploadResult.errors.map((err, i) => <p key={i} className="text-xs text-amber-700 dark:text-amber-400">{err}</p>)}
+                {(uploadResult.errors ?? []).map((err: string, i: number) => <p key={i} className="text-xs text-amber-700 dark:text-amber-400">{err}</p>)}
               </div>
             )}
             <div className="flex gap-3 pt-1">

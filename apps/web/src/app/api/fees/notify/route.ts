@@ -13,9 +13,9 @@ export async function POST(request: Request) {
 
     const schoolId = primary.school_id as string;
 
-    // Count pending/overdue invoices that have parents linked
+    // Count unpaid/overdue invoices that have parents linked
     const invoices = await prisma.feeInvoice.findMany({
-      where: { schoolId, status: { in: ['pending', 'overdue', 'partially_paid'] } },
+      where: { schoolId, status: { in: ['unpaid', 'overdue', 'partial'] } },
       select: { id: true, studentId: true },
     });
 

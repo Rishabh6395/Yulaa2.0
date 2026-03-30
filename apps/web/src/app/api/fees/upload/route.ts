@@ -84,7 +84,7 @@ export async function POST(request: Request) {
 
     if (rows.length === 0) throw new AppError('File is empty or has no data rows');
 
-    // Build admission_no → student map
+    // Build admission_no → student map (only students that actually exist in this school)
     const admissionNos = [...new Set(rows.map(r => r['admission_no']?.trim()).filter(Boolean))];
     const students     = await prisma.student.findMany({
       where: { schoolId, admissionNo: { in: admissionNos } },
@@ -92,8 +92,21 @@ export async function POST(request: Request) {
     });
     const studentMap = new Map(students.map(s => [s.admissionNo, s.id]));
 
+    // Pre-fetch existing invoices for these students to detect duplicates
+    const studentIds = [...studentMap.values()];
+    const existingInvoices = studentIds.length > 0
+      ? await prisma.feeInvoice.findMany({
+          where: { schoolId, studentId: { in: studentIds } },
+          select: { studentId: true, installmentNo: true },
+        })
+      : [];
+    // Key: `${studentId}:${installmentNo}`
+    const existingSet = new Set(existingInvoices.map(inv => `${inv.studentId}:${inv.installmentNo}`));
+
     let created = 0;
     const errors: string[] = [];
+    // Track admission_no+installment_no pairs already processed in this upload
+    const seenInUpload = new Set<string>();
 
     for (let i = 0; i < rows.length; i++) {
       const row    = rows[i];
@@ -103,6 +116,7 @@ export async function POST(request: Request) {
       const amount         = parseFloat(row['amount']?.trim() || '');
       const dueDateStr     = row['due_date']?.trim();
       const installmentNo  = parseInt(row['installment_no']?.trim() || '1', 10);
+      const installment    = isNaN(installmentNo) ? 1 : installmentNo;
 
       if (!admissionNo || !dueDateStr || isNaN(amount) || amount <= 0) {
         errors.push(`Row ${rowNum}: admission_no, amount, and due_date are required`);
@@ -111,7 +125,22 @@ export async function POST(request: Request) {
 
       const studentId = studentMap.get(admissionNo);
       if (!studentId) {
-        errors.push(`Row ${rowNum}: Student with admission_no "${admissionNo}" not found`);
+        errors.push(`Row ${rowNum}: Student "${admissionNo}" not found in this school`);
+        continue;
+      }
+
+      // Check duplicate within this upload
+      const uploadKey = `${admissionNo}:${installment}`;
+      if (seenInUpload.has(uploadKey)) {
+        errors.push(`Row ${rowNum}: Duplicate in file — "${admissionNo}" installment ${installment} appears more than once`);
+        continue;
+      }
+      seenInUpload.add(uploadKey);
+
+      // Check already exists in DB
+      const dbKey = `${studentId}:${installment}`;
+      if (existingSet.has(dbKey)) {
+        errors.push(`Row ${rowNum}: Invoice already exists for "${admissionNo}" installment ${installment}`);
         continue;
       }
 
@@ -123,9 +152,11 @@ export async function POST(request: Request) {
             invoiceNo:     `INV-${Date.now()}-${i}`,
             amount,
             dueDate:       new Date(dueDateStr),
-            installmentNo: isNaN(installmentNo) ? 1 : installmentNo,
+            installmentNo: installment,
           },
         });
+        // Mark as existing so a later row in the same file can't slip through
+        existingSet.add(dbKey);
         created++;
       } catch (err: any) {
         errors.push(`Row ${rowNum} (${admissionNo}): ${err.message ?? 'insert failed'}`);
