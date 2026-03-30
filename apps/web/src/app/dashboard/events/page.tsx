@@ -264,7 +264,7 @@ export default function EventsPage() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{t.title}</p>
                             <p className="text-xs text-surface-400 dark:text-gray-500">
-                              {t.assignedTeacher?.name || 'Unassigned'}
+                              {t.teacher ? `${t.teacher.user.firstName} ${t.teacher.user.lastName}` : 'Unassigned'}
                               {t.role ? ` · ${t.role}` : ''}
                               {t.dueDate ? ` · Due ${new Date(t.dueDate).toLocaleDateString('en-IN')}` : ''}
                             </p>
@@ -311,8 +311,8 @@ export default function EventsPage() {
                       <tbody className="divide-y divide-surface-50 dark:divide-gray-800">
                         {activeEvent.participants?.map((p: any) => (
                           <tr key={p.id} className="py-1.5">
-                            <td className="py-2">{p.student?.name}</td>
-                            <td className="py-2 text-surface-400 dark:text-gray-500">{p.student?.rollNumber}</td>
+                            <td className="py-2">{p.student ? `${p.student.firstName} ${p.student.lastName}` : '—'}</td>
+                            <td className="py-2 text-surface-400 dark:text-gray-500">{p.student?.admissionNo}</td>
                             <td className="py-2">{p.role || '—'}</td>
                             <td className="py-2 capitalize">{p.status}</td>
                             <td className="py-2">

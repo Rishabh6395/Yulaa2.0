@@ -184,7 +184,7 @@ export default function SchoolInventoryPage() {
             </div>
           ) : items.map(it => {
             const cfg = CAT_CFG[it.category] || CAT_CFG.other;
-            const qty = it.stock?.quantity ?? 0;
+            const qty = it.stock?.[0]?.quantity ?? 0;
             const isLow = qty <= it.minStock;
             return (
               <div key={it.id}
@@ -229,8 +229,8 @@ export default function SchoolInventoryPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="text-right">
-                    <p className={`text-2xl font-bold ${(activeItem.stock?.quantity ?? 0) <= activeItem.minStock ? 'text-amber-600 dark:text-amber-400' : 'text-brand-600 dark:text-brand-400'}`}>
-                      {activeItem.stock?.quantity ?? 0}
+                    <p className={`text-2xl font-bold ${(activeItem.stock?.[0]?.quantity ?? 0) <= activeItem.minStock ? 'text-amber-600 dark:text-amber-400' : 'text-brand-600 dark:text-brand-400'}`}>
+                      {activeItem.stock?.[0]?.quantity ?? 0}
                     </p>
                     <p className="text-xs text-surface-400 dark:text-gray-500">in stock</p>
                   </div>
@@ -271,7 +271,7 @@ export default function SchoolInventoryPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between py-2 border-b border-surface-50 dark:border-gray-800">
                     <span className="text-surface-400 dark:text-gray-500">Current Stock</span>
-                    <span className="font-semibold">{activeItem.stock?.quantity ?? 0} {activeItem.unit}</span>
+                    <span className="font-semibold">{activeItem.stock?.[0]?.quantity ?? 0} {activeItem.unit}</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-surface-50 dark:border-gray-800">
                     <span className="text-surface-400 dark:text-gray-500">Minimum Stock</span>

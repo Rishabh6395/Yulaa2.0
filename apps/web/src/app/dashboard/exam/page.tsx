@@ -172,7 +172,7 @@ export default function ExamPage() {
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className={sCfg.cls}>{sCfg.label}</span>
                       <span className="text-xs text-surface-400 dark:text-gray-500">
-                        {ex._count?.timetableEntries ?? 0} subjects
+                        {ex._count?.entries ?? 0} subjects
                       </span>
                     </div>
                   </div>
@@ -243,12 +243,12 @@ export default function ExamPage() {
               {tab === 'timetable' && (
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-sm">Exam Schedule ({activeExam.timetableEntries?.length ?? 0} subjects)</h3>
+                    <h3 className="font-semibold text-sm">Exam Schedule ({activeExam.entries?.length ?? 0} subjects)</h3>
                     {isAdmin && (
                       <button onClick={() => setShowEntry(true)} className="btn-secondary text-xs py-1 px-3">+ Add Subject</button>
                     )}
                   </div>
-                  {activeExam.timetableEntries?.length === 0 ? (
+                  {activeExam.entries?.length === 0 ? (
                     <p className="text-xs text-surface-400 dark:text-gray-500 text-center py-6">No subjects scheduled yet.</p>
                   ) : (
                     <div className="overflow-x-auto">
@@ -263,7 +263,7 @@ export default function ExamPage() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-surface-50 dark:divide-gray-800">
-                          {activeExam.timetableEntries?.map((e: any) => (
+                          {activeExam.entries?.map((e: any) => (
                             <tr key={e.id}>
                               <td className="py-2 font-medium">{e.subject}</td>
                               <td className="py-2">{e.date ? new Date(e.date).toLocaleDateString('en-IN') : '—'}</td>
@@ -311,8 +311,8 @@ export default function ExamPage() {
                           {activeExam.results?.map((r: any) => (
                             <tr key={r.id}>
                               <td className="py-2">
-                                <div>{r.student?.name}</div>
-                                <div className="text-surface-400 dark:text-gray-500">{r.student?.rollNumber}</div>
+                                <div>{r.student ? `${r.student.firstName} ${r.student.lastName}` : '—'}</div>
+                                <div className="text-surface-400 dark:text-gray-500">{r.student?.admissionNo}</div>
                               </td>
                               <td className="py-2">{r.subject}</td>
                               <td className="py-2">{Number(r.marksObtained)}/{r.maxMarks}</td>
@@ -440,7 +440,7 @@ export default function ExamPage() {
             <label className="label">Student *</label>
             <select className="input-field" required value={resultForm.studentId} onChange={e => setResultForm(f => ({...f, studentId: e.target.value}))}>
               <option value="">Select student</option>
-              {students.map((s: any) => <option key={s.id} value={s.id}>{s.name} ({s.rollNumber})</option>)}
+              {students.map((s: any) => <option key={s.id} value={s.id}>{s.firstName} {s.lastName} ({s.admissionNo})</option>)}
             </select>
           </div>
           <div>

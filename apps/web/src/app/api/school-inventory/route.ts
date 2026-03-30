@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     });
 
     // Summary stats
-    const lowStock = items.filter(i => i.stock && i.stock.quantity <= i.minStock);
+    const lowStock = items.filter(i => i.stock[0] && i.stock[0].quantity <= i.minStock);
     return Response.json({ items, lowStockCount: lowStock.length });
   } catch (err) { return handleError(err); }
 }

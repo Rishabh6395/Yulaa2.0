@@ -26,8 +26,8 @@ export async function GET(request: Request) {
       const event = await prisma.schoolEvent.findFirst({
         where: { id: eventId, schoolId },
         include: {
-          tasks: { include: { assignedTeacher: { select: { name: true } } } },
-          participants: { include: { student: { select: { name: true, rollNumber: true } } } },
+          tasks: { include: { teacher: { include: { user: { select: { firstName: true, lastName: true } } } } } },
+          participants: { include: { student: { select: { firstName: true, lastName: true, admissionNo: true } } } },
         },
       });
       if (!event) throw new AppError('Event not found');

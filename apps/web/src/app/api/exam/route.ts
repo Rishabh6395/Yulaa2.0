@@ -26,11 +26,10 @@ export async function GET(request: Request) {
       const exam = await prisma.exam.findFirst({
         where: { id: examId, schoolId },
         include: {
-          timetableEntries: true,
+          entries: true,
           results: {
             include: {
-              student: { select: { name: true, rollNumber: true } },
-              enteredBy: { select: { name: true } },
+              student: { select: { firstName: true, lastName: true, admissionNo: true } },
             },
           },
         },
@@ -43,7 +42,7 @@ export async function GET(request: Request) {
       where: { schoolId, ...(academicYear ? { academicYear } : {}) },
       orderBy: { startDate: 'desc' },
       include: {
-        _count: { select: { timetableEntries: true, results: true } },
+        _count: { select: { entries: true, results: true } },
       },
     });
     return Response.json({ exams });
