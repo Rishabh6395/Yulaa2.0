@@ -1,23 +1,35 @@
+import 'react-native-gesture-handler';
 import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { useAuth } from '../src/hooks/useAuth';
+import { AuthProvider, useAuth } from '../src/context/AuthContext';
+import { QueryProvider } from '../src/context/QueryProvider';
 
-export default function RootLayout() {
+function Guard() {
   const { isLoggedIn, loading } = useAuth();
-  const segments  = useSegments();
-  const router    = useRouter();
+  const segments = useSegments();
+  const router   = useRouter();
 
   useEffect(() => {
     if (loading) return;
-    const inAuthGroup = segments[0] === '(auth)';
-    if (!isLoggedIn && !inAuthGroup) router.replace('/(auth)/login');
-    if (isLoggedIn && inAuthGroup)   router.replace('/(tabs)');
-  }, [isLoggedIn, loading, segments]);
+    const inAuth = segments[0] === '(auth)';
+    if (!isLoggedIn && !inAuth) router.replace('/(auth)/login');
+    if (isLoggedIn  && inAuth)  router.replace('/(app)');
+  }, [isLoggedIn, loading]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="(app)" />
     </Stack>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <QueryProvider>
+      <AuthProvider>
+        <Guard />
+      </AuthProvider>
+    </QueryProvider>
   );
 }
