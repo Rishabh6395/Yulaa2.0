@@ -60,6 +60,7 @@ model School {
   exams                 Exam[]
   inventoryItems        InventoryItem[]
   letterTemplates       LetterTemplate[]
+  formConfigs           FormConfig[]
 
   @@map("schools")
 }
@@ -1128,4 +1129,22 @@ model LetterTemplate {
 
   @@index([schoolId, templateType])
   @@map("letter_templates")
+}
+
+// ─── Form Configuration ────────────────────────────────────────────────────────
+// Stores per-school, per-form, per-role field visibility rules.
+// role: 'applicant' (public /apply page) | 'admin' | 'teacher' | 'parent' | 'student'
+model FormConfig {
+  id         String   @id @default(uuid())
+  schoolId   String   @map("school_id")
+  formId     String   @map("form_id") @db.VarChar(50)
+  role       String   @default("applicant") @db.VarChar(30)
+  fieldRules Json     @map("field_rules")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+  school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, formId, role])
+  @@index([schoolId, formId])
+  @@map("form_configs")
 }

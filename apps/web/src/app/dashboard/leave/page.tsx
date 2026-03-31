@@ -109,6 +109,7 @@ export default function LeavePage() {
   const [saveError, setSaveError] = useState('');
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
   const [activeChild, setActiveChild] = useState<any>(null);
+  const [leaveFieldRules, setLeaveFieldRules] = useState<Record<string, string>>({});
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -128,6 +129,28 @@ export default function LeavePage() {
     window.addEventListener('activeChildChanged', handler);
     return () => window.removeEventListener('activeChildChanged', handler);
   }, [isParent]);
+
+  // Load leave_request form config
+  useEffect(() => {
+    const u = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+    const t = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    const sid = u.schoolId;
+    if (!sid || !t) return;
+    // Determine which role config to load for this user
+    const configRole = ['school_admin', 'super_admin', 'principal', 'hod'].includes(u.primaryRole) ? 'admin'
+      : u.primaryRole === 'teacher' ? 'teacher'
+      : u.primaryRole === 'parent'  ? 'parent'
+      : 'student';
+    fetch(`/api/form-config?schoolId=${sid}&formId=leave_request`, {
+      headers: { Authorization: `Bearer ${t}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const rules = d?.configs?.leave_request?.[configRole];
+        if (rules) setLeaveFieldRules(rules);
+      })
+      .catch(() => {});
+  }, []);
 
   // Leave data
   const { data, isLoading, mutate } = useApi<{ leaves: any[]; workflows: any }>('/api/leave');
@@ -488,8 +511,13 @@ export default function LeavePage() {
           )}
 
           {/* Leave type */}
-          <div>
-            <label className="label">Leave Type</label>
+          {(leaveFieldRules['leaveType'] ?? 'required') !== 'hidden' && <div>
+            <label className="label">
+              Leave Type
+              {(leaveFieldRules['leaveType'] ?? 'required') === 'required'
+                ? <span className="text-red-500 ml-0.5">*</span>
+                : <span className="text-surface-400 font-normal ml-1">(optional)</span>}
+            </label>
             <div className="grid grid-cols-3 gap-2 mt-1">
               {leaveTypes.map(lt => (
                 <button key={lt.value} type="button"
@@ -509,17 +537,35 @@ export default function LeavePage() {
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Start Date *</label>
-              <input type="date" className="input-field" required value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
-            </div>
-            <div>
-              <label className="label">End Date *</label>
-              <input type="date" className="input-field" required value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
-            </div>
+            {(leaveFieldRules['startDate'] ?? 'required') !== 'hidden' && (
+              <div>
+                <label className="label">
+                  From Date
+                  {(leaveFieldRules['startDate'] ?? 'required') === 'required'
+                    ? <span className="text-red-500 ml-0.5">*</span>
+                    : <span className="text-surface-400 font-normal ml-1">(optional)</span>}
+                </label>
+                <input type="date" className="input-field"
+                  required={(leaveFieldRules['startDate'] ?? 'required') === 'required'}
+                  value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
+              </div>
+            )}
+            {(leaveFieldRules['endDate'] ?? 'required') !== 'hidden' && (
+              <div>
+                <label className="label">
+                  To Date
+                  {(leaveFieldRules['endDate'] ?? 'required') === 'required'
+                    ? <span className="text-red-500 ml-0.5">*</span>
+                    : <span className="text-surface-400 font-normal ml-1">(optional)</span>}
+                </label>
+                <input type="date" className="input-field"
+                  required={(leaveFieldRules['endDate'] ?? 'required') === 'required'}
+                  value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
+              </div>
+            )}
           </div>
 
           {/* Inline date-conflict warning — checked against existing leaves in local data */}
@@ -545,10 +591,20 @@ export default function LeavePage() {
             );
           })()}
 
-          <div>
-            <label className="label">Reason</label>
-            <textarea className="input-field" rows={3} value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} placeholder="Reason for leave..." />
-          </div>
+          {(leaveFieldRules['reason'] ?? 'optional') !== 'hidden' && (
+            <div>
+              <label className="label">
+                Reason
+                {(leaveFieldRules['reason'] ?? 'optional') === 'required'
+                  ? <span className="text-red-500 ml-0.5">*</span>
+                  : <span className="text-surface-400 font-normal ml-1">(optional)</span>}
+              </label>
+              <textarea className="input-field" rows={3}
+                required={(leaveFieldRules['reason'] ?? 'optional') === 'required'}
+                value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+                placeholder="Reason for leave..." />
+            </div>
+          )}
 
           {saveError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{saveError}</p>}
           {/* Compute conflict again for submit guard */}
