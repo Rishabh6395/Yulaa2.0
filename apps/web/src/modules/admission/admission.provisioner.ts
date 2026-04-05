@@ -24,13 +24,21 @@ export async function provisionApprovedApplication(applicationId: string) {
     });
 
     // ── 1. Find or create parent User ──────────────────────────────────────
-    let user = await tx.user.findUnique({ where: { email: app.parentEmail } });
+    // Prefer the logged-in user who submitted the application over email lookup
+    let user = app.parentUserId
+      ? await tx.user.findUnique({ where: { id: app.parentUserId } })
+      : null;
+
+    if (!user && app.parentEmail) {
+      user = await tx.user.findUnique({ where: { email: app.parentEmail } });
+    }
+
     if (!user) {
       const hash = await bcrypt.hash(app.parentPhone, 10);
       const [firstName, ...rest] = app.parentName.trim().split(' ');
       user = await tx.user.create({
         data: {
-          email:             app.parentEmail,
+          email:             app.parentEmail || `parent-${app.id}@yulaa.app`,
           passwordHash:      hash,
           firstName:         firstName ?? app.parentName,
           lastName:          rest.join(' ') || '-',

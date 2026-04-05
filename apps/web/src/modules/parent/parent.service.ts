@@ -1,10 +1,9 @@
-import { NotFoundError } from '@/utils/errors';
 import * as repo from './parent.repo';
 import type { ChildRow } from './parent.types';
 
 export async function getChildren(userId: string): Promise<{ children: ChildRow[] }> {
   const parent = await repo.findParentByUserId(userId);
-  if (!parent) throw new NotFoundError('Parent profile');
+  if (!parent) return { children: [] };
 
   const links = await repo.findChildrenByParentId(parent.id);
 

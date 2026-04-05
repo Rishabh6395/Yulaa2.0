@@ -74,6 +74,7 @@ const menuItems: Record<string, MenuItem[]> = {
   ],
   parent: [
     { label: 'Dashboard',       href: '/dashboard',                icon: 'LayoutDashboard', key: 'dashboard' },
+    { label: 'Admissions',      href: '/dashboard/admissions',     icon: 'ClipboardList',   key: 'admissions' },
     { label: 'Attendance',      href: '/dashboard/attendance',     icon: 'CalendarCheck',   key: 'attendance' },
     { label: 'Fees',            href: '/dashboard/fees',           icon: 'CreditCard',      key: 'fees' },
     { label: 'Performance',     href: '/dashboard/performance',    icon: 'TrendingUp',      key: 'performance' },

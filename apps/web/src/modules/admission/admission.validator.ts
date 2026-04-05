@@ -56,17 +56,18 @@ export async function runValidation(children: CreateChildInput[], schoolId: stri
   const flags: ValidationFlag[] = [];
 
   for (let i = 0; i < children.length; i++) {
-    const child = children[i];
-    const dob   = new Date(child.dateOfBirth);
+    const child  = children[i];
+    const dob    = child.dateOfBirth ? new Date(child.dateOfBirth) : null;
+    const dobValid = dob instanceof Date && !isNaN(dob.getTime());
 
     // Aadhaar format
     if (child.aadhaarNo && !validateAadhaar(child.aadhaarNo)) {
       flags.push({ code: 'AADHAAR_INVALID', severity: 'error', message: `Invalid Aadhaar number (must be 12 digits)`, childIndex: i });
     }
 
-    // Age-class consistency
-    if (!checkAgeForClass(dob, child.classApplying)) {
-      const age = ageInYears(dob);
+    // Age-class consistency (only when DOB is valid)
+    if (dobValid && !checkAgeForClass(dob!, child.classApplying)) {
+      const age = ageInYears(dob!);
       flags.push({ code: 'AGE_MISMATCH', severity: 'warning', message: `Age ${age} seems unusual for ${child.classApplying}`, childIndex: i });
     }
 
@@ -76,9 +77,11 @@ export async function runValidation(children: CreateChildInput[], schoolId: stri
       if (dup) flags.push({ code: 'DUPLICATE_AADHAAR', severity: 'error', message: `Aadhaar ${child.aadhaarNo} already exists in this school`, childIndex: i });
     }
 
-    // Duplicate name + DOB
-    const nameDup = await hasDuplicateNameDob(child.firstName, child.lastName, dob, schoolId);
-    if (nameDup) flags.push({ code: 'DUPLICATE_NAME_DOB', severity: 'warning', message: `A student with the same name and date of birth already exists`, childIndex: i });
+    // Duplicate name + DOB (only when DOB is valid)
+    if (dobValid) {
+      const nameDup = await hasDuplicateNameDob(child.firstName, child.lastName, dob!, schoolId);
+      if (nameDup) flags.push({ code: 'DUPLICATE_NAME_DOB', severity: 'warning', message: `A student with the same name and date of birth already exists`, childIndex: i });
+    }
   }
 
   const riskScore = Math.min(100, flags.reduce((acc, f) => acc + (f.severity === 'error' ? 30 : 10), 0));

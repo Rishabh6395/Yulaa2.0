@@ -76,6 +76,7 @@ model School {
   gradingTypes        GradingTypeMaster[]
   announcementTypes   AnnouncementTypeMaster[]
   contentTypes        ContentTypeMaster[]
+  genericWorkflows    GenericWorkflow[]
 
   @@map("schools")
 }
@@ -463,8 +464,10 @@ model LeaveWorkflowStep {
   workflowId     String        @map("workflow_id")
   stepOrder      Int           @map("step_order")
   label          String        @db.VarChar(100)
+  initiatorRole  String?       @map("initiator_role") @db.VarChar(30)
   approverRole   String?       @map("approver_role") @db.VarChar(30)
   approverUserId String?       @map("approver_user_id")
+  systemTrigger  String?       @map("system_trigger") @db.VarChar(300)
   emailEnabled   Boolean       @default(false) @map("email_enabled")
   notifyEnabled  Boolean       @default(true)  @map("notify_enabled")
   notifyMessage  String?       @map("notify_message") @db.VarChar(300)
@@ -722,7 +725,9 @@ model AdmissionWorkflowStep {
   workflowId     String            @map("workflow_id")
   stepOrder      Int               @map("step_order")
   label          String            @db.VarChar(100)
+  initiatorRole  String?           @map("initiator_role") @db.VarChar(30)
   approverRole   String            @map("approver_role") @db.VarChar(30)
+  systemTrigger  String?           @map("system_trigger") @db.VarChar(300)
   emailEnabled   Boolean           @default(false) @map("email_enabled")
   notifyEnabled  Boolean           @default(true)  @map("notify_enabled")
   notifyMessage  String?           @map("notify_message") @db.VarChar(300)
@@ -766,10 +771,10 @@ model AdmissionChild {
   applicationId  String               @map("application_id")
   firstName      String               @map("first_name") @db.VarChar(100)
   lastName       String               @map("last_name") @db.VarChar(100)
-  dateOfBirth    DateTime             @map("date_of_birth") @db.Date
-  gender         String               @db.VarChar(10)
+  dateOfBirth    DateTime?            @map("date_of_birth") @db.Date
+  gender         String?              @db.VarChar(10)
   aadhaarNo      String?              @map("aadhaar_no") @db.VarChar(12)
-  classApplying  String               @map("class_applying") @db.VarChar(30)
+  classApplying  String?              @map("class_applying") @db.VarChar(30)
   previousSchool String?              @map("previous_school") @db.VarChar(200)
   studentId      String?              @unique @map("student_id")
   createdAt      DateTime             @default(now()) @map("created_at")
@@ -1396,4 +1401,43 @@ model ContentTypeMaster {
   @@unique([schoolId, formName, fieldSlot])
   @@index([schoolId, formName])
   @@map("content_type_masters")
+}
+
+// ── Generic Workflow Engine (Attendance, Fee, Query-Parents, Query-SchoolAdmin) ──
+
+model GenericWorkflow {
+  id           String                @id @default(uuid())
+  schoolId     String                @map("school_id")
+  workflowType String                @map("workflow_type") @db.VarChar(50)
+  // roleCode is used for workflows that are role-specific (e.g. leave)
+  roleCode     String?               @map("role_code") @db.VarChar(30)
+  isActive     Boolean               @default(true) @map("is_active")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  stages       GenericWorkflowStage[]
+
+  @@unique([schoolId, workflowType, roleCode])
+  @@index([schoolId])
+  @@map("generic_workflows")
+}
+
+model GenericWorkflowStage {
+  id             String          @id @default(uuid())
+  workflowId     String          @map("workflow_id")
+  stageOrder     Int             @map("stage_order")
+  stageName      String          @map("stage_name") @db.VarChar(100)
+  initiatorRole  String?         @map("initiator_role") @db.VarChar(30)
+  approverRole   String?         @map("approver_role") @db.VarChar(30)
+  approverUserId String?         @map("approver_user_id")
+  systemTrigger  String?         @map("system_trigger") @db.VarChar(300)
+  isFinal        Boolean         @default(false) @map("is_final")
+  emailEnabled   Boolean         @default(false) @map("email_enabled")
+  notifyEnabled  Boolean         @default(true)  @map("notify_enabled")
+  notifyMessage  String?         @map("notify_message") @db.VarChar(300)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  workflow       GenericWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, stageOrder])
+  @@index([workflowId])
+  @@map("generic_workflow_stages")
 }

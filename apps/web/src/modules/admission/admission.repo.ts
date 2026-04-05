@@ -16,14 +16,15 @@ export async function createApplication(data: CreateApplicationInput, flags: obj
       parentName:      data.parentName,
       parentPhone:     data.parentPhone,
       parentEmail:     data.parentEmail,
+      parentUserId:    data.parentUserId ?? undefined,
       validationFlags: flags,
       riskScore,
       children: {
         create: data.children.map((c) => ({
           firstName:      c.firstName,
           lastName:       c.lastName,
-          dateOfBirth:    new Date(c.dateOfBirth),
-          gender:         c.gender,
+          dateOfBirth:    c.dateOfBirth ? new Date(c.dateOfBirth) : null,
+          gender:         c.gender ?? null,
           aadhaarNo:      c.aadhaarNo ?? null,
           classApplying:  c.classApplying,
           previousSchool: c.previousSchool ?? null,
