@@ -16,9 +16,11 @@ const menuItems: Record<string, MenuItem[]> = {
   super_admin: [
     { label: 'School Library',          href: '/dashboard/schools',         icon: 'Building',        key: 'schools' },
     { label: 'Default School Settings', href: '/dashboard/schools/default', icon: 'Settings',        key: 'schools_default' },
+    { label: 'Masters',                 href: '/dashboard/masters',         icon: 'Database',        key: 'masters' },
   ],
   school_admin: [
     { label: 'Dashboard',        href: '/dashboard',                  icon: 'LayoutDashboard', key: 'dashboard' },
+    { label: 'Masters',          href: '/dashboard/masters',          icon: 'Database',        key: 'masters' },
     { label: 'Admissions',       href: '/dashboard/admissions',       icon: 'ClipboardList',   key: 'admissions' },
     { label: 'Classes',          href: '/dashboard/classes',          icon: 'LayoutGrid',      key: 'classes' },
     { label: 'Students',         href: '/dashboard/students',         icon: 'Users',           key: 'students' },
@@ -140,6 +142,11 @@ const menuItems: Record<string, MenuItem[]> = {
 };
 
 const icons: Record<string, React.ReactNode> = {
+  Database: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+    </svg>
+  ),
   ClipboardList: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>

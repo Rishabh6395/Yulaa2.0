@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 
 const ALL_MENU_ITEMS = [
   { id: 'dashboard',        label: 'Dashboard' },
+  { id: 'masters',          label: 'Masters' },
   { id: 'admissions',       label: 'Admissions' },
   { id: 'classes',          label: 'Classes' },
   { id: 'students',         label: 'Students' },

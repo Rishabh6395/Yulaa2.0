@@ -92,15 +92,13 @@ async function seed() {
     { id: IDs.roles.principal,   code: 'principal',    displayName: 'Principal',      description: 'School Principal' },
   ];
   for (const role of roles) {
-    await prisma.role.upsert({ where: { code: role.code }, update: {}, create: role });
+    await prisma.role.create({ data: role }).catch(() => {});
   }
 
   // 2. Schools
   console.log('  → Schools');
-  await prisma.school.upsert({
-    where: { id: IDs.schools.dps },
-    update: {},
-    create: {
+  await prisma.school.create({
+    data: {
       id: IDs.schools.dps,
       name: 'Delhi Public School - Sector 45',
       address: '123 Education Lane, Sector 45, Gurugram',
@@ -108,11 +106,9 @@ async function seed() {
       phone: '+91-124-555-0100',
       subscriptionPlan: 'pro',
     },
-  });
-  await prisma.school.upsert({
-    where: { id: IDs.schools.stmary },
-    update: {},
-    create: {
+  }).catch(() => {});
+  await prisma.school.create({
+    data: {
       id: IDs.schools.stmary,
       name: "St. Mary's International School",
       address: '456 Heritage Road, Bandra, Mumbai',
@@ -120,7 +116,215 @@ async function seed() {
       phone: '+91-22-555-0200',
       subscriptionPlan: 'starter',
     },
-  });
+  }).catch(() => {});
+
+  // 2.5 Masters (Phase 1)
+  console.log('  → Masters');
+  const schools = [IDs.schools.dps, IDs.schools.stmary];
+  
+  for (const schoolId of schools) {
+    // Gender Master
+    const genders = [
+      { name: 'Male', sortOrder: 1 },
+      { name: 'Female', sortOrder: 2 },
+      { name: 'Other', sortOrder: 3 },
+    ];
+    for (const gender of genders) {
+      await prisma.genderMaster.upsert({
+        where: { schoolId_name: { schoolId, name: gender.name } },
+        update: {},
+        create: { schoolId, ...gender },
+      });
+    }
+
+    // Blood Group Master
+    const bloodGroups = [
+      { name: 'A+', sortOrder: 1 },
+      { name: 'A-', sortOrder: 2 },
+      { name: 'B+', sortOrder: 3 },
+      { name: 'B-', sortOrder: 4 },
+      { name: 'AB+', sortOrder: 5 },
+      { name: 'AB-', sortOrder: 6 },
+      { name: 'O+', sortOrder: 7 },
+      { name: 'O-', sortOrder: 8 },
+    ];
+    for (const bg of bloodGroups) {
+      await prisma.bloodGroupMaster.upsert({
+        where: { schoolId_name: { schoolId, name: bg.name } },
+        update: {},
+        create: { schoolId, ...bg },
+      });
+    }
+
+    // Qualification Master
+    const qualifications = [
+      { name: 'B.Ed', sortOrder: 1 },
+      { name: 'M.Ed', sortOrder: 2 },
+      { name: 'M.Sc', sortOrder: 3 },
+      { name: 'M.A', sortOrder: 4 },
+      { name: 'B.Sc', sortOrder: 5 },
+      { name: 'B.A', sortOrder: 6 },
+      { name: 'Ph.D', sortOrder: 7 },
+    ];
+    for (const qual of qualifications) {
+      await prisma.qualificationMaster.upsert({
+        where: { schoolId_name: { schoolId, name: qual.name } },
+        update: {},
+        create: { schoolId, ...qual },
+      });
+    }
+
+    // Stream Master
+    const streams = [
+      { name: 'Science', sortOrder: 1 },
+      { name: 'Commerce', sortOrder: 2 },
+      { name: 'Arts', sortOrder: 3 },
+    ];
+    for (const stream of streams) {
+      await prisma.streamMaster.upsert({
+        where: { schoolId_name: { schoolId, name: stream.name } },
+        update: {},
+        create: { schoolId, ...stream },
+      });
+    }
+
+    // Event Type Master
+    const eventTypes = [
+      { name: 'Sports', code: 'sports', sortOrder: 1 },
+      { name: 'Cultural', code: 'cultural', sortOrder: 2 },
+      { name: 'Academic', code: 'academic', sortOrder: 3 },
+      { name: 'Holiday', code: 'holiday', sortOrder: 4 },
+    ];
+    for (const et of eventTypes) {
+      await prisma.eventTypeMaster.upsert({
+        where: { schoolId_code: { schoolId, code: et.code } },
+        update: {},
+        create: { schoolId, ...et },
+      });
+    }
+
+    // Country Master
+    const countries = [
+      { name: 'India', code: 'IND', sortOrder: 1 },
+      { name: 'United States', code: 'USA', sortOrder: 2 },
+      { name: 'United Kingdom', code: 'GBR', sortOrder: 3 },
+    ];
+    for (const country of countries) {
+      await prisma.countryMaster.upsert({
+        where: { schoolId_code: { schoolId, code: country.code } },
+        update: {},
+        create: { schoolId, ...country },
+      });
+    }
+
+    // For India, add states
+    const indiaId = (await prisma.countryMaster.findFirst({ where: { schoolId, code: 'IND' } }))?.id;
+    if (indiaId) {
+      const states = [
+        { name: 'Delhi', code: 'DL', sortOrder: 1 },
+        { name: 'Maharashtra', code: 'MH', sortOrder: 2 },
+        { name: 'Karnataka', code: 'KA', sortOrder: 3 },
+        { name: 'Haryana', code: 'HR', sortOrder: 4 },
+      ];
+      for (const state of states) {
+        await prisma.stateMaster.upsert({
+          where: { schoolId_countryId_name: { schoolId, countryId: indiaId, name: state.name } },
+          update: {},
+          create: { schoolId, countryId: indiaId, ...state },
+        });
+      }
+
+      // For Delhi, add districts
+      const delhiId = (await prisma.stateMaster.findFirst({ where: { schoolId, countryId: indiaId, code: 'DL' } }))?.id;
+      if (delhiId) {
+        const districts = [
+          { name: 'New Delhi', sortOrder: 1 },
+          { name: 'North Delhi', sortOrder: 2 },
+          { name: 'South Delhi', sortOrder: 3 },
+        ];
+        for (const district of districts) {
+          await prisma.districtMaster.upsert({
+            where: { schoolId_stateId_name: { schoolId, stateId: delhiId, name: district.name } },
+            update: {},
+            create: { schoolId, stateId: delhiId, ...district },
+          });
+        }
+      }
+    }
+
+    // Leave Type Master (already exists, but ensure it's seeded)
+    const leaveTypes = [
+      { name: 'Casual Leave', code: 'CL', applicableTo: ['teacher', 'employee'] },
+      { name: 'Sick Leave', code: 'SL', applicableTo: ['teacher', 'employee'] },
+      { name: 'Earned Leave', code: 'EL', applicableTo: ['teacher', 'employee'] },
+      { name: 'Maternity Leave', code: 'ML', applicableTo: ['teacher', 'employee'] },
+    ];
+    for (const lt of leaveTypes) {
+      await prisma.leaveTypeMaster.upsert({
+        where: { schoolId_code: { schoolId, code: lt.code } },
+        update: {},
+        create: { schoolId, ...lt },
+      });
+    }
+
+  }
+
+  // 2.6 Workflows (Phase 2)
+  console.log('  → Workflows');
+  
+  for (const schoolId of schools) {
+    // Admission Workflow
+    const admissionWorkflow = await prisma.admissionWorkflow.upsert({
+      where: { schoolId_name: { schoolId, name: 'Default Admission Workflow' } },
+      update: {},
+      create: {
+        schoolId,
+        name: 'Default Admission Workflow',
+        isActive: true,
+      },
+    });
+
+    // Admission Workflow Steps
+    const admissionSteps = [
+      { stepOrder: 1, label: 'Parent Application', approverRole: 'parent', notifyMessage: 'Application submitted successfully' },
+      { stepOrder: 2, label: 'School Admin Review', approverRole: 'school_admin', notifyMessage: 'Application under review' },
+      { stepOrder: 3, label: 'Principal Approval', approverRole: 'principal', notifyMessage: 'Application sent for final approval' },
+      { stepOrder: 4, label: 'Final Approval', approverRole: 'school_admin', isFinal: true, notifyMessage: 'Application approved, student record created' },
+    ];
+    for (const step of admissionSteps) {
+      await prisma.admissionWorkflowStep.upsert({
+        where: { workflowId_stepOrder: { workflowId: admissionWorkflow.id, stepOrder: step.stepOrder } },
+        update: {},
+        create: { workflowId: admissionWorkflow.id, ...step },
+      });
+    }
+
+    // Leave Workflow
+    const leaveWorkflow = await prisma.leaveWorkflow.upsert({
+      where: { schoolId_type: { schoolId, type: 'default' } },
+      update: {},
+      create: {
+        schoolId,
+        type: 'default',
+        isActive: true,
+      },
+    });
+
+    // Leave Workflow Steps
+    const leaveSteps = [
+      { stepOrder: 1, label: 'Employee Application', approverRole: 'employee', notifyMessage: 'Leave application submitted' },
+      { stepOrder: 2, label: 'Teacher/Supervisor Review', approverRole: 'teacher', notifyMessage: 'Leave application under review' },
+      { stepOrder: 3, label: 'HOD/Principal Approval', approverRole: 'hod', notifyMessage: 'Leave sent for final approval' },
+      { stepOrder: 4, label: 'Final Approval', approverRole: 'principal', notifyMessage: 'Leave approved' },
+    ];
+    for (const step of leaveSteps) {
+      await prisma.leaveWorkflowStep.upsert({
+        where: { workflowId_stepOrder: { workflowId: leaveWorkflow.id, stepOrder: step.stepOrder } },
+        update: {},
+        create: { workflowId: leaveWorkflow.id, ...step },
+      });
+    }
+  }
 
   // 3. Users
   console.log('  → Users');
@@ -375,6 +579,140 @@ async function seed() {
   ];
   for (const s of sessions) {
     await prisma.consultantSession.create({ data: s }).catch(() => {});
+  }
+
+  // School Location Master
+  console.log('  → School Location Master');
+  const dpsIndia    = await prisma.countryMaster.findFirst({ where: { schoolId: IDs.schools.dps,    code: 'IND' } });
+  const dpsHaryana  = await prisma.stateMaster.findFirst({  where: { schoolId: IDs.schools.dps,    code: 'HR'  } });
+  const stmIndia    = await prisma.countryMaster.findFirst({ where: { schoolId: IDs.schools.stmary, code: 'IND' } });
+  const stmMaharashtra = await prisma.stateMaster.findFirst({ where: { schoolId: IDs.schools.stmary, code: 'MH' } });
+  await prisma.schoolLocationMaster.upsert({
+    where: { id: 'sl000001-0000-0000-0000-000000000001' },
+    update: {},
+    create: {
+      id: 'sl000001-0000-0000-0000-000000000001',
+      schoolId: IDs.schools.dps,
+      address:  '123 Education Lane, Sector 45, Gurugram',
+      city:     'Gurugram',
+      pincode:  '122003',
+      countryId: dpsIndia?.id,
+      stateId:   dpsHaryana?.id,
+    },
+  });
+  await prisma.schoolLocationMaster.upsert({
+    where: { id: 'sl000002-0000-0000-0000-000000000001' },
+    update: {},
+    create: {
+      id: 'sl000002-0000-0000-0000-000000000001',
+      schoolId: IDs.schools.stmary,
+      address:  '456 Heritage Road, Bandra, Mumbai',
+      city:     'Mumbai',
+      pincode:  '400050',
+      countryId: stmIndia?.id,
+      stateId:   stmMaharashtra?.id,
+    },
+  });
+
+  // School Hierarchy Master
+  console.log('  → School Hierarchy Master');
+  const dpsTrustId     = 'sh000001-0000-0000-0000-000000000001';
+  const dpsSchoolId    = 'sh000001-0000-0000-0000-000000000002';
+  const dpsPrimaryId   = 'sh000001-0000-0000-0000-000000000003';
+  const dpsSecondaryId = 'sh000001-0000-0000-0000-000000000004';
+  await prisma.schoolHierarchyMaster.upsert({ where: { id: dpsTrustId },     update: {}, create: { id: dpsTrustId,     schoolId: IDs.schools.dps, name: 'DPS Society Trust',       level: 1, parentId: null        } });
+  await prisma.schoolHierarchyMaster.upsert({ where: { id: dpsSchoolId },    update: {}, create: { id: dpsSchoolId,    schoolId: IDs.schools.dps, name: 'DPS Sector 45',           level: 2, parentId: dpsTrustId  } });
+  await prisma.schoolHierarchyMaster.upsert({ where: { id: dpsPrimaryId },   update: {}, create: { id: dpsPrimaryId,   schoolId: IDs.schools.dps, name: 'Primary Wing (1–5)',      level: 3, parentId: dpsSchoolId } });
+  await prisma.schoolHierarchyMaster.upsert({ where: { id: dpsSecondaryId }, update: {}, create: { id: dpsSecondaryId, schoolId: IDs.schools.dps, name: 'Secondary Wing (6–10)',   level: 3, parentId: dpsSchoolId } });
+
+  // Exam Type Master + Grading Type Master
+  console.log('  → Exam Type Master');
+  const examTypes = [
+    { id: 'et000001-0000-0000-0000-000000000001', schoolId: IDs.schools.dps,    name: 'Unit Test 1',  code: 'ut1',    termOrder: 1 },
+    { id: 'et000001-0000-0000-0000-000000000002', schoolId: IDs.schools.dps,    name: 'Mid Term',     code: 'mid',    termOrder: 2 },
+    { id: 'et000001-0000-0000-0000-000000000003', schoolId: IDs.schools.dps,    name: 'Unit Test 2',  code: 'ut2',    termOrder: 3 },
+    { id: 'et000001-0000-0000-0000-000000000004', schoolId: IDs.schools.dps,    name: 'Annual',       code: 'annual', termOrder: 4 },
+    { id: 'et000002-0000-0000-0000-000000000001', schoolId: IDs.schools.stmary, name: 'Term 1',       code: 'term1',  termOrder: 1 },
+    { id: 'et000002-0000-0000-0000-000000000002', schoolId: IDs.schools.stmary, name: 'Term 2',       code: 'term2',  termOrder: 2 },
+  ];
+  for (const et of examTypes) {
+    await prisma.examTypeMaster.upsert({ where: { schoolId_code: { schoolId: et.schoolId, code: et.code } }, update: {}, create: et });
+  }
+
+  console.log('  → Grading Type Master');
+  const gradingRows = [
+    { schoolId: IDs.schools.dps, examTypeId: 'et000001-0000-0000-0000-000000000001', grade: 'A+', minPercent: 90, maxPercent: 100, gradePoints: 10.0, description: 'Outstanding'  },
+    { schoolId: IDs.schools.dps, examTypeId: 'et000001-0000-0000-0000-000000000001', grade: 'A',  minPercent: 80, maxPercent: 89,  gradePoints: 9.0,  description: 'Excellent'    },
+    { schoolId: IDs.schools.dps, examTypeId: 'et000001-0000-0000-0000-000000000001', grade: 'B+', minPercent: 70, maxPercent: 79,  gradePoints: 8.0,  description: 'Very Good'    },
+    { schoolId: IDs.schools.dps, examTypeId: 'et000001-0000-0000-0000-000000000001', grade: 'B',  minPercent: 60, maxPercent: 69,  gradePoints: 7.0,  description: 'Good'         },
+    { schoolId: IDs.schools.dps, examTypeId: 'et000001-0000-0000-0000-000000000001', grade: 'C',  minPercent: 50, maxPercent: 59,  gradePoints: 6.0,  description: 'Average'      },
+    { schoolId: IDs.schools.dps, examTypeId: 'et000001-0000-0000-0000-000000000001', grade: 'D',  minPercent: 33, maxPercent: 49,  gradePoints: 5.0,  description: 'Pass'         },
+    { schoolId: IDs.schools.dps, examTypeId: 'et000001-0000-0000-0000-000000000001', grade: 'F',  minPercent: 0,  maxPercent: 32,  gradePoints: 0.0,  description: 'Fail'         },
+  ];
+  for (const gr of gradingRows) {
+    await prisma.gradingTypeMaster.upsert({
+      where: { schoolId_examTypeId_grade: { schoolId: gr.schoolId, examTypeId: gr.examTypeId, grade: gr.grade } },
+      update: {},
+      create: gr,
+    });
+  }
+
+  // Announcement Type Master
+  console.log('  → Announcement Type Master');
+  const announcementTypes = [
+    { schoolId: IDs.schools.dps,    name: 'Academic',    code: 'academic'    },
+    { schoolId: IDs.schools.dps,    name: 'Fee',         code: 'fee'         },
+    { schoolId: IDs.schools.dps,    name: 'Holiday',     code: 'holiday'     },
+    { schoolId: IDs.schools.dps,    name: 'Event',       code: 'event'       },
+    { schoolId: IDs.schools.dps,    name: 'General',     code: 'general'     },
+    { schoolId: IDs.schools.stmary, name: 'Academic',    code: 'academic'    },
+    { schoolId: IDs.schools.stmary, name: 'General',     code: 'general'     },
+  ];
+  for (const at of announcementTypes) {
+    await prisma.announcementTypeMaster.upsert({
+      where:  { schoolId_code: { schoolId: at.schoolId, code: at.code } },
+      update: {},
+      create: at,
+    });
+  }
+
+  // Leave Type Master (verify / seed defaults)
+  console.log('  → Leave Type Master (defaults)');
+  const leaveTypes = [
+    { schoolId: IDs.schools.dps, name: 'Sick Leave',       code: 'sick',      applicableTo: ['parent', 'teacher', 'employee'] },
+    { schoolId: IDs.schools.dps, name: 'Casual Leave',     code: 'casual',    applicableTo: ['teacher', 'employee']           },
+    { schoolId: IDs.schools.dps, name: 'Emergency Leave',  code: 'emergency', applicableTo: ['parent', 'teacher', 'employee'] },
+    { schoolId: IDs.schools.dps, name: 'Maternity Leave',  code: 'maternity', applicableTo: ['teacher', 'employee']           },
+    { schoolId: IDs.schools.dps, name: 'Other',            code: 'other',     applicableTo: ['parent', 'teacher', 'employee'] },
+    { schoolId: IDs.schools.stmary, name: 'Sick Leave',    code: 'sick',      applicableTo: ['parent', 'teacher', 'employee'] },
+    { schoolId: IDs.schools.stmary, name: 'Casual Leave',  code: 'casual',    applicableTo: ['teacher', 'employee']           },
+    { schoolId: IDs.schools.stmary, name: 'Other',         code: 'other',     applicableTo: ['parent', 'teacher', 'employee'] },
+  ];
+  for (const lt of leaveTypes) {
+    await prisma.leaveTypeMaster.upsert({
+      where:  { schoolId_code: { schoolId: lt.schoolId, code: lt.code } },
+      update: {},
+      create: lt,
+    });
+  }
+
+  // Content Type Master (sample additional fields for Admission Form)
+  console.log('  → Content Type Master');
+  const contentTypeRows = [
+    { schoolId: IDs.schools.dps, formName: 'admission_form', fieldSlot: 'freetext_1', fieldType: 'text',     label: 'Previous School Name',    options: [],                                sortOrder: 1 },
+    { schoolId: IDs.schools.dps, formName: 'admission_form', fieldSlot: 'freetext_2', fieldType: 'text',     label: 'Reason for Leaving',       options: [],                                sortOrder: 2 },
+    { schoolId: IDs.schools.dps, formName: 'admission_form', fieldSlot: 'dropdown_1', fieldType: 'dropdown', label: 'Sibling in School',        options: ['Yes', 'No'],                     sortOrder: 3 },
+    { schoolId: IDs.schools.dps, formName: 'admission_form', fieldSlot: 'dropdown_2', fieldType: 'dropdown', label: 'Transport Required',       options: ['Yes', 'No'],                     sortOrder: 4 },
+    { schoolId: IDs.schools.dps, formName: 'admission_form', fieldSlot: 'dropdown_3', fieldType: 'dropdown', label: 'Category',                 options: ['General', 'OBC', 'SC', 'ST'],   sortOrder: 5 },
+    { schoolId: IDs.schools.dps, formName: 'add_student_form', fieldSlot: 'freetext_1', fieldType: 'text',   label: 'Aadhaar Number',           options: [],                                sortOrder: 1 },
+    { schoolId: IDs.schools.dps, formName: 'add_student_form', fieldSlot: 'dropdown_1', fieldType: 'dropdown', label: 'Nationality',            options: ['Indian', 'NRI', 'Foreign'],       sortOrder: 2 },
+  ];
+  for (const ct of contentTypeRows) {
+    await prisma.contentTypeMaster.upsert({
+      where:  { schoolId_formName_fieldSlot: { schoolId: ct.schoolId, formName: ct.formName, fieldSlot: ct.fieldSlot } },
+      update: {},
+      create: ct,
+    });
   }
 
   console.log('\n✅ Seed data inserted successfully!');

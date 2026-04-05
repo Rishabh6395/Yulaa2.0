@@ -92,15 +92,13 @@ async function seed() {
     { id: IDs.roles.principal,   code: 'principal',    displayName: 'Principal',      description: 'School Principal' },
   ];
   for (const role of roles) {
-    await prisma.role.upsert({ where: { code: role.code }, update: {}, create: role });
+    await prisma.role.create({ data: role }).catch(() => {});
   }
 
   // 2. Schools
   console.log('  → Schools');
-  await prisma.school.upsert({
-    where: { id: IDs.schools.dps },
-    update: {},
-    create: {
+  await prisma.school.create({
+    data: {
       id: IDs.schools.dps,
       name: 'Delhi Public School - Sector 45',
       address: '123 Education Lane, Sector 45, Gurugram',
@@ -108,11 +106,9 @@ async function seed() {
       phone: '+91-124-555-0100',
       subscriptionPlan: 'pro',
     },
-  });
-  await prisma.school.upsert({
-    where: { id: IDs.schools.stmary },
-    update: {},
-    create: {
+  }).catch(() => {});
+  await prisma.school.create({
+    data: {
       id: IDs.schools.stmary,
       name: "St. Mary's International School",
       address: '456 Heritage Road, Bandra, Mumbai',
@@ -120,7 +116,7 @@ async function seed() {
       phone: '+91-22-555-0200',
       subscriptionPlan: 'starter',
     },
-  });
+  }).catch(() => {});
 
   // 3. Users
   console.log('  → Users');

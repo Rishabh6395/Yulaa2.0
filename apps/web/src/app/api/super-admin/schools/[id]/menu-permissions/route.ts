@@ -14,7 +14,7 @@ import prisma from '@/lib/prisma';
 const ADMIN_ROLES = ['super_admin', 'school_admin'];
 
 const ROLE_DEFAULTS: Record<string, string[]> = {
-  school_admin: ['dashboard','admissions','classes','students','teachers','parents','attendance','fees','scheduling','announcements','leave','queries','transport','compliance','reports','settings'],
+  school_admin: ['dashboard','masters','admissions','classes','students','teachers','parents','attendance','fees','scheduling','announcements','leave','queries','transport','compliance','reports','settings'],
   teacher:      ['dashboard','attendance','performance','homework','leave','queries','settings'],
   student:      ['dashboard','attendance','fees','homework','announcements','queries'],
   parent:       ['dashboard','attendance','fees','performance','homework','announcements','leave','queries','transport'],

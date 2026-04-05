@@ -54,6 +54,21 @@ model School {
   transportRoutes       TransportRoute[]
   userRoles             UserRole[]
   vendorInventory       VendorInventory[]
+  // Phase 1 masters (school-specific)
+  genders             GenderMaster[]
+  bloodGroups         BloodGroupMaster[]
+  qualifications      QualificationMaster[]
+  streams             StreamMaster[]
+  eventTypes          EventTypeMaster[]
+  countries           CountryMaster[]
+  states              StateMaster[]
+  districts           DistrictMaster[]
+  schoolLocations     SchoolLocationMaster[]
+  schoolHierarchies   SchoolHierarchyMaster[]
+  examTypes           ExamTypeMaster[]
+  gradingTypes        GradingTypeMaster[]
+  announcementTypes   AnnouncementTypeMaster[]
+  contentTypes        ContentTypeMaster[]
 
   @@map("schools")
 }
@@ -680,6 +695,7 @@ model AdmissionWorkflow {
   steps        AdmissionWorkflowStep[]
   school       School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
+  @@unique([schoolId, name])
   @@index([schoolId])
   @@map("admission_workflows")
 }
@@ -858,4 +874,242 @@ model MenuPermission {
   @@unique([schoolId, roleCode, menuKey])
   @@index([schoolId, roleCode])
   @@map("menu_permissions")
+}
+
+// ─── Phase 1 Masters ────────────────────────────────────────────────────────
+
+// Global masters (no schoolId — shared across all schools)
+
+model GenderMaster {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  name      String   @db.VarChar(50)
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+  @@map("gender_masters")
+}
+
+model BloodGroupMaster {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  name      String   @db.VarChar(10)
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+  @@map("blood_group_masters")
+}
+
+model QualificationMaster {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  name      String   @db.VarChar(100)
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+  @@map("qualification_masters")
+}
+
+model StreamMaster {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  name      String   @db.VarChar(100)
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+  @@map("stream_masters")
+}
+
+model EventTypeMaster {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  name      String   @db.VarChar(100)
+  code      String   @db.VarChar(30)
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+  @@map("event_type_masters")
+}
+
+model CountryMaster {
+  id        String               @id @default(uuid())
+  schoolId  String               @map("school_id")
+  name      String               @db.VarChar(100)
+  code      String               @db.VarChar(3)
+  isActive  Boolean              @default(true) @map("is_active")
+  sortOrder Int                  @default(0) @map("sort_order")
+  createdAt DateTime             @default(now()) @map("created_at")
+  school    School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  states    StateMaster[]
+  locations SchoolLocationMaster[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+  @@map("country_masters")
+}
+
+model StateMaster {
+  id        String               @id @default(uuid())
+  schoolId  String               @map("school_id")
+  countryId String               @map("country_id")
+  name      String               @db.VarChar(100)
+  code      String?              @db.VarChar(10)
+  isActive  Boolean              @default(true) @map("is_active")
+  sortOrder Int                  @default(0) @map("sort_order")
+  createdAt DateTime             @default(now()) @map("created_at")
+  country   CountryMaster        @relation(fields: [countryId], references: [id])
+  school    School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  districts DistrictMaster[]
+  locations SchoolLocationMaster[]
+
+  @@unique([schoolId, countryId, name])
+  @@index([schoolId])
+  @@index([countryId])
+  @@map("state_masters")
+}
+
+model DistrictMaster {
+  id        String               @id @default(uuid())
+  schoolId  String               @map("school_id")
+  stateId   String               @map("state_id")
+  name      String               @db.VarChar(100)
+  isActive  Boolean              @default(true) @map("is_active")
+  sortOrder Int                  @default(0) @map("sort_order")
+  createdAt DateTime             @default(now()) @map("created_at")
+  school    School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  state     StateMaster          @relation(fields: [stateId], references: [id])
+  locations SchoolLocationMaster[]
+
+  @@unique([schoolId, stateId, name])
+  @@index([schoolId])
+  @@index([stateId])
+  @@map("district_masters")
+}
+
+// School-specific masters
+
+model SchoolLocationMaster {
+  id         String          @id @default(uuid())
+  schoolId   String          @map("school_id")
+  address    String
+  city       String?         @db.VarChar(100)
+  pincode    String?         @db.VarChar(10)
+  countryId  String?         @map("country_id")
+  stateId    String?         @map("state_id")
+  districtId String?         @map("district_id")
+  isActive   Boolean         @default(true) @map("is_active")
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @default(now()) @updatedAt @map("updated_at")
+  school     School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  country    CountryMaster?  @relation(fields: [countryId], references: [id])
+  state      StateMaster?    @relation(fields: [stateId], references: [id])
+  district   DistrictMaster? @relation(fields: [districtId], references: [id])
+
+  @@index([schoolId])
+  @@map("school_location_masters")
+}
+
+model SchoolHierarchyMaster {
+  id        String                  @id @default(uuid())
+  schoolId  String                  @map("school_id")
+  name      String                  @db.VarChar(100)
+  level     Int
+  parentId  String?                 @map("parent_id")
+  isActive  Boolean                 @default(true) @map("is_active")
+  createdAt DateTime                @default(now()) @map("created_at")
+  school    School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  parent    SchoolHierarchyMaster?  @relation("HierarchyTree", fields: [parentId], references: [id])
+  children  SchoolHierarchyMaster[] @relation("HierarchyTree")
+
+  @@index([schoolId])
+  @@map("school_hierarchy_masters")
+}
+
+model ExamTypeMaster {
+  id           String              @id @default(uuid())
+  schoolId     String              @map("school_id")
+  name         String              @db.VarChar(100)
+  code         String              @db.VarChar(30)
+  termOrder    Int                 @default(0) @map("term_order")
+  isActive     Boolean             @default(true) @map("is_active")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  school       School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  gradingTypes GradingTypeMaster[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+  @@map("exam_type_masters")
+}
+
+model GradingTypeMaster {
+  id          String         @id @default(uuid())
+  schoolId    String         @map("school_id")
+  examTypeId  String         @map("exam_type_id")
+  grade       String         @db.VarChar(10)
+  minPercent  Decimal        @map("min_percent") @db.Decimal(5, 2)
+  maxPercent  Decimal        @map("max_percent") @db.Decimal(5, 2)
+  gradePoints Decimal?       @map("grade_points") @db.Decimal(4, 2)
+  description String?        @db.VarChar(100)
+  isActive    Boolean        @default(true) @map("is_active")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  school      School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  examType    ExamTypeMaster @relation(fields: [examTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, examTypeId, grade])
+  @@index([schoolId])
+  @@map("grading_type_masters")
+}
+
+model AnnouncementTypeMaster {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  name      String   @db.VarChar(100)
+  code      String   @db.VarChar(30)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+  @@map("announcement_type_masters")
+}
+
+// Drives additional field labels & dropdown options across all 8 forms
+model ContentTypeMaster {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  formName  String   @map("form_name") @db.VarChar(100)
+  fieldSlot String   @map("field_slot") @db.VarChar(30)
+  fieldType String   @default("text") @map("field_type") @db.VarChar(20)
+  label     String   @db.VarChar(100)
+  options   String[]
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, formName, fieldSlot])
+  @@index([schoolId, formName])
+  @@map("content_type_masters")
 }

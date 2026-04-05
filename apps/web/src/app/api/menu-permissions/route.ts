@@ -10,8 +10,8 @@ import prisma from '@/lib/prisma';
 
 // Default menu items visible per role (used when no DB config exists)
 const ROLE_DEFAULTS: Record<string, string[]> = {
-  super_admin:  ['schools'],
-  school_admin: ['dashboard','admissions','classes','students','teachers','parents','attendance','fees','scheduling','announcements','leave','queries','transport','compliance','reports','settings'],
+  super_admin:  ['schools', 'masters'],
+  school_admin: ['dashboard','masters','admissions','classes','students','teachers','parents','attendance','fees','scheduling','announcements','leave','queries','transport','compliance','reports','settings'],
   teacher:      ['dashboard','attendance','performance','homework','leave','queries','settings'],
   student:      ['dashboard','attendance','fees','homework','announcements','queries'],
   parent:       ['dashboard','attendance','fees','performance','homework','announcements','leave','queries','transport'],
