@@ -14,6 +14,15 @@ interface ConfigModule {
 
 const makeModules = (schoolId: string): ConfigModule[] => [
   {
+    id: 'masters',
+    label: 'Masters',
+    description: 'Configure master data: gender types, blood groups, qualifications, exam types, leave types, and more.',
+    color: 'bg-slate-50 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400',
+    href: `/dashboard/masters`,
+    status: 'available',
+    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
+  },
+  {
     id: 'users-roles',
     label: 'Users & Roles',
     description: 'Assign roles, create custom roles, manage access permissions for this school.',

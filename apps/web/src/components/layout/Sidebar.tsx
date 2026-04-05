@@ -9,6 +9,7 @@ interface MenuItem {
   href: string;
   icon: string;
   key: string;   // matches the menuKey stored in MenuPermission table
+  children?: MenuItem[]; // for collapsible groups
 }
 
 // All possible menu items per role — key is used for permission lookup
@@ -16,16 +17,20 @@ const menuItems: Record<string, MenuItem[]> = {
   super_admin: [
     { label: 'School Library',          href: '/dashboard/schools',         icon: 'Building',        key: 'schools' },
     { label: 'Default School Settings', href: '/dashboard/schools/default', icon: 'Settings',        key: 'schools_default' },
-    { label: 'Masters',                 href: '/dashboard/masters',         icon: 'Database',        key: 'masters' },
   ],
   school_admin: [
     { label: 'Dashboard',        href: '/dashboard',                  icon: 'LayoutDashboard', key: 'dashboard' },
     { label: 'Masters',          href: '/dashboard/masters',          icon: 'Database',        key: 'masters' },
     { label: 'Admissions',       href: '/dashboard/admissions',       icon: 'ClipboardList',   key: 'admissions' },
     { label: 'Classes',          href: '/dashboard/classes',          icon: 'LayoutGrid',      key: 'classes' },
-    { label: 'Students',         href: '/dashboard/students',         icon: 'Users',           key: 'students' },
-    { label: 'Teachers',         href: '/dashboard/teachers',         icon: 'GraduationCap',   key: 'teachers' },
-    { label: 'Parents',          href: '/dashboard/parents',          icon: 'Heart',           key: 'parents' },
+    {
+      label: 'Users', href: '', icon: 'Users', key: 'users_group',
+      children: [
+        { label: 'Students', href: '/dashboard/students', icon: 'Users',         key: 'students' },
+        { label: 'Teachers', href: '/dashboard/teachers', icon: 'GraduationCap', key: 'teachers' },
+        { label: 'Parents',  href: '/dashboard/parents',  icon: 'Heart',         key: 'parents' },
+      ],
+    },
     { label: 'Attendance',       href: '/dashboard/attendance',       icon: 'CalendarCheck',   key: 'attendance' },
     { label: 'Fees',             href: '/dashboard/fees',             icon: 'CreditCard',      key: 'fees' },
     { label: 'Scheduling',       href: '/dashboard/scheduling',       icon: 'CalendarDays',    key: 'scheduling' },
@@ -361,6 +366,7 @@ export default function Sidebar({ user, collapsed }: SidebarProps) {
   const items = menuItems[role] || menuItems.school_admin;
 
   const [allowedKeys, setAllowedKeys] = useState<string[] | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
 
   // Clear any previously-cached stale permission keys on mount
   useEffect(() => {
@@ -383,10 +389,21 @@ export default function Sidebar({ user, collapsed }: SidebarProps) {
       .catch(() => setAllowedKeys(null));
   }, [role]);
 
+  const toggleGroup = (key: string) => {
+    setExpandedGroups(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
   // null = no filter applied (fallback: show all items)
   const visibleItems = allowedKeys === null
     ? items
-    : items.filter(item => allowedKeys.includes(item.key));
+    : items.filter(item => {
+        if (item.children) {
+          return item.children.some(child => allowedKeys.includes(child.key));
+        }
+        return allowedKeys.includes(item.key);
+      });
 
   return (
     <aside
@@ -421,6 +438,74 @@ export default function Sidebar({ user, collapsed }: SidebarProps) {
         style={{ height: 'calc(100vh - 64px - 80px)' }}
       >
         {visibleItems.map((item) => {
+          // Group item with collapsible children
+          if (item.children) {
+            const visibleChildren = allowedKeys === null
+              ? item.children
+              : item.children.filter(child => allowedKeys.includes(child.key));
+            const hasActiveChild = visibleChildren.some(child =>
+              pathname === child.href || (child.href !== '/dashboard' && pathname.startsWith(child.href))
+            );
+            const isExpanded = expandedGroups.includes(item.key) || hasActiveChild;
+            return (
+              <div key={item.key}>
+                <button
+                  onClick={() => toggleGroup(item.key)}
+                  title={collapsed ? item.label : ''}
+                  className={`
+                    w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+                    transition-all duration-150
+                    ${hasActiveChild
+                      ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400'
+                      : 'text-surface-500 dark:text-gray-500 hover:bg-surface-50 dark:hover:bg-gray-800/60 hover:text-gray-700 dark:hover:text-gray-300'
+                    }
+                    ${collapsed ? 'justify-center' : ''}
+                  `}
+                >
+                  <span className={`flex-shrink-0 ${hasActiveChild ? 'text-brand-500 dark:text-brand-400' : ''}`}>
+                    {icons[item.icon]}
+                  </span>
+                  {!collapsed && (
+                    <>
+                      <span className="whitespace-nowrap flex-1 text-left">{item.label}</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                        className={`flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                        <polyline points="6,9 12,15 18,9"/>
+                      </svg>
+                    </>
+                  )}
+                </button>
+                {isExpanded && !collapsed && (
+                  <div className="ml-3 pl-3 border-l border-surface-100 dark:border-gray-800 mt-0.5 space-y-0.5">
+                    {visibleChildren.map(child => {
+                      const isChildActive = pathname === child.href || (child.href !== '/dashboard' && pathname.startsWith(child.href));
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={`
+                            flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium
+                            transition-all duration-150
+                            ${isChildActive
+                              ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400'
+                              : 'text-surface-500 dark:text-gray-500 hover:bg-surface-50 dark:hover:bg-gray-800/60 hover:text-gray-700 dark:hover:text-gray-300'
+                            }
+                          `}
+                        >
+                          <span className={`flex-shrink-0 ${isChildActive ? 'text-brand-500 dark:text-brand-400' : ''}`}>
+                            {icons[child.icon]}
+                          </span>
+                          <span className="whitespace-nowrap">{child.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // Regular flat item
           const isActive =
             pathname === item.href ||
             (item.href !== '/dashboard' && pathname.startsWith(item.href));

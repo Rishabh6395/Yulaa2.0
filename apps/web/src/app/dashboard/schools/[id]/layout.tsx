@@ -32,6 +32,7 @@ export default function SchoolLayout({ children, params }: { children: React.Rea
   const isRoot = moduleSegment === id;
 
   const moduleLabels: Record<string, string> = {
+    'masters': 'Masters',
     'classes': 'Classes',
     'students': 'Students',
     'teachers': 'Teachers',
