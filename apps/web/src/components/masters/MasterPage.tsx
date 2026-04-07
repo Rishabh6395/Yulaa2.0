@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 export interface FieldDef {
@@ -39,6 +40,17 @@ const ACTIVE_CLS = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text
 const INACTIVE_CLS = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-surface-100 dark:bg-gray-800 text-surface-400 dark:text-gray-500 border border-surface-200 dark:border-gray-700';
 
 export default function MasterPage({ title, description, apiPath, dataKey, itemKey, fields, extraColumns = [], backHref = '/dashboard/masters' }: MasterPageProps) {
+  const searchParams = useSearchParams();
+  // schoolId comes from ?schoolId= (super admin via school config) or falls back to user's own school
+  const schoolIdParam = searchParams.get('schoolId') ?? undefined;
+
+  // Build URL with optional schoolId query param
+  function withSchool(path: string) {
+    if (!schoolIdParam) return path;
+    const sep = path.includes('?') ? '&' : '?';
+    return `${path}${sep}schoolId=${schoolIdParam}`;
+  }
+
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -51,23 +63,24 @@ export default function MasterPage({ title, description, apiPath, dataKey, itemK
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const res = await fetch(apiPath, { headers: { Authorization: `Bearer ${getToken()}` } });
+      const res = await fetch(withSchool(apiPath), { headers: { Authorization: `Bearer ${getToken()}` } });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? 'Failed to load'); return; }
       setRows(json[dataKey] ?? []);
     } catch { setError('Network error'); }
     finally { setLoading(false); }
-  }, [apiPath, dataKey]);
+  }, [apiPath, dataKey, schoolIdParam]);
 
   useEffect(() => { load(); }, [load]);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault(); setSaving(true); setFormErr('');
     try {
+      const body = schoolIdParam ? { ...form, schoolId: schoolIdParam } : form;
       const res = await fetch(apiPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify(form),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok) { setFormErr(json.error ?? 'Failed to save'); return; }
@@ -140,7 +153,7 @@ export default function MasterPage({ title, description, apiPath, dataKey, itemK
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href={backHref} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-gray-800 text-surface-400 transition-colors">
+        <Link href={schoolIdParam ? `${backHref}?schoolId=${schoolIdParam}` : backHref} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-gray-800 text-surface-400 transition-colors">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         </Link>
         <div>

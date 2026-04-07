@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 const MASTER_SECTIONS = [
   {
@@ -69,6 +70,10 @@ const icons: Record<string, React.ReactNode> = {
 };
 
 export default function MastersPage() {
+  const searchParams = useSearchParams();
+  const schoolId = searchParams.get('schoolId');
+  const suffix = schoolId ? `?schoolId=${schoolId}` : '';
+
   return (
     <div className="space-y-8 animate-fade-in">
       <div>
@@ -87,7 +92,7 @@ export default function MastersPage() {
             {section.items.map((item) => (
               <Link
                 key={item.href}
-                href={item.href}
+                href={`${item.href}${suffix}`}
                 className="card p-4 flex items-start gap-3 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all group"
               >
                 <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center text-blue-500 dark:text-blue-400 shrink-0 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">

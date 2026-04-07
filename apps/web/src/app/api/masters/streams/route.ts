@@ -1,12 +1,14 @@
 import { getUserFromRequest } from '@/lib/auth';
 import { getStreamMasters, addStreamMaster, patchStreamMaster } from '@/modules/masters/masters.service';
-import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
+import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 
 const ADMIN_ROLES = ['super_admin', 'school_admin'];
 
 function getSchoolId(user: NonNullable<Awaited<ReturnType<typeof getUserFromRequest>>>, override?: string) {
   if (user.roles.some((r) => r.role_code === 'super_admin') && override) return override;
-  return (user.roles.find((r) => r.is_primary) ?? user.roles[0])?.school_id!;
+  const schoolId = (user.roles.find((r) => r.is_primary) ?? user.roles[0])?.school_id;
+  if (!schoolId) throw new AppError('schoolId is required — open Masters from a school configuration page', 400);
+  return schoolId;
 }
 
 export async function GET(request: Request) {
