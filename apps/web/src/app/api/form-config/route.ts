@@ -2,14 +2,14 @@ import { getUserFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 
-// Only admins may write configs; any authenticated user may read them
 const WRITE_ROLES = ['super_admin', 'school_admin', 'principal'];
 
 /**
- * GET /api/form-config?schoolId=xxx&formId=admission
+ * GET /api/form-config?schoolId=xxx&formId=admission_form
  * Returns all role configs for the given school+form.
- * Any authenticated user can call this (teachers, parents, students need to
- * read their own role's config when opening forms).
+ * fieldRules format (new): { fieldId: { visible, editable, required, label? } }
+ * fieldRules format (legacy): { fieldId: 'required'|'optional'|'hidden' }
+ * Both formats may be present depending on when the config was last saved.
  */
 export async function GET(request: Request) {
   try {
@@ -26,11 +26,11 @@ export async function GET(request: Request) {
     if (formId) where.formId = formId;
 
     const rows = await prisma.formConfig.findMany({ where });
-    // { [formId]: { [role]: { fieldId: rule } } }
-    const result: Record<string, Record<string, Record<string, string>>> = {};
+    // { [formId]: { [role]: fieldRules } }
+    const result: Record<string, Record<string, Record<string, any>>> = {};
     for (const row of rows) {
       if (!result[row.formId]) result[row.formId] = {};
-      result[row.formId][row.role] = row.fieldRules as Record<string, string>;
+      result[row.formId][row.role] = row.fieldRules as Record<string, any>;
     }
     return Response.json({ configs: result });
   } catch (err) { return handleError(err); }
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
 
 /**
  * POST /api/form-config
- * Body: { schoolId, formId, role, fieldRules: { fieldId: 'required'|'optional'|'hidden' } }
+ * Body: { schoolId?, formId, role, fieldRules: { fieldId: { visible, editable, required, label? } } }
  * Upserts a single role config for a form.
  */
 export async function POST(request: Request) {
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     }
 
     const config = await prisma.formConfig.upsert({
-      where: { schoolId_formId_role: { schoolId, formId, role } },
+      where:  { schoolId_formId_role: { schoolId, formId, role } },
       update: { fieldRules, updatedAt: new Date() },
       create: { schoolId, formId, role, fieldRules },
     });

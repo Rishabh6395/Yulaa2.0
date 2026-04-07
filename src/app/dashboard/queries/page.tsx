@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useApi } from '@/hooks/useApi';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -85,6 +86,8 @@ export default function QueriesPage() {
   const isSuperAdmin   = role === 'super_admin';
   const canRaise       = isParent || isSchoolAdmin;   // both can raise queries
   const canReply       = isSchoolAdmin || isSuperAdmin; // admins reply
+
+  const fc = useFormConfig('query_form');
 
   const { data, isLoading, mutate } = useApi<{ queries: any[] }>('/api/queries');
   const queries = data?.queries ?? [];
@@ -268,10 +271,10 @@ export default function QueriesPage() {
             </div>
           )}
 
-          {isParent && (
+          {isParent && fc.visible('category') && (
             <div>
-              <label className="label">Query Type</label>
-              <select className="input-field" value={form.query_type}
+              <label className="label">{fc.label('category')}{fc.required('category') ? ' *' : ''}</label>
+              <select className="input-field" disabled={!fc.editable('category')} value={form.query_type}
                 onChange={e => setForm(f => ({ ...f, query_type: e.target.value }))}>
                 <option value="">— Select type —</option>
                 {PARENT_QUERY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -279,18 +282,22 @@ export default function QueriesPage() {
             </div>
           )}
 
-          <div>
-            <label className="label">Subject *</label>
-            <input className="input-field" required placeholder="Brief summary of your query…"
-              value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} />
-          </div>
+          {fc.visible('subject') && (
+            <div>
+              <label className="label">{fc.label('subject')}{fc.required('subject') ? ' *' : ''}</label>
+              <input className="input-field" required={fc.required('subject')} readOnly={!fc.editable('subject')} placeholder="Brief summary of your query…"
+                value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} />
+            </div>
+          )}
 
-          <div>
-            <label className="label">Description *</label>
-            <textarea className="input-field" rows={5} required
-              placeholder="Describe your query in detail…"
-              value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-          </div>
+          {fc.visible('message') && (
+            <div>
+              <label className="label">{fc.label('message')}{fc.required('message') ? ' *' : ''}</label>
+              <textarea className="input-field" rows={5} required={fc.required('message')} readOnly={!fc.editable('message')}
+                placeholder="Describe your query in detail…"
+                value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+            </div>
+          )}
 
           {/* Attachment note */}
           <div className="flex items-center gap-2 px-3 py-2 bg-surface-50 dark:bg-gray-800 rounded-xl border border-surface-200 dark:border-gray-700 text-xs text-surface-400">

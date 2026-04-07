@@ -149,3 +149,43 @@ export async function ensureTeacherRecord(userId: string, schoolId: string) {
   if (existing) return existing;
   return prisma.teacher.create({ data: { userId, schoolId } });
 }
+
+// ── Form-config sync ─────────────────────────────────────────────────────────
+
+export async function findFormConfigsBySchool(schoolId: string) {
+  return prisma.formConfig.findMany({ where: { schoolId } });
+}
+
+export async function bulkUpsertFormConfigs(
+  targetSchoolId: string,
+  configs: Array<{ formId: string; role: string; fieldRules: any }>,
+) {
+  return Promise.all(
+    configs.map(c =>
+      prisma.formConfig.upsert({
+        where: { schoolId_formId_role: { schoolId: targetSchoolId, formId: c.formId, role: c.role } },
+        create: { schoolId: targetSchoolId, formId: c.formId, role: c.role, fieldRules: c.fieldRules },
+        update: { fieldRules: c.fieldRules, updatedAt: new Date() },
+      }),
+    ),
+  );
+}
+
+export async function findContentTypesBySchool(schoolId: string) {
+  return prisma.contentTypeMaster.findMany({ where: { schoolId } });
+}
+
+export async function bulkCreateContentTypes(
+  targetSchoolId: string,
+  entries: Array<{ formName: string; fieldSlot: string; fieldType: string; label: string; options: string[]; sortOrder: number }>,
+) {
+  return Promise.all(
+    entries.map(e =>
+      prisma.contentTypeMaster.upsert({
+        where: { schoolId_formName_fieldSlot: { schoolId: targetSchoolId, formName: e.formName, fieldSlot: e.fieldSlot } },
+        create: { schoolId: targetSchoolId, ...e },
+        update: { label: e.label, fieldType: e.fieldType, options: e.options, sortOrder: e.sortOrder },
+      }),
+    ),
+  );
+}

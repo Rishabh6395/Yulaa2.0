@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useApi } from '@/hooks/useApi';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -108,6 +109,8 @@ export default function ParentsPage() {
   const [uploading,    setUploading]                  = useState(false);
   const [uploadResult, setUploadResult]               = useState<{ created: number; linked: number; errors: string[]; total: number } | null>(null);
   const [showResultModal, setShowResultModal]         = useState(false);
+
+  const fc = useFormConfig('add_parent_form');
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -335,28 +338,36 @@ export default function ParentsPage() {
           {formError && <p className="text-sm text-red-600 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{formError}</p>}
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">First Name *</label>
-              <input className="input-field" required placeholder="First name"
-                value={form.first_name} onChange={e => setForm({...form, first_name: e.target.value})}/>
-            </div>
-            <div>
-              <label className="label">Last Name</label>
-              <input className="input-field" placeholder="Last name"
-                value={form.last_name} onChange={e => setForm({...form, last_name: e.target.value})}/>
-            </div>
+            {fc.visible('firstName') && (
+              <div>
+                <label className="label">{fc.label('firstName')} *</label>
+                <input className="input-field" required placeholder="First name" readOnly={!fc.editable('firstName')}
+                  value={form.first_name} onChange={e => setForm({...form, first_name: e.target.value})}/>
+              </div>
+            )}
+            {fc.visible('lastName') && (
+              <div>
+                <label className="label">{fc.label('lastName')}{fc.required('lastName') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" placeholder="Last name" readOnly={!fc.editable('lastName')}
+                  value={form.last_name} onChange={e => setForm({...form, last_name: e.target.value})}/>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Phone *</label>
-              <input className="input-field" required type="tel" placeholder="10-digit mobile"
-                value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}/>
-            </div>
-            <div>
-              <label className="label">Email</label>
-              <input className="input-field" type="email" placeholder="parent@email.com"
-                value={form.email} onChange={e => setForm({...form, email: e.target.value})}/>
-            </div>
+            {fc.visible('phone') && (
+              <div>
+                <label className="label">{fc.label('phone')} *</label>
+                <input className="input-field" required type="tel" placeholder="10-digit mobile" readOnly={!fc.editable('phone')}
+                  value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}/>
+              </div>
+            )}
+            {fc.visible('email') && (
+              <div>
+                <label className="label">{fc.label('email')}{fc.required('email') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" type="email" placeholder="parent@email.com" readOnly={!fc.editable('email')}
+                  value={form.email} onChange={e => setForm({...form, email: e.target.value})}/>
+              </div>
+            )}
           </div>
           <div>
             <label className="label">Login Password</label>

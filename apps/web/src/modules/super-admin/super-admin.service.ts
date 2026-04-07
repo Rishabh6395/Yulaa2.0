@@ -10,7 +10,7 @@ export async function listSchools() {
 }
 
 export async function createSchool(body: Record<string, any>) {
-  const { name, email, phone, address, city, state, website, latitude, longitude, boardType, subscriptionPlan, configSource } = body;
+  const { name, email, phone, address, city, state, website, latitude, longitude, boardType, subscriptionPlan } = body;
   if (!name?.trim()) throw new AppError('School name is required');
 
   const school = await repo.createSchool({
@@ -21,7 +21,41 @@ export async function createSchool(body: Record<string, any>) {
     boardType: boardType || null,
     subscriptionPlan,
   });
+
+  // Auto-sync form config + content types from default school (Super Admin template)
+  try { await syncFormConfigToSchool(school.id); } catch { /* non-fatal */ }
+
   return { school };
+}
+
+export async function syncFormConfigToSchool(targetSchoolId: string) {
+  const defaultSchool = await repo.findDefaultSchool();
+  if (!defaultSchool || defaultSchool.id === targetSchoolId) return { synced: 0, contentTypesSynced: 0 };
+
+  const [formConfigs, contentTypes] = await Promise.all([
+    repo.findFormConfigsBySchool(defaultSchool.id),
+    repo.findContentTypesBySchool(defaultSchool.id),
+  ]);
+
+  const [syncedConfigs, syncedTypes] = await Promise.all([
+    repo.bulkUpsertFormConfigs(
+      targetSchoolId,
+      formConfigs.map(c => ({ formId: c.formId, role: c.role, fieldRules: c.fieldRules })),
+    ),
+    repo.bulkCreateContentTypes(
+      targetSchoolId,
+      contentTypes.map(ct => ({
+        formName:  ct.formName,
+        fieldSlot: ct.fieldSlot,
+        fieldType: ct.fieldType,
+        label:     ct.label,
+        options:   ct.options,
+        sortOrder: ct.sortOrder,
+      })),
+    ),
+  ]);
+
+  return { synced: syncedConfigs.length, contentTypesSynced: syncedTypes.length };
 }
 
 export async function updateSchool(body: Record<string, any>) {

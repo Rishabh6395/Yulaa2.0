@@ -93,6 +93,17 @@ function BalanceCards({ balances }: { balances: any[] }) {
   );
 }
 
+// ─── Field-rule normaliser (supports legacy string + new object format) ───────
+
+function leaveRule(rules: Record<string, any>, key: string): 'required' | 'optional' | 'hidden' {
+  const v = rules[key];
+  if (!v) return 'optional';
+  if (typeof v === 'string') return v as any;
+  if (!v.visible) return 'hidden';
+  if (v.required) return 'required';
+  return 'optional';
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function LeavePage() {
@@ -109,7 +120,7 @@ export default function LeavePage() {
   const [saveError, setSaveError] = useState('');
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
   const [activeChild, setActiveChild] = useState<any>(null);
-  const [leaveFieldRules, setLeaveFieldRules] = useState<Record<string, string>>({});
+  const [leaveFieldRules, setLeaveFieldRules] = useState<Record<string, any>>({});
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -511,10 +522,10 @@ export default function LeavePage() {
           )}
 
           {/* Leave type */}
-          {(leaveFieldRules['leaveType'] ?? 'required') !== 'hidden' && <div>
+          {leaveRule(leaveFieldRules, 'leaveType') !== 'hidden' && <div>
             <label className="label">
               Leave Type
-              {(leaveFieldRules['leaveType'] ?? 'required') === 'required'
+              {leaveRule(leaveFieldRules, 'leaveType') === 'required'
                 ? <span className="text-red-500 ml-0.5">*</span>
                 : <span className="text-surface-400 font-normal ml-1">(optional)</span>}
             </label>
@@ -540,29 +551,29 @@ export default function LeavePage() {
           </div>}
 
           <div className="grid grid-cols-2 gap-4">
-            {(leaveFieldRules['startDate'] ?? 'required') !== 'hidden' && (
+            {leaveRule(leaveFieldRules, 'startDate') !== 'hidden' && (
               <div>
                 <label className="label">
                   From Date
-                  {(leaveFieldRules['startDate'] ?? 'required') === 'required'
+                  {leaveRule(leaveFieldRules, 'startDate') === 'required'
                     ? <span className="text-red-500 ml-0.5">*</span>
                     : <span className="text-surface-400 font-normal ml-1">(optional)</span>}
                 </label>
                 <input type="date" className="input-field"
-                  required={(leaveFieldRules['startDate'] ?? 'required') === 'required'}
+                  required={leaveRule(leaveFieldRules, 'startDate') === 'required'}
                   value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
               </div>
             )}
-            {(leaveFieldRules['endDate'] ?? 'required') !== 'hidden' && (
+            {leaveRule(leaveFieldRules, 'endDate') !== 'hidden' && (
               <div>
                 <label className="label">
                   To Date
-                  {(leaveFieldRules['endDate'] ?? 'required') === 'required'
+                  {leaveRule(leaveFieldRules, 'endDate') === 'required'
                     ? <span className="text-red-500 ml-0.5">*</span>
                     : <span className="text-surface-400 font-normal ml-1">(optional)</span>}
                 </label>
                 <input type="date" className="input-field"
-                  required={(leaveFieldRules['endDate'] ?? 'required') === 'required'}
+                  required={leaveRule(leaveFieldRules, 'endDate') === 'required'}
                   value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
               </div>
             )}
@@ -591,16 +602,16 @@ export default function LeavePage() {
             );
           })()}
 
-          {(leaveFieldRules['reason'] ?? 'optional') !== 'hidden' && (
+          {leaveRule(leaveFieldRules, 'reason') !== 'hidden' && (
             <div>
               <label className="label">
                 Reason
-                {(leaveFieldRules['reason'] ?? 'optional') === 'required'
+                {leaveRule(leaveFieldRules, 'reason') === 'required'
                   ? <span className="text-red-500 ml-0.5">*</span>
                   : <span className="text-surface-400 font-normal ml-1">(optional)</span>}
               </label>
               <textarea className="input-field" rows={3}
-                required={(leaveFieldRules['reason'] ?? 'optional') === 'required'}
+                required={leaveRule(leaveFieldRules, 'reason') === 'required'}
                 value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
                 placeholder="Reason for leave..." />
             </div>

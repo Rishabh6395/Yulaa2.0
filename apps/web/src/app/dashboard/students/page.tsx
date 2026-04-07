@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useApi } from '@/hooks/useApi';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -32,6 +33,8 @@ export default function StudentsPage() {
   const [uploading,     setUploading]       = useState(false);
   const [uploadResult,  setUploadResult]    = useState<{ created: number; errors: string[]; total: number } | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
+
+  const fc = useFormConfig('add_student_form');
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -314,35 +317,45 @@ export default function StudentsPage() {
       <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Student">
         <form onSubmit={handleAdd} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">First Name *</label>
-              <input className="input-field" required value={form.first_name} onChange={e => setForm({...form, first_name: e.target.value})}/>
-            </div>
-            <div>
-              <label className="label">Last Name *</label>
-              <input className="input-field" required value={form.last_name} onChange={e => setForm({...form, last_name: e.target.value})}/>
-            </div>
+            {fc.visible('firstName') && (
+              <div>
+                <label className="label">{fc.label('firstName')} *</label>
+                <input className="input-field" required readOnly={!fc.editable('firstName')} value={form.first_name} onChange={e => setForm({...form, first_name: e.target.value})}/>
+              </div>
+            )}
+            {fc.visible('lastName') && (
+              <div>
+                <label className="label">{fc.label('lastName')} *</label>
+                <input className="input-field" required readOnly={!fc.editable('lastName')} value={form.last_name} onChange={e => setForm({...form, last_name: e.target.value})}/>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Admission No *</label>
-              <input className="input-field" required value={form.admission_no} onChange={e => setForm({...form, admission_no: e.target.value})}/>
-            </div>
-            <div>
-              <label className="label">Date of Birth</label>
-              <input type="date" className="input-field" value={form.dob} onChange={e => setForm({...form, dob: e.target.value})}/>
-            </div>
+            {fc.visible('admissionNo') && (
+              <div>
+                <label className="label">{fc.label('admissionNo')} *</label>
+                <input className="input-field" required readOnly={!fc.editable('admissionNo')} value={form.admission_no} onChange={e => setForm({...form, admission_no: e.target.value})}/>
+              </div>
+            )}
+            {fc.visible('dob') && (
+              <div>
+                <label className="label">{fc.label('dob')}{fc.required('dob') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input type="date" className="input-field" readOnly={!fc.editable('dob')} value={form.dob} onChange={e => setForm({...form, dob: e.target.value})}/>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Gender</label>
-              <select className="input-field" value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}>
-                <option value="">Select</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
+            {fc.visible('gender') && (
+              <div>
+                <label className="label">{fc.label('gender')}{fc.required('gender') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <select className="input-field" disabled={!fc.editable('gender')} value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}>
+                  <option value="">Select</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            )}
             <div>
               <label className="label">Class</label>
               <select className="input-field" value={form.class_id} onChange={e => setForm({...form, class_id: e.target.value})}>
@@ -351,10 +364,12 @@ export default function StudentsPage() {
               </select>
             </div>
           </div>
-          <div>
-            <label className="label">Address</label>
-            <textarea className="input-field" rows={2} value={form.address} onChange={e => setForm({...form, address: e.target.value})}/>
-          </div>
+          {fc.visible('address') && (
+            <div>
+              <label className="label">{fc.label('address')}{fc.required('address') && <span className="text-red-500 ml-0.5">*</span>}</label>
+              <textarea className="input-field" rows={2} readOnly={!fc.editable('address')} value={form.address} onChange={e => setForm({...form, address: e.target.value})}/>
+            </div>
+          )}
           <div className="border-t border-surface-100 dark:border-gray-800 pt-4">
             <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Parent / Guardian (optional)</p>
             <div className="grid grid-cols-2 gap-4">

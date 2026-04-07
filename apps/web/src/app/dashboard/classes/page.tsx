@@ -3,12 +3,15 @@
 import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useApi } from '@/hooks/useApi';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 export default function ClassesPage() {
   const [showAddModal,  setShowAddModal]  = useState(false);
   const [editTarget,    setEditTarget]    = useState<any>(null);
   const [form,          setForm]          = useState({ grade: '', section: '', academic_year: '', max_students: '', class_teacher_id: '' });
   const [saving,        setSaving]        = useState(false);
+
+  const fc = useFormConfig('add_class_form');
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -138,62 +141,44 @@ export default function ClassesPage() {
       >
         <form onSubmit={handleSave} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Grade *</label>
-              <input
-                className="input-field"
-                required
-                placeholder="e.g. 5"
-                value={form.grade}
-                onChange={e => setForm({...form, grade: e.target.value})}
-              />
-            </div>
-            <div>
-              <label className="label">Section *</label>
-              <input
-                className="input-field"
-                required
-                placeholder="e.g. A"
-                value={form.section}
-                onChange={e => setForm({...form, section: e.target.value})}
-              />
-            </div>
+            {fc.visible('grade') && (
+              <div>
+                <label className="label">{fc.label('grade')} *</label>
+                <input className="input-field" required placeholder="e.g. 5" readOnly={!fc.editable('grade')} value={form.grade} onChange={e => setForm({...form, grade: e.target.value})}/>
+              </div>
+            )}
+            {fc.visible('section') && (
+              <div>
+                <label className="label">{fc.label('section')} *</label>
+                <input className="input-field" required placeholder="e.g. A" readOnly={!fc.editable('section')} value={form.section} onChange={e => setForm({...form, section: e.target.value})}/>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Academic Year</label>
-              <input
-                className="input-field"
-                placeholder="e.g. 2024-25"
-                value={form.academic_year}
-                onChange={e => setForm({...form, academic_year: e.target.value})}
-              />
-            </div>
-            <div>
-              <label className="label">Max Students</label>
-              <input
-                type="number"
-                min="1"
-                className="input-field"
-                placeholder="e.g. 40"
-                value={form.max_students}
-                onChange={e => setForm({...form, max_students: e.target.value})}
-              />
-            </div>
+            {fc.visible('academicYear') && (
+              <div>
+                <label className="label">{fc.label('academicYear')}{fc.required('academicYear') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" placeholder="e.g. 2024-25" readOnly={!fc.editable('academicYear')} value={form.academic_year} onChange={e => setForm({...form, academic_year: e.target.value})}/>
+              </div>
+            )}
+            {fc.visible('maxStudents') && (
+              <div>
+                <label className="label">{fc.label('maxStudents')}{fc.required('maxStudents') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input type="number" min="1" className="input-field" placeholder="e.g. 40" readOnly={!fc.editable('maxStudents')} value={form.max_students} onChange={e => setForm({...form, max_students: e.target.value})}/>
+              </div>
+            )}
           </div>
-          <div>
-            <label className="label">Class Teacher</label>
-            <select
-              className="input-field"
-              value={form.class_teacher_id}
-              onChange={e => setForm({...form, class_teacher_id: e.target.value})}
-            >
-              <option value="">Select teacher (optional)</option>
-              {teachers.map((t: any) => (
-                <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>
-              ))}
-            </select>
-          </div>
+          {fc.visible('classTeacher') && (
+            <div>
+              <label className="label">{fc.label('classTeacher')}{fc.required('classTeacher') && <span className="text-red-500 ml-0.5">*</span>}</label>
+              <select className="input-field" disabled={!fc.editable('classTeacher')} value={form.class_teacher_id} onChange={e => setForm({...form, class_teacher_id: e.target.value})}>
+                <option value="">Select teacher (optional)</option>
+                {teachers.map((t: any) => (
+                  <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={saving} className="btn-primary flex-1">

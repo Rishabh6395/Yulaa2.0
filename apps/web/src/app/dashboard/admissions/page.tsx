@@ -17,10 +17,17 @@ const RISK_COLOR = (score: number) =>
   'text-emerald-600 dark:text-emerald-400';
 
 type FieldRule  = 'required' | 'optional' | 'hidden';
-type FieldRules = Record<string, FieldRule>;
+type FieldRules = Record<string, any>;
 
-// No hardcoded defaults — everything falls back to 'optional' if not configured by super admin
-function rule(rules: FieldRules, key: string): FieldRule { return rules[key] ?? 'optional'; }
+// Normalises both legacy string format and new object format { visible, editable, required }
+function rule(rules: FieldRules, key: string): FieldRule {
+  const v = rules[key];
+  if (!v) return 'optional';
+  if (typeof v === 'string') return v as FieldRule;
+  if (!v.visible) return 'hidden';
+  if (v.required) return 'required';
+  return 'optional';
+}
 function isVisible(rules: FieldRules, key: string) { return rule(rules, key) !== 'hidden'; }
 
 const GRADES = ['Nursery','LKG','UKG','Grade 1','Grade 2','Grade 3','Grade 4','Grade 5',

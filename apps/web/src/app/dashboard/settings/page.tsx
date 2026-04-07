@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 export default function SettingsPage() {
   const [user,      setUser]      = useState<any>(null);
@@ -8,6 +9,7 @@ export default function SettingsPage() {
   const [saving,    setSaving]    = useState(false);
   const [message,   setMessage]   = useState('');
   const [saveError, setSaveError] = useState('');
+  const fc = useFormConfig('profile_information_form');
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -76,39 +78,32 @@ export default function SettingsPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+              {fc.visible('firstName') && (
+                <div>
+                  <label className="label">{fc.label('firstName')} *</label>
+                  <input className="input-field" required readOnly={!fc.editable('firstName')} value={form.first_name} onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))}/>
+                </div>
+              )}
+              {fc.visible('lastName') && (
+                <div>
+                  <label className="label">{fc.label('lastName')} *</label>
+                  <input className="input-field" required readOnly={!fc.editable('lastName')} value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))}/>
+                </div>
+              )}
+            </div>
+            {fc.visible('email') && (
               <div>
-                <label className="label">First Name *</label>
-                <input
-                  className="input-field"
-                  required
-                  value={form.first_name}
-                  onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))}
-                />
+                <label className="label">{fc.label('email')}</label>
+                <input className="input-field bg-surface-50 dark:bg-gray-800" defaultValue={user.email} readOnly />
+                <p className="text-xs text-surface-400 mt-1">Email cannot be changed. Contact your administrator.</p>
               </div>
+            )}
+            {fc.visible('phone') && (
               <div>
-                <label className="label">Last Name *</label>
-                <input
-                  className="input-field"
-                  required
-                  value={form.last_name}
-                  onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))}
-                />
+                <label className="label">{fc.label('phone')}{fc.required('phone') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" readOnly={!fc.editable('phone')} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+91 00000 00000"/>
               </div>
-            </div>
-            <div>
-              <label className="label">Email</label>
-              <input className="input-field bg-surface-50 dark:bg-gray-800" defaultValue={user.email} readOnly />
-              <p className="text-xs text-surface-400 mt-1">Email cannot be changed. Contact your administrator.</p>
-            </div>
-            <div>
-              <label className="label">Phone</label>
-              <input
-                className="input-field"
-                value={form.phone}
-                onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                placeholder="+91 00000 00000"
-              />
-            </div>
+            )}
 
             {message   && <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">{message}</p>}
             {saveError && <p className="text-sm text-red-600 dark:text-red-400 font-medium">{saveError}</p>}

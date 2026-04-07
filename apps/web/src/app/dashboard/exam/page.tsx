@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useApi } from '@/hooks/useApi';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 const EXAM_TYPES  = ['unit_test', 'mid_term', 'final', 'pre_board', 'internal', 'other'];
 const EXAM_STATUS = ['scheduled', 'ongoing', 'completed', 'cancelled'];
@@ -34,6 +35,7 @@ export default function ExamPage() {
   const [role,        setRole]        = useState('');
   const [tab,         setTab]         = useState<'timetable' | 'results'>('timetable');
 
+  const fc = useFormConfig('create_exam_form');
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
@@ -338,17 +340,21 @@ export default function ExamPage() {
       {/* Create Exam Modal */}
       <Modal open={showForm} onClose={() => setShowForm(false)} title="Create New Exam">
         <form onSubmit={handleCreateExam} className="space-y-4">
-          <div>
-            <label className="label">Exam Title *</label>
-            <input className="input-field" required value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))} placeholder="e.g. Mid-Term Examination 2025" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+          {fc.visible('name') && (
             <div>
-              <label className="label">Exam Type *</label>
-              <select className="input-field" value={form.examType} onChange={e => setForm(f => ({...f, examType: e.target.value}))}>
-                {EXAM_TYPES.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
-              </select>
+              <label className="label">{fc.label('name')} *</label>
+              <input className="input-field" required readOnly={!fc.editable('name')} value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))} placeholder="e.g. Mid-Term Examination 2025" />
             </div>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            {fc.visible('examType') && (
+              <div>
+                <label className="label">{fc.label('examType')} *</label>
+                <select className="input-field" disabled={!fc.editable('examType')} value={form.examType} onChange={e => setForm(f => ({...f, examType: e.target.value}))}>
+                  {EXAM_TYPES.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+                </select>
+              </div>
+            )}
             <div>
               <label className="label">Grading Type</label>
               <select className="input-field" value={form.gradingType} onChange={e => setForm(f => ({...f, gradingType: e.target.value}))}>
@@ -357,23 +363,27 @@ export default function ExamPage() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Class (optional)</label>
-              <select className="input-field" value={form.classId} onChange={e => setForm(f => ({...f, classId: e.target.value}))}>
-                <option value="">All classes</option>
-                {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
+            {fc.visible('classId') && (
+              <div>
+                <label className="label">{fc.label('classId')}{fc.required('classId') ? ' *' : ' (optional)'}</label>
+                <select className="input-field" disabled={!fc.editable('classId')} value={form.classId} onChange={e => setForm(f => ({...f, classId: e.target.value}))}>
+                  <option value="">All classes</option>
+                  {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            )}
             <div>
               <label className="label">Academic Year</label>
               <input className="input-field" value={form.academicYear} onChange={e => setForm(f => ({...f, academicYear: e.target.value}))} placeholder="2025-2026" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Start Date</label>
-              <input type="date" className="input-field" value={form.startDate} onChange={e => setForm(f => ({...f, startDate: e.target.value}))} />
-            </div>
+            {fc.visible('examDate') && (
+              <div>
+                <label className="label">{fc.label('examDate')}{fc.required('examDate') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input type="date" className="input-field" readOnly={!fc.editable('examDate')} value={form.startDate} onChange={e => setForm(f => ({...f, startDate: e.target.value}))} />
+              </div>
+            )}
             <div>
               <label className="label">End Date</label>
               <input type="date" className="input-field" value={form.endDate} onChange={e => setForm(f => ({...f, endDate: e.target.value}))} />

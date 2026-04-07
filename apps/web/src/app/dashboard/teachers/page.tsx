@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Modal from '@/components/ui/Modal';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 export default function TeachersPage() {
   const [teachers, setTeachers] = useState<any[]>([]);
@@ -17,6 +18,8 @@ export default function TeachersPage() {
   const [uploading, setUploading]       = useState(false);
   const [uploadResult, setUploadResult] = useState<{ created: number; errors: string[]; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fc = useFormConfig('add_teacher_form');
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const user  = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
@@ -185,42 +188,56 @@ export default function TeachersPage() {
       <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add Teacher">
         <form onSubmit={handleAdd} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">First Name *</label>
-              <input className="input-field" required value={form.first_name} onChange={e => setForm({...form, first_name: e.target.value})} placeholder="First name"/>
-            </div>
-            <div>
-              <label className="label">Last Name *</label>
-              <input className="input-field" required value={form.last_name} onChange={e => setForm({...form, last_name: e.target.value})} placeholder="Last name"/>
-            </div>
+            {fc.visible('firstName') && (
+              <div>
+                <label className="label">{fc.label('firstName')} *</label>
+                <input className="input-field" required readOnly={!fc.editable('firstName')} value={form.first_name} onChange={e => setForm({...form, first_name: e.target.value})} placeholder="First name"/>
+              </div>
+            )}
+            {fc.visible('lastName') && (
+              <div>
+                <label className="label">{fc.label('lastName')} *</label>
+                <input className="input-field" required readOnly={!fc.editable('lastName')} value={form.last_name} onChange={e => setForm({...form, last_name: e.target.value})} placeholder="Last name"/>
+              </div>
+            )}
           </div>
-          <div>
-            <label className="label">Email *</label>
-            <input type="email" className="input-field" required value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="teacher@school.edu"/>
-          </div>
+          {fc.visible('email') && (
+            <div>
+              <label className="label">{fc.label('email')} *</label>
+              <input type="email" className="input-field" required readOnly={!fc.editable('email')} value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="teacher@school.edu"/>
+            </div>
+          )}
           <div>
             <label className="label">Password *</label>
             <input type="password" className="input-field" required value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder="Temporary password"/>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Phone</label>
-              <input className="input-field" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="+91 XXXXX XXXXX"/>
-            </div>
-            <div>
-              <label className="label">Employee ID</label>
-              <input className="input-field" value={form.employee_id} onChange={e => setForm({...form, employee_id: e.target.value})} placeholder="EMP-001"/>
-            </div>
+            {fc.visible('phone') && (
+              <div>
+                <label className="label">{fc.label('phone')}{fc.required('phone') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" readOnly={!fc.editable('phone')} value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="+91 XXXXX XXXXX"/>
+              </div>
+            )}
+            {fc.visible('employeeId') && (
+              <div>
+                <label className="label">{fc.label('employeeId')}{fc.required('employeeId') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" readOnly={!fc.editable('employeeId')} value={form.employee_id} onChange={e => setForm({...form, employee_id: e.target.value})} placeholder="EMP-001"/>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Qualification</label>
-              <input className="input-field" value={form.qualification} onChange={e => setForm({...form, qualification: e.target.value})} placeholder="B.Ed, M.A..."/>
-            </div>
-            <div>
-              <label className="label">Joining Date</label>
-              <input type="date" className="input-field" value={form.joining_date} onChange={e => setForm({...form, joining_date: e.target.value})}/>
-            </div>
+            {fc.visible('qualification') && (
+              <div>
+                <label className="label">{fc.label('qualification')}{fc.required('qualification') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" readOnly={!fc.editable('qualification')} value={form.qualification} onChange={e => setForm({...form, qualification: e.target.value})} placeholder="B.Ed, M.A..."/>
+              </div>
+            )}
+            {fc.visible('joiningDate') && (
+              <div>
+                <label className="label">{fc.label('joiningDate')}{fc.required('joiningDate') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input type="date" className="input-field" readOnly={!fc.editable('joiningDate')} value={form.joining_date} onChange={e => setForm({...form, joining_date: e.target.value})}/>
+              </div>
+            )}
           </div>
           {saveError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{saveError}</p>}
           <div className="flex gap-3 pt-2">
