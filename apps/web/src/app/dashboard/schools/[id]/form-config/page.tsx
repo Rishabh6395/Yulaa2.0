@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { FORM_DEFINITIONS } from '@/lib/formDefinitions';
+import { FORM_DEFINITIONS, type FieldDef } from '@/lib/formDefinitions';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,7 +48,7 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
 
   const form    = FORMS.find(f => f.id === activeForm)!;
   const allDyn  = dynFields[activeForm] ?? [];
-  const allFields: Array<StaticField | DynamicField> = [...form.fields, ...allDyn];
+  const allFields: Array<FieldDef | DynamicField> = [...form.fields, ...allDyn];
 
   // ── Load configs + dynamic fields ──────────────────────────────────────────
 
