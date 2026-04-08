@@ -25,12 +25,13 @@ async function fetcher(url: string) {
  * - Call mutate() after a write to refresh.
  *
  * @param url  API path, e.g. "/api/students?page=1". Pass null to skip fetch.
+ * @param opts  Optional SWR config overrides.
  */
-export function useApi<T = any>(url: string | null) {
+export function useApi<T = any>(url: string | null, opts?: { dedupingInterval?: number; revalidateOnFocus?: boolean }) {
   return useSWR<T>(url, fetcher, {
-    revalidateOnFocus: false,      // don't re-fetch just because user switched windows
-    dedupingInterval:  5 * 60_000, // same URL won't re-fetch within 5 minutes
-    keepPreviousData:  true,       // show old data while new page loads (pagination)
+    revalidateOnFocus: opts?.revalidateOnFocus ?? false,
+    dedupingInterval:  opts?.dedupingInterval  ?? 5 * 60_000,
+    keepPreviousData:  true,
   });
 }
 

@@ -1,7 +1,18 @@
 'use client';
 
-import { useApi } from './useApi';
+import useSWR from 'swr';
 import { FORM_DEFINITIONS, FORM_FIELDS_MAP, getDefaultLabel, type FieldDef } from '@/lib/formDefinitions';
+
+// Fetcher with auth — same as useApi
+async function fetcher(url: string) {
+  const token = typeof window !== 'undefined' ? (localStorage.getItem('token') ?? '') : '';
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) { const err: any = new Error('API error'); err.status = res.status; throw err; }
+  return res.json();
+}
+
+// No dedup — always refetch when refresh() is called
+const FC_DEDUP = 0;
 
 export type { FieldDef };
 
@@ -11,12 +22,12 @@ export interface FieldRule {
   visible:  boolean;
   editable: boolean;
   required: boolean;
-  label:    string; // custom label override; '' = use definition default
+  label:    string;
 }
 
 export const FIELD_DEFAULT: FieldRule = { visible: true, editable: true, required: false, label: '' };
 
-// ─── Maps system role → form-config role ────────────────────────────────────────
+// ─── System role → form-config role ────────────────────────────────────────────
 
 const SYSTEM_TO_CONFIG_ROLE: Record<string, string> = {
   super_admin:    'admin',
@@ -28,6 +39,16 @@ const SYSTEM_TO_CONFIG_ROLE: Record<string, string> = {
   student:        'student',
   parent:         'parent',
   applicant:      'applicant',
+};
+
+// ─── Field → master API mapping ────────────────────────────────────────────────
+// Maps field IDs to the API endpoint that provides their dropdown options
+
+const FIELD_MASTER_API: Record<string, string> = {
+  gender:       '/api/masters/gender',
+  childGender:  '/api/masters/gender',
+  bloodGroup:   '/api/masters/blood-groups',
+  qualification:'/api/masters/qualifications',
 };
 
 // ─── Normalise stored value → FieldRule ─────────────────────────────────────────
@@ -48,23 +69,18 @@ function normalise(val: any): FieldRule {
 // ─── Hook ──────────────────────────────────────────────────────────────────────
 
 /**
- * Fetches form config for the current user's school + role and provides helpers
- * for field visibility, editability, required state, and labels.
+ * Fetches form config (labels, visibility, required, editable) from the
+ * Super Admin template and masters (gender options, blood groups, etc.).
  *
- * Labels are resolved in this priority order:
- *   1. Custom label set by Super Admin / School Admin in form-config page
- *   2. Default label from FORM_DEFINITIONS (shared source of truth)
- *
- * This means the label shown in every form ALWAYS matches what's visible
- * in the form-config admin page — no divergence.
+ * Everything comes from the server — no hardcoded values in form pages.
  *
  * Usage:
- *   const fc = useFormConfig('query_form');
- *   fc.label('message')        → 'Message' (or custom if set)
- *   fc.visible('message')      → true/false
- *   fc.editable('message')     → true/false
- *   fc.required('message')     → true/false
- *   fc.fields                  → ordered FieldDef[] for this form (from definitions)
+ *   const fc = useFormConfig('add_student_form');
+ *   fc.label('gender')         → 'Gender' (or custom label from config)
+ *   fc.visible('gender')       → true/false
+ *   fc.required('gender')      → true/false
+ *   fc.options('gender')        → ['Male', 'Female', 'Other'] from GenderMaster
+ *   fc.contentOptions('slot1') → options[] from ContentTypeMaster
  */
 export function useFormConfig(formId: string) {
   const user: any =
@@ -74,51 +90,68 @@ export function useFormConfig(formId: string) {
   const systemRole = user.primaryRole ?? '';
   const configRole = SYSTEM_TO_CONFIG_ROLE[systemRole] ?? systemRole;
 
-  const { data, isLoading } = useApi<{
-    configs: Record<string, Record<string, Record<string, any>>>;
-  }>(schoolId ? `/api/form-config?schoolId=${schoolId}&formId=${formId}` : null);
+  // ── Form config — always reads live from Super Admin, short cache ──────────
+  const cfgKey   = schoolId ? `/api/form-config?schoolId=${schoolId}&formId=${formId}` : null;
+  const gKey     = schoolId ? `/api/masters/gender?schoolId=${schoolId}` : null;
+  const bgKey    = schoolId ? `/api/masters/blood-groups?schoolId=${schoolId}` : null;
+  const qualKey  = schoolId ? `/api/masters/qualifications?schoolId=${schoolId}` : null;
+  const ctKey    = schoolId ? `/api/masters/content-types?schoolId=${schoolId}&formName=${formId}` : null;
 
-  // Normalised rules for the current role
-  const rawRules: Record<string, any> = data?.configs?.[formId]?.[configRole] ?? {};
+  const swrOpts  = { dedupingInterval: FC_DEDUP, revalidateOnFocus: true, revalidateOnMount: true, keepPreviousData: true };
+
+  const { data: cfgData,           isLoading: cfgLoading, mutate: mutateCfg  } = useSWR<{ configs: Record<string, Record<string, Record<string, any>>> }>(cfgKey, fetcher, swrOpts);
+  const { data: genderData,        mutate: mutateGender      } = useSWR<{ genderMasters: { name: string }[] }>(gKey,  fetcher, swrOpts);
+  const { data: bloodGroupData,    mutate: mutateBloodGroup  } = useSWR<{ bloodGroupMasters: { name: string }[] }>(bgKey,  fetcher, swrOpts);
+  const { data: qualificationData, mutate: mutateQual        } = useSWR<{ qualificationMasters: { name: string }[] }>(qualKey, fetcher, swrOpts);
+  const { data: contentTypeData,   mutate: mutateCt          } = useSWR<{ contentTypes: { fieldSlot: string; options: string[]; fieldType: string; label: string }[] }>(ctKey, fetcher, swrOpts);
+
+  // ── Normalise field rules ───────────────────────────────────────────────────
+  const rawRules: Record<string, any> = cfgData?.configs?.[formId]?.[configRole] ?? {};
   const rules: Record<string, FieldRule> = Object.fromEntries(
     Object.entries(rawRules).map(([k, v]) => [k, normalise(v)]),
   );
 
-  // Static field definitions for this form (ordered, from shared source of truth)
+  // ── Static field definitions ────────────────────────────────────────────────
   const fields: FieldDef[] = FORM_FIELDS_MAP[formId] ?? [];
+
+  // ── Master options map ──────────────────────────────────────────────────────
+  const masterOptions: Record<string, string[]> = {
+    gender:        (genderData?.genderMasters        ?? []).map(m => m.name),
+    childGender:   (genderData?.genderMasters        ?? []).map(m => m.name),
+    bloodGroup:    (bloodGroupData?.bloodGroupMasters ?? []).map(m => m.name),
+    qualification: (qualificationData?.qualificationMasters ?? []).map(m => m.name),
+  };
+
+  // Content type options indexed by fieldSlot
+  const contentSlotOptions: Record<string, string[]> = {};
+  for (const ct of contentTypeData?.contentTypes ?? []) {
+    if (ct.fieldType === 'dropdown' && ct.options?.length) {
+      contentSlotOptions[ct.fieldSlot] = ct.options;
+    }
+  }
 
   function rule(fieldId: string): FieldRule {
     return rules[fieldId] ?? { ...FIELD_DEFAULT };
   }
 
   return {
-    isLoading,
+    isLoading: cfgLoading,
     rules,
-
-    /**
-     * Ordered field definitions for this form.
-     * Each field reflects the saved config (or defaults if not yet configured).
-     * Use this to drive form rendering so fields always match what's in form-config.
-     */
     fields,
 
-    /**
-     * Returns the label for a field.
-     * Priority: custom label from config → definition default → fieldId.
-     * Never returns a hardcoded string from the form page itself.
-     */
+    /** Label: custom config label → definition default → fieldId */
     label(fieldId: string): string {
       const saved = rules[fieldId]?.label;
       if (saved) return saved;
       return getDefaultLabel(formId, fieldId);
     },
 
-    /** Whether the field should be shown. Defaults true if no config saved. */
+    /** Whether the field should be shown. Defaults true. */
     visible(fieldId: string): boolean {
       return rule(fieldId).visible;
     },
 
-    /** Whether the field is user-editable (not view-only). Defaults true. */
+    /** Whether the field is editable. Defaults true. */
     editable(fieldId: string): boolean {
       return rule(fieldId).editable;
     },
@@ -128,10 +161,53 @@ export function useFormConfig(formId: string) {
       return rule(fieldId).required;
     },
 
-    /** Full rule for a field. */
+    /**
+     * Dropdown options for a standard master field (gender, bloodGroup, qualification).
+     * Returns string[] from the master API, empty array if not loaded yet.
+     * Falls back to provided static defaults if master is empty.
+     */
+    options(fieldId: string, staticFallback?: string[]): string[] {
+      return masterOptions[fieldId]?.length
+        ? masterOptions[fieldId]
+        : (staticFallback ?? []);
+    },
+
+    /**
+     * Dropdown options from ContentTypeMaster for a given field slot.
+     * Used for dynamic/extra fields added by Super Admin via Content Types.
+     */
+    contentOptions(fieldSlot: string): string[] {
+      return contentSlotOptions[fieldSlot] ?? [];
+    },
+
+    /**
+     * Dynamic extra fields added via ContentTypeMaster for this form.
+     * Use to render additional fields beyond the core set.
+     */
+    extraFields(): { id: string; label: string; type: string; slot: string }[] {
+      return (contentTypeData?.contentTypes ?? []).map(ct => ({
+        id:    ct.fieldSlot,
+        label: ct.label,
+        type:  ct.fieldType,
+        slot:  ct.fieldSlot,
+      }));
+    },
+
     rule,
+
+    /**
+     * Force a fresh fetch of all form-config and master data right now.
+     * Call this when opening a modal to guarantee the latest Super Admin
+     * config is loaded, bypassing the SWR dedup interval.
+     */
+    refresh() {
+      mutateCfg();
+      mutateGender();
+      mutateBloodGroup();
+      mutateQual();
+      mutateCt();
+    },
   };
 }
 
-// Re-export definitions so form pages can import from one place
 export { FORM_DEFINITIONS };

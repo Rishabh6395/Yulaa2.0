@@ -171,7 +171,7 @@ export default function QueriesPage() {
           </p>
         </div>
         {canRaise && (
-          <button onClick={() => { setForm({ subject: '', description: '', query_type: '' }); setFormError(''); setShowNewModal(true); }}
+          <button onClick={() => { setForm({ subject: '', description: '', query_type: '' }); setFormError(''); setShowNewModal(true); fc.refresh(); }}
             className="btn-primary flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Raise Query
@@ -187,7 +187,7 @@ export default function QueriesPage() {
           <div className="text-4xl">📋</div>
           <p className="text-surface-400 text-sm">No queries yet.</p>
           {canRaise && (
-            <button onClick={() => setShowNewModal(true)} className="btn-primary text-sm">Raise your first query</button>
+            <button onClick={() => { setShowNewModal(true); fc.refresh(); }} className="btn-primary text-sm">Raise your first query</button>
           )}
         </div>
       ) : (

@@ -154,7 +154,7 @@ export default function StudentsPage() {
             )}
             {uploading ? 'Uploading...' : 'Import CSV'}
           </button>
-          <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
+          <button onClick={() => { setShowAddModal(true); fc.refresh(); }} className="btn-primary flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add Student
           </button>
@@ -350,9 +350,9 @@ export default function StudentsPage() {
                 <label className="label">{fc.label('gender')}{fc.required('gender') ? ' *' : ''}</label>
                 <select className="input-field" disabled={!fc.editable('gender')} value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}>
                   <option value="">Select</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
+                  {(fc.options('gender', ['Male', 'Female', 'Other'])).map(o => (
+                    <option key={o} value={o.toLowerCase()}>{o}</option>
+                  ))}
                 </select>
               </div>
             )}

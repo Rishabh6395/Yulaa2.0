@@ -1,201 +1,450 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { FORM_DEFINITIONS, type FieldDef } from '@/lib/formDefinitions';
 
-type FieldRule = 'required' | 'optional' | 'hidden';
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
-interface FormField {
-  id: string;
-  label: string;
-  type: string;
-  rule: FieldRule;
+interface FieldRule {
+  visible:  boolean;
+  editable: boolean;
+  required: boolean;
+  label:    string;
 }
 
-const FORMS: { id: string; label: string; fields: Omit<FormField, 'rule'>[] }[] = [
-  {
-    id: 'admission',
-    label: 'Admission Form',
-    fields: [
-      { id: 'parentName', label: 'Parent / Guardian Name', type: 'text' },
-      { id: 'parentPhone', label: 'Parent Phone', type: 'tel' },
-      { id: 'parentEmail', label: 'Parent Email', type: 'email' },
-      { id: 'parentOccupation', label: 'Parent Occupation', type: 'text' },
-      { id: 'childName', label: 'Child Name', type: 'text' },
-      { id: 'childDOB', label: 'Child Date of Birth', type: 'date' },
-      { id: 'childGender', label: 'Child Gender', type: 'select' },
-      { id: 'previousSchool', label: 'Previous School', type: 'text' },
-      { id: 'gradeApplying', label: 'Grade Applying For', type: 'select' },
-      { id: 'address', label: 'Residential Address', type: 'textarea' },
-      { id: 'bloodGroup', label: 'Blood Group', type: 'select' },
-      { id: 'medicalNotes', label: 'Medical / Allergy Notes', type: 'textarea' },
-      { id: 'siblings', label: 'Siblings in School', type: 'text' },
-      { id: 'photo', label: 'Child Photo Upload', type: 'file' },
-    ],
-  },
-  {
-    id: 'student_profile',
-    label: 'Student Profile',
-    fields: [
-      { id: 'rollNumber', label: 'Roll Number', type: 'text' },
-      { id: 'dob', label: 'Date of Birth', type: 'date' },
-      { id: 'gender', label: 'Gender', type: 'select' },
-      { id: 'bloodGroup', label: 'Blood Group', type: 'select' },
-      { id: 'address', label: 'Address', type: 'textarea' },
-      { id: 'phone', label: 'Contact Phone', type: 'tel' },
-      { id: 'photo', label: 'Photo', type: 'file' },
-      { id: 'aadhaar', label: 'Aadhaar Number', type: 'text' },
-      { id: 'nationality', label: 'Nationality', type: 'text' },
-      { id: 'religion', label: 'Religion', type: 'text' },
-      { id: 'category', label: 'Category (Gen/OBC/SC/ST)', type: 'select' },
-      { id: 'motherTongue', label: 'Mother Tongue', type: 'text' },
-    ],
-  },
-  {
-    id: 'leave_request',
-    label: 'Leave Request Form',
-    fields: [
-      { id: 'leaveType', label: 'Leave Type', type: 'select' },
-      { id: 'startDate', label: 'From Date', type: 'date' },
-      { id: 'endDate', label: 'To Date', type: 'date' },
-      { id: 'reason', label: 'Reason', type: 'textarea' },
-      { id: 'attachment', label: 'Supporting Document', type: 'file' },
-      { id: 'contactDuringLeave', label: 'Contact Number During Leave', type: 'tel' },
-    ],
-  },
-  {
-    id: 'fee_payment',
-    label: 'Fee Payment Form',
-    fields: [
-      { id: 'paymentMode', label: 'Payment Mode', type: 'select' },
-      { id: 'referenceNo', label: 'Reference / Cheque No.', type: 'text' },
-      { id: 'bankName', label: 'Bank Name', type: 'text' },
-      { id: 'remarks', label: 'Remarks', type: 'textarea' },
-    ],
-  },
-];
+interface DynamicField { id: string; label: string; type: string; slot: string }
 
-const RULE_OPTIONS: { value: FieldRule; label: string; color: string }[] = [
-  { value: 'required', label: 'Required', color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400' },
-  { value: 'optional', label: 'Optional', color: 'text-blue-600 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-400' },
-  { value: 'hidden', label: 'Hidden', color: 'text-surface-400 bg-surface-100 dark:bg-gray-700 dark:text-gray-500' },
-];
+const FORMS = FORM_DEFINITIONS;
+const DEFAULT_RULE: FieldRule = { visible: true, editable: true, required: false, label: '' };
 
 const TYPE_ICONS: Record<string, string> = {
-  text: 'T', tel: '☎', email: '@', date: '📅', select: '▾', textarea: '¶', file: '📎',
+  text: 'T', tel: '☎', email: '@', date: '📅', select: '▾',
+  textarea: '¶', file: '📎', number: '#', dropdown: '▾', password: '🔑',
 };
 
+type AllConfigs = Record<string, Record<string, Record<string, FieldRule>>>;
+
+function defaultRules(fields: Array<{ id: string }>): Record<string, FieldRule> {
+  return Object.fromEntries(fields.map(f => [f.id, { ...DEFAULT_RULE }]));
+}
+
+// ─── Page ──────────────────────────────────────────────────────────────────────
+
 export default function FormConfigPage({ params }: { params: { id: string } }) {
-  const [activeForm, setActiveForm] = useState(FORMS[0].id);
-  const [configs, setConfigs] = useState<Record<string, Record<string, FieldRule>>>(() => {
-    const init: Record<string, Record<string, FieldRule>> = {};
-    FORMS.forEach(f => {
-      init[f.id] = {};
-      f.fields.forEach(field => {
-        init[f.id][field.id] = 'optional';
-      });
-    });
-    return init;
-  });
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const schoolId = params.id;
 
-  const form = FORMS.find(f => f.id === activeForm)!;
-  const formConfig = configs[activeForm] || {};
+  const [activeForm,   setActiveForm]   = useState(FORMS[0].id);
+  const [activeRole,   setActiveRole]   = useState(FORMS[0].roles[0].id);
+  const [configs,      setConfigs]      = useState<AllConfigs>({});
+  const [dynFields,    setDynFields]    = useState<Record<string, DynamicField[]>>({});
+  const [loading,      setLoading]      = useState(true);
+  const [saving,       setSaving]       = useState(false);
+  const [saved,        setSaved]        = useState(false);
+  const [syncing,      setSyncing]      = useState(false);
+  const [error,        setError]        = useState('');
+  const [editingLabel, setEditingLabel] = useState<string | null>(null);
 
-  function setRule(fieldId: string, rule: FieldRule) {
-    setConfigs(c => ({ ...c, [activeForm]: { ...c[activeForm], [fieldId]: rule } }));
+  const form    = FORMS.find(f => f.id === activeForm)!;
+  const allDyn  = dynFields[activeForm] ?? [];
+  const allFields: Array<FieldDef | DynamicField> = [...form.fields, ...allDyn];
+
+  // ── Load configs + dynamic fields ──────────────────────────────────────────
+
+  useEffect(() => {
+    setLoading(true);
+    const token = localStorage.getItem('token') ?? '';
+    const hdrs  = { Authorization: `Bearer ${token}` };
+
+    Promise.all([
+      fetch(`/api/form-config?schoolId=${schoolId}`, { headers: hdrs }).then(r => r.json()),
+      fetch(`/api/masters/content-types?schoolId=${schoolId}`, { headers: hdrs }).then(r => r.json()),
+    ]).then(([cfgData, ctData]) => {
+      // Normalise legacy string → object format
+      const raw: Record<string, Record<string, Record<string, any>>> = cfgData.configs ?? {};
+      const normalised: AllConfigs = {};
+      for (const [fId, roleMap] of Object.entries(raw)) {
+        normalised[fId] = {};
+        for (const [role, rules] of Object.entries(roleMap)) {
+          normalised[fId][role] = {};
+          for (const [key, val] of Object.entries(rules as Record<string, any>)) {
+            if (typeof val === 'string') {
+              normalised[fId][role][key] = {
+                visible: val !== 'hidden', editable: true, required: val === 'required', label: '',
+              };
+            } else {
+              normalised[fId][role][key] = { ...DEFAULT_RULE, ...(val as object) };
+            }
+          }
+        }
+      }
+      setConfigs(normalised);
+
+      // Group dynamic content-type fields by formId
+      const cts: any[] = ctData.contentTypes ?? [];
+      const byForm: Record<string, DynamicField[]> = {};
+      for (const f of FORMS) {
+        byForm[f.id] = cts
+          .filter(ct => ct.formName === f.id && ct.isActive)
+          .map(ct => ({ id: ct.fieldSlot, label: ct.label, type: ct.fieldType === 'dropdown' ? 'dropdown' : 'text', slot: ct.fieldSlot }));
+      }
+      setDynFields(byForm);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [schoolId]);
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  const getRule = useCallback(
+    (fId: string, role: string, fieldId: string): FieldRule =>
+      configs[fId]?.[role]?.[fieldId] ?? { ...DEFAULT_RULE },
+    [configs],
+  );
+
+  const getRules = useCallback(
+    (fId: string, role: string): Record<string, FieldRule> => {
+      const saved  = configs[fId]?.[role];
+      const f      = FORMS.find(x => x.id === fId)!;
+      const dyn    = dynFields[fId] ?? [];
+      const allF   = [...f.fields, ...dyn];
+      const result = defaultRules(allF);
+      if (saved) {
+        for (const key of Object.keys(result)) {
+          if (saved[key]) result[key] = { ...DEFAULT_RULE, ...saved[key] };
+        }
+      }
+      return result;
+    },
+    [configs, dynFields],
+  );
+
+  const currentRules = getRules(activeForm, activeRole);
+
+  function setRuleField(fieldId: string, patch: Partial<FieldRule>) {
+    setConfigs(c => ({
+      ...c,
+      [activeForm]: {
+        ...c[activeForm],
+        [activeRole]: {
+          ...getRules(activeForm, activeRole),
+          [fieldId]: { ...getRule(activeForm, activeRole, fieldId), ...patch },
+        },
+      },
+    }));
+    setSaved(false);
   }
 
-  function setAllRule(rule: FieldRule) {
-    const all: Record<string, FieldRule> = {};
-    form.fields.forEach(f => { all[f.id] = rule; });
-    setConfigs(c => ({ ...c, [activeForm]: all }));
+  function setAllVisible(v: boolean) {
+    const allF = [...form.fields, ...(dynFields[activeForm] ?? [])];
+    setConfigs(c => ({
+      ...c,
+      [activeForm]: {
+        ...c[activeForm],
+        [activeRole]: Object.fromEntries(
+          allF.map(f => [f.id, { ...getRule(activeForm, activeRole, f.id), visible: v, editable: v ? getRule(activeForm, activeRole, f.id).editable : false }]),
+        ),
+      },
+    }));
+    setSaved(false);
   }
+
+  // ── Save ───────────────────────────────────────────────────────────────────
 
   async function save() {
-    setSaving(true);
-    await new Promise(r => setTimeout(r, 600));
-    setSaving(false); setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setSaving(true); setError('');
+    try {
+      const token = localStorage.getItem('token') ?? '';
+      const res = await fetch('/api/form-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ schoolId, formId: activeForm, role: activeRole, fieldRules: currentRules }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Save failed'); }
+      setSaved(true); setTimeout(() => setSaved(false), 2500);
+    } catch (e: any) { setError(e.message); }
+    finally { setSaving(false); }
   }
 
-  const requiredCount = form.fields.filter(f => formConfig[f.id] === 'required').length;
-  const hiddenCount   = form.fields.filter(f => formConfig[f.id] === 'hidden').length;
+  // ── Sync from template (manually push SA config to this school) ────────────
+
+  async function syncFromTemplate() {
+    if (!confirm('This will copy all form configs from the Super Admin template to this school. Continue?')) return;
+    setSyncing(true); setError('');
+    try {
+      const token = localStorage.getItem('token') ?? '';
+      const res = await fetch('/api/form-config/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ schoolId }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Sync failed');
+      window.location.reload();
+    } catch (e: any) { setError(e.message); setSyncing(false); }
+  }
+
+  const switchForm = (fId: string) => {
+    setActiveForm(fId);
+    setActiveRole(FORMS.find(x => x.id === fId)!.roles[0].id);
+    setSaved(false); setError(''); setEditingLabel(null);
+  };
+
+  const visibleCount  = allFields.filter(f => currentRules[f.id]?.visible).length;
+  const editableCount = allFields.filter(f => currentRules[f.id]?.visible && currentRules[f.id]?.editable).length;
+  const requiredCount = allFields.filter(f => currentRules[f.id]?.required).length;
+  const savedRolesForForm = Object.keys(configs[activeForm] ?? {}).length;
+
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Form Configuration</h1>
-        <p className="text-sm text-surface-400 mt-0.5">Set field visibility and validation rules per form for this school.</p>
+    <div className="space-y-5 animate-fade-in">
+
+      {/* Header */}
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Form Configuration</h1>
+          <p className="text-sm text-surface-400 mt-0.5">
+            Configure field visibility, edit permissions and label overrides per form and role.
+            Changes here are immediately visible to all users of this school.
+          </p>
+        </div>
+        <button onClick={syncFromTemplate} disabled={syncing} className="btn btn-secondary text-sm flex items-center gap-1.5">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+          </svg>
+          {syncing ? 'Syncing…' : 'Sync from Template'}
+        </button>
       </div>
 
-      <div className="flex gap-6">
-        {/* Form selector */}
-        <div className="w-52 shrink-0 space-y-1">
-          {FORMS.map(f => (
-            <button
-              key={f.id}
-              onClick={() => setActiveForm(f.id)}
-              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors ${activeForm === f.id ? 'bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300 font-medium' : 'text-surface-400 hover:bg-surface-50 dark:hover:bg-gray-700/40'}`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+      {loading ? (
+        <div className="card p-8 text-center text-surface-400 text-sm">Loading configuration…</div>
+      ) : (
+        <div className="flex gap-6">
 
-        {/* Field rules editor */}
-        <div className="flex-1 card p-5 space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">{form.label}</h2>
-              <p className="text-xs text-surface-400 mt-0.5">
-                {requiredCount} required · {form.fields.length - requiredCount - hiddenCount} optional · {hiddenCount} hidden
-              </p>
-            </div>
-            <div className="flex gap-1.5">
-              {RULE_OPTIONS.map(r => (
-                <button key={r.value} onClick={() => setAllRule(r.value)} className={`text-xs px-2 py-1 rounded font-medium ${r.color}`}>
-                  All {r.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            {form.fields.map(field => {
-              const currentRule = formConfig[field.id] || 'optional';
+          {/* Form selector sidebar */}
+          <div className="w-52 shrink-0 space-y-1">
+            {FORMS.map(f => {
+              const savedCount = Object.keys(configs[f.id] ?? {}).length;
               return (
-                <div key={field.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-50 dark:hover:bg-gray-700/30 transition-colors group">
-                  <span className="w-7 text-center text-xs text-surface-300 dark:text-gray-600 font-mono shrink-0">
-                    {TYPE_ICONS[field.type] || 'T'}
-                  </span>
-                  <span className={`flex-1 text-sm ${currentRule === 'hidden' ? 'text-surface-300 dark:text-gray-600 line-through' : 'text-gray-800 dark:text-gray-200'}`}>
-                    {field.label}
-                  </span>
-                  <div className="flex gap-1 shrink-0">
-                    {RULE_OPTIONS.map(r => (
-                      <button
-                        key={r.value}
-                        onClick={() => setRule(field.id, r.value)}
-                        className={`text-xs px-2.5 py-1 rounded-md font-medium transition-all ${currentRule === r.value ? r.color : 'text-surface-300 dark:text-gray-600 hover:text-surface-500'}`}
-                      >
-                        {r.label}
-                      </button>
-                    ))}
+                <button key={f.id} onClick={() => switchForm(f.id)}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                    activeForm === f.id
+                      ? 'bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300 font-medium'
+                      : 'text-surface-400 hover:bg-surface-50 dark:hover:bg-gray-700/40'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate">{f.label}</span>
+                    {savedCount > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shrink-0">
+                        {savedCount}/{f.roles.length}
+                      </span>
+                    )}
                   </div>
-                </div>
+                  <span className="text-[10px] text-surface-300 dark:text-gray-600">{f.module}</span>
+                </button>
               );
             })}
           </div>
 
-          <div className="flex items-center gap-3 pt-3 border-t border-surface-100 dark:border-gray-700">
-            <button onClick={save} disabled={saving} className="btn btn-primary">
-              {saving ? 'Saving...' : 'Save Form Config'}
-            </button>
-            {saved && <span className="text-sm text-emerald-600 font-medium">Saved!</span>}
+          {/* Editor panel */}
+          <div className="flex-1 min-w-0 space-y-4">
+
+            {/* Role tabs */}
+            <div className="card px-4 py-3">
+              <p className="text-xs text-surface-400 mb-2 uppercase tracking-wide font-medium">Role</p>
+              <div className="flex flex-wrap gap-2">
+                {form.roles.map(r => {
+                  const hasSaved = !!configs[activeForm]?.[r.id];
+                  return (
+                    <button key={r.id} onClick={() => { setActiveRole(r.id); setSaved(false); setEditingLabel(null); }}
+                      className={`relative text-xs px-3 py-1.5 rounded-lg font-medium transition-all border ${
+                        activeRole === r.id
+                          ? `${r.color} border-current ring-1 ring-current ring-offset-1`
+                          : 'text-surface-400 border-surface-100 dark:border-gray-700 hover:border-surface-300'
+                      }`}
+                    >
+                      {r.label}
+                      {hasSaved && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Field rules editor */}
+            <div className="card p-5 space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h2 className="font-semibold text-gray-900 dark:text-gray-100">
+                    {form.label}
+                    <span className="ml-2 text-xs font-normal text-surface-400">
+                      · {form.roles.find(r => r.id === activeRole)?.label}
+                    </span>
+                  </h2>
+                  <p className="text-xs text-surface-400 mt-0.5">
+                    {visibleCount} visible · {editableCount} editable · {requiredCount} required
+                    {allDyn.length > 0 && <span className="text-brand-500 ml-2">+{allDyn.length} custom</span>}
+                  </p>
+                </div>
+                <div className="flex gap-1.5">
+                  <button onClick={() => setAllVisible(true)} className="text-xs px-2 py-1 rounded font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30">Show All</button>
+                  <button onClick={() => setAllVisible(false)} className="text-xs px-2 py-1 rounded font-medium text-surface-400 bg-surface-100 dark:bg-gray-700">Hide All</button>
+                </div>
+              </div>
+
+              {/* Standard fields */}
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-surface-300 dark:text-gray-600 mb-1.5 font-medium">Standard Fields</p>
+                <FieldList fields={form.fields} rules={currentRules} editingLabel={editingLabel} onEditLabel={setEditingLabel} onRuleChange={setRuleField} />
+              </div>
+
+              {/* Custom fields from ContentTypeMaster */}
+              {allDyn.length > 0 && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-surface-300 dark:text-gray-600 mb-1.5 font-medium">Additional Fields (Content Type Master)</p>
+                  <FieldList fields={allDyn} rules={currentRules} editingLabel={editingLabel} onEditLabel={setEditingLabel} onRuleChange={setRuleField} />
+                </div>
+              )}
+
+              {allDyn.length === 0 && (
+                <p className="text-xs text-surface-300 dark:text-gray-600 italic">
+                  No custom fields yet. Add them via Masters → Content Types.
+                </p>
+              )}
+
+              {error && <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-3 py-2 rounded-lg">{error}</p>}
+
+              <div className="flex items-center gap-3 pt-3 border-t border-surface-100 dark:border-gray-700">
+                <button onClick={save} disabled={saving} className="btn btn-primary">
+                  {saving ? 'Saving…' : `Save — ${form.roles.find(r => r.id === activeRole)?.label}`}
+                </button>
+                {saved && (
+                  <span className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Saved — visible to all users immediately
+                  </span>
+                )}
+                {savedRolesForForm > 0 && !saved && (
+                  <span className="text-xs text-surface-400 ml-auto">{savedRolesForForm}/{form.roles.length} roles configured</span>
+                )}
+              </div>
+            </div>
+
+            {/* Summary matrix */}
+            {savedRolesForForm > 0 && (
+              <div className="card p-4">
+                <p className="text-xs font-medium text-surface-400 uppercase tracking-wide mb-3">Summary — all roles</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-surface-100 dark:border-gray-700">
+                        <th className="text-left py-1.5 pr-4 font-medium text-surface-500 w-44">Field</th>
+                        {form.roles.map(r => (
+                          <th key={r.id} className="text-center py-1.5 px-2 font-medium text-surface-500 whitespace-nowrap text-[10px]">
+                            {r.label.split(' ')[0]}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allFields.map(field => (
+                        <tr key={field.id} className="border-b border-surface-50 dark:border-gray-800/50">
+                          <td className="py-1.5 pr-4 text-gray-700 dark:text-gray-300 truncate max-w-[11rem]">{field.label}</td>
+                          {form.roles.map(r => {
+                            const rule = getRules(activeForm, r.id)[field.id] ?? DEFAULT_RULE;
+                            return <td key={r.id} className="text-center py-1.5 px-2"><SummaryDot rule={rule} /></td>;
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-[10px] text-surface-400">
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"/>Visible + Editable</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block"/>Visible + View-only</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-surface-200 dark:bg-gray-700 inline-block"/>Hidden</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block"/>Required</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
+}
+
+// ─── FieldList component ────────────────────────────────────────────────────────
+
+function FieldList({ fields, rules, editingLabel, onEditLabel, onRuleChange }: {
+  fields: Array<{ id: string; label: string; type: string }>;
+  rules: Record<string, FieldRule>;
+  editingLabel: string | null;
+  onEditLabel: (id: string | null) => void;
+  onRuleChange: (fieldId: string, patch: Partial<FieldRule>) => void;
+}) {
+  return (
+    <div className="space-y-0.5">
+      {fields.map(field => {
+        const rule      = rules[field.id] ?? DEFAULT_RULE;
+        const isEditing = editingLabel === field.id;
+        return (
+          <div key={field.id} className={`flex items-center gap-2 px-2.5 py-2 rounded-xl transition-colors ${!rule.visible ? 'opacity-40' : ''} hover:bg-surface-50 dark:hover:bg-gray-700/30`}>
+            <span className="w-5 text-center text-xs text-surface-300 font-mono shrink-0">{TYPE_ICONS[field.type] ?? 'T'}</span>
+            <div className="flex-1 min-w-0">
+              {isEditing ? (
+                <input autoFocus className="w-full text-sm border border-brand-300 dark:border-brand-700 rounded px-1.5 py-0.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  value={rule.label || field.label}
+                  onChange={e => onRuleChange(field.id, { label: e.target.value })}
+                  onBlur={() => onEditLabel(null)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') onEditLabel(null); }}
+                  placeholder={field.label}
+                />
+              ) : (
+                <button className="text-left w-full" onClick={() => onEditLabel(field.id)} title="Click to edit label">
+                  <span className={`text-sm ${rule.visible ? 'text-gray-800 dark:text-gray-200' : 'line-through text-surface-300'}`}>
+                    {rule.label || field.label}
+                  </span>
+                  {rule.label && rule.label !== field.label && <span className="ml-1.5 text-[10px] text-brand-400 italic">custom</span>}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={() => onRuleChange(field.id, { visible: !rule.visible, editable: rule.visible ? false : rule.editable })}
+                className={`text-xs px-2 py-0.5 rounded font-medium transition-colors ${rule.visible ? 'text-emerald-700 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-surface-400 bg-surface-100 dark:bg-gray-700'}`}>
+                {rule.visible ? 'Visible' : 'Hidden'}
+              </button>
+              {rule.visible && (
+                <button onClick={() => onRuleChange(field.id, { editable: !rule.editable })}
+                  className={`text-xs px-2 py-0.5 rounded font-medium transition-colors ${rule.editable ? 'text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400' : 'text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400'}`}>
+                  {rule.editable ? 'Editable' : 'View-only'}
+                </button>
+              )}
+              {rule.visible && rule.editable && (
+                <button onClick={() => onRuleChange(field.id, { required: !rule.required })}
+                  className={`text-xs px-2 py-0.5 rounded font-medium transition-colors ${rule.required ? 'text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400' : 'text-surface-300 dark:text-gray-600 hover:text-surface-500'}`}>
+                  {rule.required ? 'Required' : 'Optional'}
+                </button>
+              )}
+              <button onClick={() => onEditLabel(isEditing ? null : field.id)} title="Edit label" className="text-surface-300 hover:text-brand-500 transition-colors">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── SummaryDot ─────────────────────────────────────────────────────────────────
+
+function SummaryDot({ rule }: { rule: FieldRule }) {
+  if (!rule.visible) return <span className="inline-block w-2 h-2 rounded-full bg-surface-200 dark:bg-gray-700" title="Hidden" />;
+  if (rule.required) return <span className="inline-block w-2 h-2 rounded-full bg-red-400" title="Required" />;
+  if (rule.editable) return <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" title="Visible + Editable" />;
+  return               <span className="inline-block w-2 h-2 rounded-full bg-blue-400" title="View-only" />;
 }

@@ -149,3 +149,88 @@ export async function ensureTeacherRecord(userId: string, schoolId: string) {
   if (existing) return existing;
   return prisma.teacher.create({ data: { userId, schoolId } });
 }
+
+// ── Form-config ──────────────────────────────────────────────────────────────
+
+export async function findFormConfigsBySchool(schoolId: string, formId?: string) {
+  const where: any = { schoolId };
+  if (formId) where.formId = formId;
+  return prisma.formConfig.findMany({ where });
+}
+
+export async function upsertFormConfig(schoolId: string, formId: string, role: string, fieldRules: any) {
+  return prisma.formConfig.upsert({
+    where:  { schoolId_formId_role: { schoolId, formId, role } },
+    update: { fieldRules, updatedAt: new Date() },
+    create: { schoolId, formId, role, fieldRules },
+  });
+}
+
+export async function bulkUpsertFormConfigs(
+  targetSchoolId: string,
+  configs: Array<{ formId: string; role: string; fieldRules: any }>,
+) {
+  return Promise.all(
+    configs.map(c =>
+      prisma.formConfig.upsert({
+        where:  { schoolId_formId_role: { schoolId: targetSchoolId, formId: c.formId, role: c.role } },
+        create: { schoolId: targetSchoolId, formId: c.formId, role: c.role, fieldRules: c.fieldRules },
+        update: { fieldRules: c.fieldRules, updatedAt: new Date() },
+      }),
+    ),
+  );
+}
+
+// ── Content Type Masters ─────────────────────────────────────────────────────
+
+export async function findContentTypesBySchool(schoolId: string, formName?: string) {
+  const where: any = { schoolId, isActive: true };
+  if (formName) where.formName = formName;
+  return prisma.contentTypeMaster.findMany({ where, orderBy: { sortOrder: 'asc' } });
+}
+
+export async function upsertContentType(schoolId: string, data: {
+  formName: string; fieldSlot: string; fieldType: string; label: string;
+  options?: string[]; sortOrder?: number;
+}) {
+  return prisma.contentTypeMaster.upsert({
+    where:  { schoolId_formName_fieldSlot: { schoolId, formName: data.formName, fieldSlot: data.fieldSlot } },
+    create: { schoolId, ...data, options: data.options ?? [] },
+    update: { label: data.label, fieldType: data.fieldType, options: data.options ?? [], sortOrder: data.sortOrder ?? 0 },
+  });
+}
+
+export async function patchContentType(id: string, data: {
+  label?: string; fieldType?: string; options?: string[]; isActive?: boolean; sortOrder?: number;
+}) {
+  return prisma.contentTypeMaster.update({ where: { id }, data });
+}
+
+export async function bulkSyncContentTypes(
+  targetSchoolId: string,
+  entries: Array<{ formName: string; fieldSlot: string; fieldType: string; label: string; options: string[]; sortOrder: number }>,
+) {
+  return Promise.all(
+    entries.map(e =>
+      prisma.contentTypeMaster.upsert({
+        where:  { schoolId_formName_fieldSlot: { schoolId: targetSchoolId, formName: e.formName, fieldSlot: e.fieldSlot } },
+        create: { schoolId: targetSchoolId, ...e },
+        update: { label: e.label, fieldType: e.fieldType, options: e.options, sortOrder: e.sortOrder },
+      }),
+    ),
+  );
+}
+
+// ── Simple masters (school-specific) ─────────────────────────────────────────
+
+export async function findGenderMasters(schoolId: string) {
+  return prisma.genderMaster.findMany({ where: { schoolId, isActive: true }, orderBy: { sortOrder: 'asc' } });
+}
+
+export async function findBloodGroupMasters(schoolId: string) {
+  return prisma.bloodGroupMaster.findMany({ where: { schoolId, isActive: true }, orderBy: { sortOrder: 'asc' } });
+}
+
+export async function findQualificationMasters(schoolId: string) {
+  return prisma.qualificationMaster.findMany({ where: { schoolId, isActive: true }, orderBy: { sortOrder: 'asc' } });
+}

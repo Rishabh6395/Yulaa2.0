@@ -154,7 +154,7 @@ export default function StudentsPage() {
             )}
             {uploading ? 'Uploading...' : 'Import CSV'}
           </button>
-          <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
+          <button onClick={() => { setShowAddModal(true); fc.refresh(); }} className="btn-primary flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add Student
           </button>
@@ -319,22 +319,22 @@ export default function StudentsPage() {
           <div className="grid grid-cols-2 gap-4">
             {fc.visible('firstName') && (
               <div>
-                <label className="label">{fc.label('firstName')} *</label>
-                <input className="input-field" required readOnly={!fc.editable('firstName')} value={form.first_name} onChange={e => setForm({...form, first_name: e.target.value})}/>
+                <label className="label">{fc.label('firstName')}{fc.required('firstName') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" required={fc.required('firstName')} readOnly={!fc.editable('firstName')} value={form.first_name} onChange={e => setForm({...form, first_name: e.target.value})}/>
               </div>
             )}
             {fc.visible('lastName') && (
               <div>
-                <label className="label">{fc.label('lastName')} *</label>
-                <input className="input-field" required readOnly={!fc.editable('lastName')} value={form.last_name} onChange={e => setForm({...form, last_name: e.target.value})}/>
+                <label className="label">{fc.label('lastName')}{fc.required('lastName') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" required={fc.required('lastName')} readOnly={!fc.editable('lastName')} value={form.last_name} onChange={e => setForm({...form, last_name: e.target.value})}/>
               </div>
             )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             {fc.visible('admissionNo') && (
               <div>
-                <label className="label">{fc.label('admissionNo')} *</label>
-                <input className="input-field" required readOnly={!fc.editable('admissionNo')} value={form.admission_no} onChange={e => setForm({...form, admission_no: e.target.value})}/>
+                <label className="label">{fc.label('admissionNo')}{fc.required('admissionNo') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" required={fc.required('admissionNo')} readOnly={!fc.editable('admissionNo')} value={form.admission_no} onChange={e => setForm({...form, admission_no: e.target.value})}/>
               </div>
             )}
             {fc.visible('dob') && (
@@ -348,21 +348,23 @@ export default function StudentsPage() {
             {fc.visible('gender') && (
               <div>
                 <label className="label">{fc.label('gender')}{fc.required('gender') && <span className="text-red-500 ml-0.5">*</span>}</label>
-                <select className="input-field" disabled={!fc.editable('gender')} value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}>
+                <select className="input-field" required={fc.required('gender')} disabled={!fc.editable('gender')} value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}>
                   <option value="">Select</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
+                  {fc.options('gender', ['Male', 'Female', 'Other']).map(o => (
+                    <option key={o} value={o.toLowerCase()}>{o}</option>
+                  ))}
                 </select>
               </div>
             )}
-            <div>
-              <label className="label">Class</label>
-              <select className="input-field" value={form.class_id} onChange={e => setForm({...form, class_id: e.target.value})}>
-                <option value="">Select</option>
-                {classes.map(c => <option key={c.id} value={c.id}>{c.grade} - {c.section}</option>)}
-              </select>
-            </div>
+            {fc.visible('classId') && (
+              <div>
+                <label className="label">{fc.label('classId')}{fc.required('classId') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <select className="input-field" required={fc.required('classId')} disabled={!fc.editable('classId')} value={form.class_id} onChange={e => setForm({...form, class_id: e.target.value})}>
+                  <option value="">Select class</option>
+                  {classes.map(c => <option key={c.id} value={c.id}>{c.grade} - {c.section}</option>)}
+                </select>
+              </div>
+            )}
           </div>
           {fc.visible('address') && (
             <div>
@@ -373,18 +375,24 @@ export default function StudentsPage() {
           <div className="border-t border-surface-100 dark:border-gray-800 pt-4">
             <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Parent / Guardian (optional)</p>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="label">Parent Name</label>
-                <input className="input-field" placeholder="Full name" value={form.parent_name} onChange={e => setForm({...form, parent_name: e.target.value})}/>
-              </div>
-              <div>
-                <label className="label">Phone *</label>
-                <input className="input-field" type="tel" placeholder="10-digit mobile" value={form.parent_phone} onChange={e => setForm({...form, parent_phone: e.target.value})}/>
-              </div>
-              <div className="col-span-2">
-                <label className="label">Email</label>
-                <input className="input-field" type="email" placeholder="parent@email.com" value={form.parent_email} onChange={e => setForm({...form, parent_email: e.target.value})}/>
-              </div>
+              {fc.visible('parentName') && (
+                <div>
+                  <label className="label">{fc.label('parentName')}{fc.required('parentName') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                  <input className="input-field" placeholder="Full name" required={fc.required('parentName')} readOnly={!fc.editable('parentName')} value={form.parent_name} onChange={e => setForm({...form, parent_name: e.target.value})}/>
+                </div>
+              )}
+              {fc.visible('parentPhone') && (
+                <div>
+                  <label className="label">{fc.label('parentPhone')}{fc.required('parentPhone') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                  <input className="input-field" type="tel" placeholder="10-digit mobile" required={fc.required('parentPhone')} readOnly={!fc.editable('parentPhone')} value={form.parent_phone} onChange={e => setForm({...form, parent_phone: e.target.value})}/>
+                </div>
+              )}
+              {fc.visible('parentEmail') && (
+                <div className="col-span-2">
+                  <label className="label">{fc.label('parentEmail')}{fc.required('parentEmail') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                  <input className="input-field" type="email" placeholder="parent@email.com" required={fc.required('parentEmail')} readOnly={!fc.editable('parentEmail')} value={form.parent_email} onChange={e => setForm({...form, parent_email: e.target.value})}/>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex gap-3 pt-2">

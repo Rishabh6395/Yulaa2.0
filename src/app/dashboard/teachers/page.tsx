@@ -106,7 +106,7 @@ export default function TeachersPage() {
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               Upload
             </button>
-            <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
+            <button onClick={() => { setShowAddModal(true); fc.refresh(); }} className="btn-primary flex items-center gap-2">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Add Teacher
             </button>
@@ -228,7 +228,14 @@ export default function TeachersPage() {
             {fc.visible('qualification') && (
               <div>
                 <label className="label">{fc.label('qualification')}{fc.required('qualification') ? ' *' : ''}</label>
-                <input className="input-field" required={fc.required('qualification')} readOnly={!fc.editable('qualification')} value={form.qualification} onChange={e => setForm({...form, qualification: e.target.value})} placeholder="B.Ed, M.A..."/>
+                {fc.options('qualification').length > 0 ? (
+                  <select className="input-field" required={fc.required('qualification')} disabled={!fc.editable('qualification')} value={form.qualification} onChange={e => setForm({...form, qualification: e.target.value})}>
+                    <option value="">Select qualification</option>
+                    {fc.options('qualification').map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                ) : (
+                  <input className="input-field" required={fc.required('qualification')} readOnly={!fc.editable('qualification')} value={form.qualification} onChange={e => setForm({...form, qualification: e.target.value})} placeholder="B.Ed, M.A..."/>
+                )}
               </div>
             )}
             {fc.visible('joiningDate') && (

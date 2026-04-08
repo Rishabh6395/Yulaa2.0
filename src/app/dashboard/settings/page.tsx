@@ -18,6 +18,7 @@ export default function SettingsPage() {
       setUser(u);
       setForm({ first_name: u.firstName || '', last_name: u.lastName || '', phone: u.phone || '' });
     }
+    fc.refresh(); // always pull latest config on page visit
   }, []);
 
   if (!user) return null;

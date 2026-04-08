@@ -25,6 +25,7 @@ export default function ClassesPage() {
     setEditTarget(null);
     setForm({ grade: '', section: '', academic_year: '', max_students: '', class_teacher_id: '' });
     setShowAddModal(true);
+    fc.refresh();
   };
 
   const openEdit = (cls: any) => {
