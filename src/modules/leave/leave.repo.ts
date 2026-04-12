@@ -5,7 +5,7 @@ export async function findLeaveRequests(schoolId: string, userId?: string) {
     where: { schoolId, ...(userId && { userId }) },
     include: {
       user:           { select: { firstName: true, lastName: true } },
-      student:        { select: { firstName: true, lastName: true } },
+      student:        { select: { firstName: true, lastName: true, class: { select: { grade: true, section: true } } } },
       reviewedByUser: { select: { firstName: true, lastName: true } },
       actions: {
         include: { actor: { select: { firstName: true, lastName: true } } },
@@ -43,14 +43,15 @@ export async function withdrawLeaveRequest(id: string, userId: string) {
 }
 
 export async function createLeaveRequest(data: {
-  schoolId:   string;
-  userId:     string;
-  studentId?: string;
-  roleCode:   string;
-  leaveType:  string;
-  startDate:  Date;
-  endDate:    Date;
-  reason:     string;
+  schoolId:      string;
+  userId:        string;
+  studentId?:    string | null;
+  roleCode:      string;
+  leaveType:     string;
+  startDate:     Date;
+  endDate:       Date;
+  reason:        string;
+  effectiveDays?: number;
 }) {
   return prisma.leaveRequest.create({ data });
 }

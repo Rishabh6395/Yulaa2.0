@@ -1,5 +1,5 @@
 import { getUserFromRequest } from '@/lib/auth';
-import { listLeaveRequests, submitLeaveRequest, reviewLeaveStep, withdrawLeave } from '@/modules/leave/leave.service';
+import { listLeaveRequests, submitLeaveRequest, reviewLeaveStep, withdrawLeave, calculateEffectiveDays } from '@/modules/leave/leave.service';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 
 const ADMIN_ROLES    = ['super_admin', 'school_admin', 'principal', 'hod'];
@@ -10,6 +10,16 @@ export async function GET(request: Request) {
     const user        = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
+    const { searchParams } = new URL(request.url);
+
+    // Effective days calculation endpoint (?action=effective_days&start=...&end=...)
+    if (searchParams.get('action') === 'effective_days') {
+      const start = searchParams.get('start') || '';
+      const end   = searchParams.get('end')   || '';
+      const result = await calculateEffectiveDays(primaryRole.school_id!, start, end);
+      return Response.json(result);
+    }
+
     // Reviewers (admins + teachers) see all school leaves so they can approve.
     // Non-reviewers (parent, student, etc.) see only their own.
     const canSeeAll = REVIEWER_ROLES.includes(primaryRole.role_code);

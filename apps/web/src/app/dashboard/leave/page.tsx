@@ -119,6 +119,8 @@ export default function LeavePage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
+  const [effectiveDays, setEffectiveDays] = useState<{ effective: number; total: number; excluded: number } | null>(null);
+  const [effectiveLoading, setEffectiveLoading] = useState(false);
   const [activeChild, setActiveChild] = useState<any>(null);
   const [leaveFieldRules, setLeaveFieldRules] = useState<Record<string, any>>({});
 
@@ -162,6 +164,22 @@ export default function LeavePage() {
       })
       .catch(() => {});
   }, []);
+
+  // Effective days preview — called when dates are set in the apply modal
+  useEffect(() => {
+    if (!form.start_date || !form.end_date || form.end_date < form.start_date) {
+      setEffectiveDays(null); return;
+    }
+    setEffectiveLoading(true);
+    const t = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    fetch(`/api/leave?action=effective_days&start=${form.start_date}&end=${form.end_date}`, {
+      headers: { Authorization: `Bearer ${t}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setEffectiveDays(d); })
+      .catch(() => {})
+      .finally(() => setEffectiveLoading(false));
+  }, [form.start_date, form.end_date]);
 
   // Leave data
   const { data, isLoading, mutate } = useApi<{ leaves: any[]; workflows: any }>('/api/leave');
@@ -242,6 +260,7 @@ export default function LeavePage() {
       if (!res.ok) { setSaveError(body.error || 'Failed to submit'); setSaving(false); return; }
       setShowAddModal(false);
       setForm({ leave_type: 'sick', start_date: '', end_date: '', reason: '' });
+      setEffectiveDays(null);
       mutate();
     } catch { setSaveError('Network error. Please try again.'); }
     setSaving(false);
@@ -409,6 +428,7 @@ export default function LeavePage() {
                     <div className="text-xs text-surface-400 mt-0.5">
                       <span className="font-medium text-gray-700 dark:text-gray-300">{l.requester_name}</span>
                       {l.student_name && <span> → {l.student_name}</span>}
+                      {l.student_class && <span className="ml-1 px-1.5 py-0.5 bg-sky-100 dark:bg-sky-950/30 text-sky-700 dark:text-sky-400 rounded text-[11px] font-medium">{l.student_class}</span>}
                       <span className="mx-1">·</span>
                       {formatDate(l.start_date)} – {formatDate(l.end_date)}
                       <span className="mx-1">·</span>
@@ -579,6 +599,29 @@ export default function LeavePage() {
             )}
           </div>
 
+          {/* Effective days preview */}
+          {form.start_date && form.end_date && form.end_date >= form.start_date && (
+            <div className={`flex items-center gap-2 p-3 rounded-xl border text-xs ${
+              effectiveLoading
+                ? 'bg-surface-50 dark:bg-gray-700/40 border-surface-200 dark:border-gray-700 text-surface-400'
+                : effectiveDays?.effective === 0
+                ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
+                : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+            }`}>
+              {effectiveLoading
+                ? <><svg className="animate-spin shrink-0" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Calculating working days...</>
+                : effectiveDays?.effective === 0
+                ? <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  Selected range falls entirely on week-offs or holidays. Please choose different dates.</>
+                : effectiveDays
+                ? <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0"><polyline points="20,6 9,17 4,12"/></svg>
+                  <span><strong>{effectiveDays.effective} working day{effectiveDays.effective !== 1 ? 's' : ''}</strong> will be deducted
+                  {effectiveDays.excluded > 0 && <span className="opacity-75"> ({effectiveDays.excluded} week-off/holiday day{effectiveDays.excluded !== 1 ? 's' : ''} excluded)</span>}</span></>
+                : null
+              }
+            </div>
+          )}
+
           {/* Inline date-conflict warning — checked against existing leaves in local data */}
           {(() => {
             if (!form.start_date || !form.end_date) return null;
@@ -628,10 +671,12 @@ export default function LeavePage() {
               ? allLeaves.filter((l: any) => l.user_id === userId && ['pending', 'approved'].includes(l.status))
               : []) : [];
             const hasConflict = pool.some((l: any) => s && e && new Date(l.start_date) <= e && new Date(l.end_date) >= s);
+            const zeroEffective = effectiveDays?.effective === 0;
+            const isBlocked = saving || hasConflict || zeroEffective || effectiveLoading;
             return (
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" disabled={saving || hasConflict} className={`btn-primary flex-1 ${hasConflict ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                <button type="submit" disabled={isBlocked} className={`btn-primary flex-1 ${isBlocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
                   {saving ? 'Submitting...' : 'Submit'}
                 </button>
               </div>
@@ -666,7 +711,14 @@ export default function LeavePage() {
 
             <div className="p-3 bg-surface-50 dark:bg-gray-700/40 rounded-xl text-sm space-y-1">
               <div className="font-medium text-gray-800 dark:text-gray-200">{reviewModal.requester_name}</div>
-              {reviewModal.student_name && <div className="text-surface-400 text-xs">For: {reviewModal.student_name}</div>}
+              {reviewModal.student_name && (
+                <div className="text-surface-400 text-xs flex items-center gap-1.5">
+                  For: {reviewModal.student_name}
+                  {reviewModal.student_class && (
+                    <span className="px-1.5 py-0.5 bg-sky-100 dark:bg-sky-950/30 text-sky-700 dark:text-sky-400 rounded text-[10px] font-medium">{reviewModal.student_class}</span>
+                  )}
+                </div>
+              )}
               <div className="text-surface-400 text-xs">{formatDate(reviewModal.start_date)} – {formatDate(reviewModal.end_date)} · {dayCount(reviewModal.start_date, reviewModal.end_date)}</div>
               {reviewModal.reason && <div className="text-surface-400 text-xs mt-1">{reviewModal.reason}</div>}
             </div>

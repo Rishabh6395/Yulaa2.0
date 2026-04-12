@@ -28,6 +28,7 @@ model School {
   attendanceMode              String   @default("class") @map("attendance_mode") @db.VarChar(20)
   latitude                    Float?
   longitude                   Float?
+  leaveCarryForwardDate       String?  @map("leave_carry_forward_date") @db.VarChar(5)
   geoTaggingEnabled           Boolean  @default(false) @map("geo_tagging_enabled")
   geoFencingEnabled           Boolean  @default(false) @map("geo_fencing_enabled")
   geoFenceRadius              Float?   @map("geo_fence_radius")
@@ -405,8 +406,9 @@ model LeaveRequest {
   reviewedBy     String?       @map("reviewed_by")
   reviewedAt     DateTime?     @map("reviewed_at")
   createdAt      DateTime      @default(now()) @map("created_at")
-  currentStep    Int           @default(0) @map("current_step")
+  currentStep    Int           @default(0)  @map("current_step")
   leaveType      String        @default("other") @map("leave_type") @db.VarChar(50)
+  effectiveDays  Int?          @map("effective_days")
   studentId      String?       @map("student_id")
   actions        LeaveAction[]
   reviewedByUser User?         @relation("ReviewedBy", fields: [reviewedBy], references: [id])
@@ -807,10 +809,12 @@ model LeaveBalancePolicy {
   schoolId     String          @map("school_id")
   leaveTypeId  String          @map("leave_type_id")
   roleCode     String          @map("role_code") @db.VarChar(30)
-  daysPerYear  Int             @default(0) @map("days_per_year")
-  carryForward Boolean         @default(false) @map("carry_forward")
-  maxCarryDays Int             @default(0) @map("max_carry_days")
-  createdAt    DateTime        @default(now()) @map("created_at")
+  daysPerYear    Int             @default(0)  @map("days_per_year")
+  daysPerMonth   Int             @default(0)  @map("days_per_month")
+  initialBalance Int             @default(0)  @map("initial_balance")
+  carryForward   Boolean         @default(false) @map("carry_forward")
+  maxCarryDays   Int             @default(0)  @map("max_carry_days")
+  createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt    DateTime        @default(now()) @updatedAt @map("updated_at")
   leaveType    LeaveTypeMaster @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
   school       School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -853,20 +857,60 @@ model Timetable {
 }
 
 model TimetableSlot {
-  id          String    @id @default(uuid())
-  timetableId String    @map("timetable_id")
-  dayOfWeek   Int       @map("day_of_week")
-  periodNo    Int       @map("period_no")
-  startTime   String    @map("start_time") @db.VarChar(10)
-  endTime     String    @map("end_time") @db.VarChar(10)
-  subject     String    @db.VarChar(100)
-  teacherId   String?   @map("teacher_id")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  teacher     Teacher?  @relation(fields: [teacherId], references: [id])
-  timetable   Timetable @relation(fields: [timetableId], references: [id], onDelete: Cascade)
+  id             String                  @id @default(uuid())
+  timetableId    String                  @map("timetable_id")
+  dayOfWeek      Int                     @map("day_of_week")
+  periodNo       Int                     @map("period_no")
+  startTime      String                  @map("start_time") @db.VarChar(10)
+  endTime        String                  @map("end_time") @db.VarChar(10)
+  subject        String                  @db.VarChar(100)
+  teacherId      String?                 @map("teacher_id")
+  createdAt      DateTime                @default(now()) @map("created_at")
+  teacher        Teacher?                @relation(fields: [teacherId], references: [id])
+  timetable      Timetable               @relation(fields: [timetableId], references: [id], onDelete: Cascade)
+  logs           TimetableLog[]
+  reassignments  TimetableReassignment[]
 
   @@unique([timetableId, dayOfWeek, periodNo])
   @@map("timetable_slots")
+}
+
+model TimetableLog {
+  id         String        @id @default(uuid())
+  slotId     String        @map("slot_id")
+  date       DateTime      @db.Date
+  teacherId  String?       @map("teacher_id")
+  topic      String        @db.VarChar(500)
+  notes      String?
+  homeworkId String?       @map("homework_id") @db.VarChar(100)
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @default(now()) @updatedAt @map("updated_at")
+  slot       TimetableSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  @@unique([slotId, date])
+  @@index([teacherId])
+  @@index([date])
+  @@map("timetable_logs")
+}
+
+model TimetableReassignment {
+  id                  String        @id @default(uuid())
+  slotId              String        @map("slot_id")
+  originalTeacherId   String        @map("original_teacher_id")
+  substituteTeacherId String        @map("substitute_teacher_id")
+  startDate           DateTime      @map("start_date") @db.Date
+  endDate             DateTime      @map("end_date") @db.Date
+  reason              String?       @db.VarChar(500)
+  createdBy           String        @map("created_by")
+  isActive            Boolean       @default(true) @map("is_active")
+  createdAt           DateTime      @default(now()) @map("created_at")
+  slot                TimetableSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  @@index([slotId])
+  @@index([originalTeacherId])
+  @@index([substituteTeacherId])
+  @@index([startDate, endDate])
+  @@map("timetable_reassignments")
 }
 
 model MenuPermission {

@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 type Tab = 'leave-types' | 'balance-policy' | 'holidays' | 'workflows';
 
 interface LeaveType { id: string; name: string; code: string; applicableTo: string[]; isActive: boolean; }
-interface Policy { id: string; leaveTypeId: string; roleCode: string; daysPerYear: number; carryForward: boolean; maxCarryDays: number; }
+interface Policy { id: string; leaveTypeId: string; roleCode: string; daysPerYear: number; daysPerMonth: number; initialBalance: number; carryForward: boolean; maxCarryDays: number; }
 interface Holiday { id: string; date: string; name: string; type: 'mandatory' | 'optional'; academicYear: string; }
 interface WorkflowStep { label: string; roleId: string; userId: string; }
 
@@ -57,9 +57,12 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
   const [newLT, setNewLT] = useState({ name: '', code: '', applicableTo: [] as string[] });
   const [ltLoading, setLtLoading] = useState(true);
 
-  // Balance policy matrix + view mode
+  // Balance policy matrix
   const [policies, setPolicies] = useState<Policy[]>([]);
-  const [policyViewMode, setPolicyViewMode] = useState<'annual' | 'monthly'>('annual');
+  const [carryForwardDate, setCarryForwardDate] = useState('');      // MM-DD
+  const [cfDateSaving, setCfDateSaving] = useState(false);
+  const [cfRunning, setCfRunning] = useState(false);
+  const [cfResult, setCfResult] = useState('');
 
   // Holidays
   const [academicYear, setAcademicYear] = useState('2025-2026');
@@ -100,6 +103,14 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
       })
       .catch(() => {})
       .finally(() => setLtLoading(false));
+  }, [schoolId]);
+
+  // Fetch carry-forward date from school-level policy resource
+  useEffect(() => {
+    fetch(`/api/super-admin/schools/${schoolId}/leave-config?resource=policies`, { headers: headers() })
+      .then(r => r.json())
+      .then(d => { if (d.leaveCarryForwardDate) setCarryForwardDate(d.leaveCarryForwardDate); })
+      .catch(() => {});
   }, [schoolId]);
 
   // Fetch holidays when year changes
@@ -168,19 +179,11 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
     return policies.find(p => p.leaveTypeId === ltId && p.roleCode === role);
   }
 
-  // Convert between annual and monthly for display / storage
-  function toDisplay(daysPerYear: number) {
-    if (policyViewMode === 'annual') return daysPerYear;
-    return parseFloat((daysPerYear / 12).toFixed(1));
-  }
-  function fromDisplay(val: number) {
-    if (policyViewMode === 'annual') return val;
-    return Math.round(val * 12);
-  }
-
   async function updatePolicy(ltId: string, roleCode: string, field: string, value: any) {
-    const existing = getPolicy(ltId, roleCode) || { leaveTypeId: ltId, roleCode, daysPerYear: 0, carryForward: false, maxCarryDays: 0 };
+    const existing = getPolicy(ltId, roleCode) || { leaveTypeId: ltId, roleCode, daysPerYear: 0, daysPerMonth: 0, initialBalance: 0, carryForward: false, maxCarryDays: 0 };
     const updated = { ...existing, [field]: value };
+    // Keep daysPerYear in sync with daysPerMonth for backwards compat
+    if (field === 'daysPerMonth') updated.daysPerYear = updated.daysPerMonth * 12;
     // Optimistic UI
     setPolicies(ps => {
       const idx = ps.findIndex(p => p.leaveTypeId === ltId && p.roleCode === roleCode);
@@ -201,6 +204,33 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
         });
       }
     } catch { setError('Failed to save policy'); }
+  }
+
+  async function saveCarryForwardDate() {
+    if (!carryForwardDate) return;
+    setCfDateSaving(true);
+    try {
+      const res = await fetch(`/api/super-admin/schools/${schoolId}/leave-config`, {
+        method: 'PUT', headers: headers(),
+        body: JSON.stringify({ action: 'set_carry_forward_date', date: carryForwardDate }),
+      });
+      if (!res.ok) throw new Error();
+    } catch { setError('Failed to save carry-forward date'); }
+    finally { setCfDateSaving(false); }
+  }
+
+  async function executeCarryForward() {
+    if (!confirm('Run carry-forward now? Unused leave balances will roll over based on each policy\'s max carry limit.')) return;
+    setCfRunning(true); setCfResult('');
+    try {
+      const res = await fetch(`/api/super-admin/schools/${schoolId}/leave-config`, {
+        method: 'PUT', headers: headers(),
+        body: JSON.stringify({ action: 'execute_carry_forward' }),
+      });
+      const data = await res.json();
+      setCfResult(data.message || `Carry-forward complete: ${data.updated ?? 0} balance(s) updated`);
+    } catch { setError('Failed to execute carry-forward'); }
+    finally { setCfRunning(false); }
   }
 
   // ── Holiday helpers ──────────────────────────────────────────────────────
@@ -448,30 +478,66 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
       {/* ── Balance Policy ────────────────────────────────────────────────── */}
       {tab === 'balance-policy' && (
         <div className="space-y-4 max-w-5xl">
+
+          {/* Carry-Forward Date */}
           <div className="card p-6 space-y-4">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div>
-                <h2 className="font-semibold text-gray-900 dark:text-gray-100">Leave Balance Policy</h2>
-                <p className="text-xs text-surface-400 mt-0.5">
-                  Set balance per leave type per role. Students have no balance — all leave is approval-only.
-                </p>
+            <div>
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Carry-Forward Settings</h2>
+              <p className="text-xs text-surface-400 mt-0.5">
+                Set the date on which the carry-forward process runs automatically each year. Unused leaves lapse; only the max allowed carry amount transfers.
+              </p>
+            </div>
+            <div className="flex items-end gap-3 flex-wrap">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-surface-400 uppercase tracking-wide">Carry-Forward Date (MM-DD)</label>
+                <input
+                  type="text" placeholder="MM-DD e.g. 03-31"
+                  maxLength={5}
+                  pattern="\d{2}-\d{2}"
+                  className="input w-36"
+                  value={carryForwardDate}
+                  onChange={e => setCarryForwardDate(e.target.value)}
+                />
+                <p className="text-xs text-surface-300">Leaves that exceed the max carry limit are lapsed on this date.</p>
               </div>
-              {/* Annual / Monthly toggle */}
-              <div className="flex items-center gap-1 p-1 bg-surface-100 dark:bg-gray-700 rounded-lg shrink-0">
-                {(['annual', 'monthly'] as const).map(m => (
-                  <button key={m} onClick={() => setPolicyViewMode(m)}
-                    className={`px-3 py-1 rounded text-xs font-medium transition-all capitalize ${policyViewMode === m ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-surface-400'}`}>
-                    {m}
-                  </button>
-                ))}
+              <button onClick={saveCarryForwardDate} disabled={cfDateSaving || !carryForwardDate}
+                className="btn btn-secondary text-xs flex items-center gap-1.5 mb-5">
+                {cfDateSaving
+                  ? <><svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Saving...</>
+                  : 'Save Date'
+                }
+              </button>
+              <div className="mb-5 border-l border-surface-200 dark:border-gray-700 pl-4 ml-1">
+                <p className="text-xs text-surface-400 mb-2">Run carry-forward manually (e.g. year-end migration):</p>
+                <button onClick={executeCarryForward} disabled={cfRunning}
+                  className="btn btn-secondary text-xs flex items-center gap-1.5 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30">
+                  {cfRunning
+                    ? <><svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Running...</>
+                    : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>Execute Carry-Forward Now</>
+                  }
+                </button>
               </div>
+            </div>
+            {cfResult && (
+              <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20,6 9,17 4,12"/></svg>
+                {cfResult}
+              </div>
+            )}
+          </div>
+
+          {/* Policy matrix */}
+          <div className="card p-6 space-y-4">
+            <div>
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Leave Balance Policy</h2>
+              <p className="text-xs text-surface-400 mt-0.5">
+                Set monthly accrual, initial balance, and carry-forward limit per leave type per role. Students have no balance — all leave is approval-only.
+              </p>
             </div>
 
             <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800 rounded-xl p-3 text-xs text-blue-700 dark:text-blue-400 flex items-center gap-2">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              {policyViewMode === 'annual'
-                ? 'Showing annual days. Switch to Monthly to set monthly accrual (auto-converts: 1 day/month = 12 days/year).'
-                : 'Showing monthly accrual. Values are stored as annual total (monthly × 12). Student leave is always balance-free.'}
+              Leave accrues monthly. Initial balance is granted at the start of the year. Max carry defines how many unused days roll over on the carry-forward date.
             </div>
 
             {leaveTypes.length === 0 ? (
@@ -483,7 +549,7 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
                     <tr className="text-xs text-surface-400 uppercase tracking-wide">
                       <th className="text-left py-2 pr-4 font-semibold min-w-[140px]">Leave Type</th>
                       {STAFF_ROLES.map(r => (
-                        <th key={r.code} className="text-center py-2 px-3 font-semibold min-w-[120px]">{r.label}</th>
+                        <th key={r.code} className="text-center py-2 px-3 font-semibold min-w-[150px]">{r.label}</th>
                       ))}
                     </tr>
                   </thead>
@@ -505,26 +571,40 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
                               <span className="text-xs text-surface-300">N/A</span>
                             </td>
                           );
-                          const displayVal = toDisplay(p?.daysPerYear ?? 0);
                           return (
                             <td key={r.code} className="py-3 px-3">
-                              <div className="space-y-1.5">
-                                <div className="flex items-center gap-1.5">
-                                  <input
-                                    type="number" min={0} max={policyViewMode === 'annual' ? 365 : 31}
-                                    step={policyViewMode === 'monthly' ? 0.5 : 1}
-                                    className="input text-center w-16 text-sm py-1"
-                                    placeholder="0"
-                                    value={displayVal || ''}
-                                    onChange={e => updatePolicy(lt.id, r.code, 'daysPerYear', fromDisplay(Number(e.target.value)))}
-                                  />
-                                  <span className="text-xs text-surface-400">
-                                    {policyViewMode === 'annual' ? 'days/yr' : 'days/mo'}
-                                  </span>
+                              <div className="space-y-2">
+                                {/* Monthly accrual */}
+                                <div className="space-y-0.5">
+                                  <span className="text-xs text-surface-400">Days/month</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <input
+                                      type="number" min={0} max={31} step={0.5}
+                                      className="input text-center w-16 text-sm py-1"
+                                      placeholder="0"
+                                      value={p?.daysPerMonth ?? ''}
+                                      onChange={e => updatePolicy(lt.id, r.code, 'daysPerMonth', Number(e.target.value))}
+                                    />
+                                    {(p?.daysPerMonth ?? 0) > 0 && (
+                                      <span className="text-xs text-surface-300">= {(p!.daysPerMonth * 12)} /yr</span>
+                                    )}
+                                  </div>
                                 </div>
-                                {policyViewMode === 'monthly' && (p?.daysPerYear ?? 0) > 0 && (
-                                  <span className="text-xs text-surface-300 ml-0.5">= {p?.daysPerYear ?? 0} days/yr</span>
-                                )}
+                                {/* Initial balance */}
+                                <div className="space-y-0.5">
+                                  <span className="text-xs text-surface-400">Initial balance</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <input
+                                      type="number" min={0} max={365}
+                                      className="input text-center w-16 text-sm py-1"
+                                      placeholder="0"
+                                      value={p?.initialBalance ?? ''}
+                                      onChange={e => updatePolicy(lt.id, r.code, 'initialBalance', Number(e.target.value))}
+                                    />
+                                    <span className="text-xs text-surface-300">days</span>
+                                  </div>
+                                </div>
+                                {/* Carry forward */}
                                 <label className="flex items-center gap-1.5 cursor-pointer">
                                   <input type="checkbox" className="rounded" checked={p?.carryForward ?? false}
                                     onChange={e => updatePolicy(lt.id, r.code, 'carryForward', e.target.checked)} />
@@ -536,7 +616,7 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
                                       placeholder="max"
                                       value={p?.maxCarryDays ?? ''}
                                       onChange={e => updatePolicy(lt.id, r.code, 'maxCarryDays', Number(e.target.value))} />
-                                    <span className="text-xs text-surface-400">max</span>
+                                    <span className="text-xs text-surface-400">max carry</span>
                                   </div>
                                 )}
                               </div>
@@ -591,18 +671,31 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
               </select>
             </div>
 
-            <div className="flex items-center gap-2.5 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-700 dark:text-amber-400">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              Holidays sync with teacher, HOD, principal, and school admin attendance calendars in real-time.
+            <div className="space-y-2">
+              <div className="flex items-center gap-2.5 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-700 dark:text-amber-400">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>
+                  <strong>Note:</strong> Holidays do <em>not</em> sync to the leave module calendar view — they are blocked dates only.
+                  Staff cannot apply leave on holiday dates. Punch in/out is still captured on holidays.
+                  Week-off days are configured separately and sync to attendance &amp; leave calendars.
+                </span>
+              </div>
             </div>
 
-            {/* Upload */}
+            {/* Upload + template */}
             <div className="flex flex-wrap items-center gap-3 p-3 bg-surface-50 dark:bg-gray-700/40 rounded-xl">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-surface-400"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
               <div className="flex-1 min-w-0">
                 <span className="text-sm text-gray-700 dark:text-gray-300">Upload holiday list for {academicYear}</span>
-                <p className="text-xs text-surface-400 mt-0.5">Columns: Date (YYYY-MM-DD), Name, Type (mandatory/optional)</p>
+                <p className="text-xs text-surface-400 mt-0.5">Columns: Date (YYYY-MM-DD), Name, Type (mandatory/optional). Week-off rows are ignored.</p>
               </div>
+              <a
+                href={`/api/super-admin/schools/${schoolId}/leave-config?action=holiday_template`}
+                className="btn btn-secondary text-xs flex items-center gap-1.5 shrink-0 no-underline"
+                download>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Template
+              </a>
               <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleHolidayFile} />
               <button onClick={() => { setUploadResult(''); fileRef.current?.click(); }} disabled={holidayUploading}
                 className="btn btn-secondary text-xs flex items-center gap-1.5 shrink-0">

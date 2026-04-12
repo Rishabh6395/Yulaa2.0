@@ -556,6 +556,72 @@ function SuperAdminDashboard({ data }: { data: any }) {
   );
 }
 
+// ── Students on Leave Today card ───────────────────────────────────────────────
+
+function StudentsOnLeaveCard() {
+  const [leaveData, setLeaveData] = useState<{ total: number; students: any[] } | null>(null);
+  const [loading, setLoading]   = useState(true);
+
+  useEffect(() => {
+    const t = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    if (!t) { setLoading(false); return; }
+    fetch('/api/leave/today', { headers: { Authorization: `Bearer ${t}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setLeaveData(d); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="card p-5 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/60 flex items-center justify-center text-amber-600 dark:text-amber-400">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01"/></svg>
+          </div>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Students on Leave Today</h3>
+        </div>
+        {!loading && leaveData && (
+          <span className={`text-lg font-bold ${leaveData.total > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+            {leaveData.total}
+          </span>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="space-y-2">
+          {[1,2].map(i => <div key={i} className="h-8 bg-surface-100 dark:bg-gray-800 rounded-lg animate-pulse"/>)}
+        </div>
+      ) : !leaveData || leaveData.total === 0 ? (
+        <p className="text-xs text-surface-400 py-2 text-center">No students on leave today.</p>
+      ) : (
+        <div className="space-y-1.5 max-h-40 overflow-y-auto">
+          {leaveData.students.map((s: any) => (
+            <div key={s.student_id} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-surface-50 dark:bg-gray-700/40">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-950/40 flex items-center justify-center text-amber-600 dark:text-amber-400 text-xs font-bold shrink-0">
+                  {(s.first_name?.[0] ?? '?').toUpperCase()}
+                </div>
+                <span className="text-xs font-medium text-gray-800 dark:text-gray-200">{s.first_name} {s.last_name}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {s.grade && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-sky-100 dark:bg-sky-950/30 text-sky-700 dark:text-sky-400 rounded font-medium">
+                    {s.grade}{s.section ? `-${s.section}` : ''}
+                  </span>
+                )}
+                <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 rounded capitalize">{s.leave_type}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <a href="/dashboard/leave" className="text-xs text-brand-500 dark:text-brand-400 font-medium hover:underline">View all leave requests →</a>
+    </div>
+  );
+}
+
 // ── Teacher dashboard ─────────────────────────────────────────────────────────
 
 function TeacherDashboard({ data, feedReady = true, allowed, pending, userId = '' }: { data: any; feedReady?: boolean; allowed: Set<string>; pending: { admissions: any[]; leaves: any[] } | null; userId?: string }) {
@@ -617,7 +683,10 @@ function TeacherDashboard({ data, feedReady = true, allowed, pending, userId = '
             </div>)}
       </div>
 
-      <PendingWorkflowCards pending={pending} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <StudentsOnLeaveCard />
+        <PendingWorkflowCards pending={pending} />
+      </div>
     </div>
   );
 }
