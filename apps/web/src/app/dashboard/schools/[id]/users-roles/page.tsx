@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function UsersRolesPage({ params }: { params: { id: string } }) {
   const schoolId = params.id;
@@ -240,10 +240,23 @@ export default function UsersRolesPage({ params }: { params: { id: string } }) {
 
 function RoleAdder({ roles, existingRoleIds, onAdd }: { roles: any[]; existingRoleIds: string[]; onAdd: (id: string) => void }) {
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
   const available = roles.filter(r => !existingRoleIds.includes(r.id));
   if (available.length === 0) return null;
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button onClick={() => setOpen(v => !v)} className="text-xs text-brand-600 hover:text-brand-700 px-1.5 py-0.5 rounded border border-brand-200 dark:border-brand-700">+ Role</button>
       {open && (
         <div className="absolute left-0 top-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-surface-200 dark:border-gray-700 z-10 min-w-[140px]">

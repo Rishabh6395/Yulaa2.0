@@ -66,6 +66,8 @@ export const TTL = {
   dashboardParent:  60,  // 1 min  — per-child view
   notifications:    60,  // 1 min  — notification bell
   list:            300,  // 5 min  — paginated lists
+  formConfig:      300,  // 5 min  — form config (labels, visibility, required)
+  masters:         600,  // 10 min — dropdown masters (gender, blood groups, etc.)
 } as const;
 
 /**
@@ -134,9 +136,16 @@ export async function releaseLock(key: string): Promise<void> {
 
 /**
  * Invalidate all keys matching a glob pattern.
+ * Clears both in-memory and Redis caches.
  * Uses SCAN (non-blocking) instead of KEYS to avoid stalling Redis.
  */
 export async function cacheInvalidate(pattern: string): Promise<void> {
+  // Always clear matching in-memory keys (glob * → regex .*)
+  const regex = new RegExp('^' + pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
+  for (const key of mem.keys()) {
+    if (regex.test(key)) mem.delete(key);
+  }
+
   if (!redis) return;
   try {
     let cursor = '0';

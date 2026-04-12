@@ -2,6 +2,7 @@ import { getUserFromRequest } from '@/lib/auth';
 import { findDefaultSchool, findGenderMasters } from '@/modules/super-admin/super-admin.repo';
 import { handleError, UnauthorizedError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
+import { cacheGet, cacheSet, cacheInvalidate, TTL } from '@/lib/redis';
 
 /**
  * GET /api/masters/gender?schoolId=xxx
@@ -18,9 +19,11 @@ export async function GET(request: Request) {
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
     const schoolId = searchParams.get('schoolId') ?? primary?.school_id ?? '';
 
-    const defaultSchool = await findDefaultSchool();
+    const cacheKey = `masters:gender:${schoolId}`;
+    const cached = await cacheGet<{ genderMasters: unknown[] }>(cacheKey);
+    if (cached) return Response.json(cached);
 
-    // Collect IDs to query (default school + requesting school)
+    const defaultSchool = await findDefaultSchool();
     const schoolIds = new Set<string>();
     if (defaultSchool) schoolIds.add(defaultSchool.id);
     if (schoolId) schoolIds.add(schoolId);
@@ -30,13 +33,14 @@ export async function GET(request: Request) {
       orderBy: { sortOrder: 'asc' },
     });
 
-    // Deduplicate by name (school-specific wins over default)
     const seen = new Map<string, typeof masters[0]>();
     for (const m of masters) {
       if (!seen.has(m.name) || m.schoolId === schoolId) seen.set(m.name, m);
     }
 
-    return Response.json({ genderMasters: [...seen.values()] });
+    const payload = { genderMasters: [...seen.values()] };
+    await cacheSet(cacheKey, payload, TTL.masters);
+    return Response.json(payload);
   } catch (err) { return handleError(err); }
 }
 
@@ -57,6 +61,8 @@ export async function POST(request: Request) {
     const master = await prisma.genderMaster.create({
       data: { schoolId, name: body.name.trim(), sortOrder: body.sortOrder ?? 0 },
     });
+    // SA changes affect all schools; school changes only affect that school
+    await cacheInvalidate(primary.role_code === 'super_admin' ? 'masters:gender:*' : `masters:gender:${schoolId}`);
     return Response.json({ genderMaster: master }, { status: 201 });
   } catch (err) { return handleError(err); }
 }
@@ -65,8 +71,10 @@ export async function PATCH(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
+    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
     const { id, ...data } = await request.json();
     const master = await prisma.genderMaster.update({ where: { id }, data });
+    await cacheInvalidate(primary.role_code === 'super_admin' ? 'masters:gender:*' : `masters:gender:${primary.school_id}`);
     return Response.json({ genderMaster: master });
   } catch (err) { return handleError(err); }
 }

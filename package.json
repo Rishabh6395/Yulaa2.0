@@ -16,6 +16,9 @@
     "dev:mobile": "turbo run dev --filter=@yulaa/mobile",
     "build:web": "turbo run build --filter=@yulaa/web"
   },
+  "dependencies": {
+    "ioredis": "^5.10.0"
+  },
   "devDependencies": {
     "turbo": "^2.3.3"
   },

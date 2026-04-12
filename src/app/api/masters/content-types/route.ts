@@ -6,6 +6,7 @@ import {
   patchContentType,
 } from '@/modules/super-admin/super-admin.repo';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
+import { cacheGet, cacheSet, cacheInvalidate, TTL } from '@/lib/redis';
 
 /**
  * GET /api/masters/content-types?schoolId=xxx&formName=add_student_form
@@ -23,26 +24,29 @@ export async function GET(request: Request) {
     const schoolId = searchParams.get('schoolId') ?? primary?.school_id ?? '';
     const formName = searchParams.get('formName') ?? undefined;
 
+    const cacheKey = `masters:content-types:${schoolId}:${formName ?? 'all'}`;
+    const cached = await cacheGet<{ contentTypes: unknown[] }>(cacheKey);
+    if (cached) return Response.json(cached);
+
     const defaultSchool = await findDefaultSchool();
 
-    // Always get Super Admin's content types
     const defaultTypes = defaultSchool
       ? await findContentTypesBySchool(defaultSchool.id, formName)
       : [];
 
-    // Get school-specific types (if different school)
     const schoolTypes =
       schoolId && defaultSchool && schoolId !== defaultSchool.id
         ? await findContentTypesBySchool(schoolId, formName)
         : [];
 
-    // Merge: school-specific overrides default by formName+fieldSlot key
     const map = new Map<string, (typeof defaultTypes)[0]>();
     for (const ct of defaultTypes) map.set(`${ct.formName}:${ct.fieldSlot}`, ct);
-    for (const ct of schoolTypes)   map.set(`${ct.formName}:${ct.fieldSlot}`, ct); // school wins
+    for (const ct of schoolTypes)   map.set(`${ct.formName}:${ct.fieldSlot}`, ct);
 
     const contentTypes = [...map.values()].sort((a, b) => a.sortOrder - b.sortOrder);
-    return Response.json({ contentTypes });
+    const payload = { contentTypes };
+    await cacheSet(cacheKey, payload, TTL.masters);
+    return Response.json(payload);
   } catch (err) { return handleError(err); }
 }
 
@@ -69,6 +73,7 @@ export async function POST(request: Request) {
     }
 
     const contentType = await upsertContentType(schoolId, { formName, fieldSlot, fieldType: fieldType ?? 'text', label, options, sortOrder });
+    await cacheInvalidate(primary.role_code === 'super_admin' ? 'masters:content-types:*' : `masters:content-types:${schoolId}:*`);
     return Response.json({ contentType }, { status: 201 });
   } catch (err) { return handleError(err); }
 }
@@ -81,6 +86,7 @@ export async function PATCH(request: Request) {
     if (!['super_admin', 'school_admin'].includes(primary.role_code)) throw new ForbiddenError();
     const { id, ...data } = await request.json();
     const contentType = await patchContentType(id, data);
+    await cacheInvalidate(primary.role_code === 'super_admin' ? 'masters:content-types:*' : `masters:content-types:${primary.school_id}:*`);
     return Response.json({ contentType });
   } catch (err) { return handleError(err); }
 }

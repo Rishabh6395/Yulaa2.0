@@ -11,8 +11,9 @@ async function fetcher(url: string) {
   return res.json();
 }
 
-// No dedup — always refetch when refresh() is called
-const FC_DEDUP = 0;
+// 5-min client-side dedup: prevents re-fetching on every navigation/render.
+// refresh() bypasses this via bound mutate() — still hits Redis (~0ms), not DB.
+const FC_DEDUP = 5 * 60_000;
 
 export type { FieldDef };
 

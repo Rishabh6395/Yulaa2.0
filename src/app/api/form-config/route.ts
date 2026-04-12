@@ -5,6 +5,7 @@ import {
   upsertFormConfig,
 } from '@/modules/super-admin/super-admin.repo';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
+import { cacheGet, cacheSet, cacheInvalidate, TTL } from '@/lib/redis';
 
 const WRITE_ROLES = ['super_admin', 'school_admin', 'principal'];
 
@@ -24,12 +25,17 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const formId = searchParams.get('formId') ?? undefined;
+    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
+    const schoolId = searchParams.get('schoolId') ?? primary?.school_id ?? '';
 
-    // Always read from the default (Super Admin template) school
+    // ── Cache check ────────────────────────────────────────────────────────────
+    const cacheKey = `fc:${schoolId}:${formId ?? 'all'}`;
+    const cached = await cacheGet<{ configs: Record<string, any> }>(cacheKey);
+    if (cached) return Response.json(cached);
+
+    // ── DB query ───────────────────────────────────────────────────────────────
     const defaultSchool = await findDefaultSchool();
-    if (!defaultSchool) {
-      return Response.json({ configs: {} });
-    }
+    if (!defaultSchool) return Response.json({ configs: {} });
 
     const superAdminRows = await findFormConfigsBySchool(defaultSchool.id, formId);
 
@@ -41,16 +47,12 @@ export async function GET(request: Request) {
     }
 
     // If requesting school is NOT the default school, merge its overrides on top
-    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    const schoolId = searchParams.get('schoolId') ?? primary?.school_id ?? '';
-
     if (schoolId && schoolId !== defaultSchool.id) {
       const schoolRows = await findFormConfigsBySchool(schoolId, formId);
       for (const row of schoolRows) {
         if (!result[row.formId]) result[row.formId] = {};
         const saRules = result[row.formId][row.role] ?? {};
         const schoolRules = row.fieldRules as Record<string, any>;
-        // Merge: school override wins at field level
         result[row.formId][row.role] = {
           ...saRules,
           ...Object.fromEntries(
@@ -65,7 +67,9 @@ export async function GET(request: Request) {
       }
     }
 
-    return Response.json({ configs: result });
+    const payload = { configs: result };
+    await cacheSet(cacheKey, payload, TTL.formConfig);
+    return Response.json(payload);
   } catch (err) { return handleError(err); }
 }
 
@@ -102,6 +106,14 @@ export async function POST(request: Request) {
     if (!schoolId) return Response.json({ error: 'schoolId is required' }, { status: 400 });
 
     const config = await upsertFormConfig(schoolId, formId, role, fieldRules);
+
+    // Invalidate cache: SA changes affect all schools; school changes affect only that school
+    if (primary.role_code === 'super_admin') {
+      await cacheInvalidate('fc:*');   // everyone reads SA as base
+    } else {
+      await cacheInvalidate(`fc:${schoolId}:*`);
+    }
+
     return Response.json({ config });
   } catch (err) { return handleError(err); }
 }

@@ -2,6 +2,7 @@ import { getUserFromRequest } from '@/lib/auth';
 import { findDefaultSchool } from '@/modules/super-admin/super-admin.repo';
 import { handleError, UnauthorizedError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
+import { cacheGet, cacheSet, cacheInvalidate, TTL } from '@/lib/redis';
 
 export async function GET(request: Request) {
   try {
@@ -10,6 +11,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
     const schoolId = searchParams.get('schoolId') ?? primary?.school_id ?? '';
+
+    const cacheKey = `masters:blood-groups:${schoolId}`;
+    const cached = await cacheGet<{ bloodGroupMasters: unknown[] }>(cacheKey);
+    if (cached) return Response.json(cached);
 
     const defaultSchool = await findDefaultSchool();
     const schoolIds = new Set<string>();
@@ -25,7 +30,10 @@ export async function GET(request: Request) {
     for (const m of masters) {
       if (!seen.has(m.name) || m.schoolId === schoolId) seen.set(m.name, m);
     }
-    return Response.json({ bloodGroupMasters: [...seen.values()] });
+
+    const payload = { bloodGroupMasters: [...seen.values()] };
+    await cacheSet(cacheKey, payload, TTL.masters);
+    return Response.json(payload);
   } catch (err) { return handleError(err); }
 }
 
@@ -46,6 +54,7 @@ export async function POST(request: Request) {
     const master = await prisma.bloodGroupMaster.create({
       data: { schoolId, name: body.name.trim(), sortOrder: body.sortOrder ?? 0 },
     });
+    await cacheInvalidate(primary.role_code === 'super_admin' ? 'masters:blood-groups:*' : `masters:blood-groups:${schoolId}`);
     return Response.json({ bloodGroupMaster: master }, { status: 201 });
   } catch (err) { return handleError(err); }
 }
@@ -54,8 +63,10 @@ export async function PATCH(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
+    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
     const { id, ...data } = await request.json();
     const master = await prisma.bloodGroupMaster.update({ where: { id }, data });
+    await cacheInvalidate(primary.role_code === 'super_admin' ? 'masters:blood-groups:*' : `masters:blood-groups:${primary.school_id}`);
     return Response.json({ bloodGroupMaster: master });
   } catch (err) { return handleError(err); }
 }
