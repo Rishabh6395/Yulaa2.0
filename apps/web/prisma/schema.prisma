@@ -877,9 +877,10 @@ model TimetableSlot {
   subject     String         @db.VarChar(100)
   teacherId   String?        @map("teacher_id")
   createdAt   DateTime       @default(now()) @map("created_at")
-  logs        TimetableLog[]
-  teacher     Teacher?       @relation(fields: [teacherId], references: [id])
-  timetable   Timetable      @relation(fields: [timetableId], references: [id], onDelete: Cascade)
+  logs          TimetableLog[]
+  reassignments TimetableReassignment[]
+  teacher       Teacher?       @relation(fields: [teacherId], references: [id])
+  timetable     Timetable      @relation(fields: [timetableId], references: [id], onDelete: Cascade)
 
   @@unique([timetableId, dayOfWeek, periodNo])
   @@map("timetable_slots")
@@ -919,6 +920,28 @@ model TimetableLog {
   @@index([slotId])
   @@index([teacherId])
   @@map("timetable_logs")
+}
+
+// ─── Timetable Reassignment ───────────────────────────────────────────────────
+// Tracks when a teacher's slot is handed off to a substitute for a date range.
+model TimetableReassignment {
+  id                  String        @id @default(uuid())
+  slotId              String        @map("slot_id")
+  originalTeacherId   String        @map("original_teacher_id")
+  substituteTeacherId String        @map("substitute_teacher_id")
+  startDate           DateTime      @map("start_date") @db.Date
+  endDate             DateTime      @map("end_date") @db.Date
+  reason              String?       @db.VarChar(500)
+  createdBy           String        @map("created_by")
+  isActive            Boolean       @default(true) @map("is_active")
+  createdAt           DateTime      @default(now()) @map("created_at")
+  slot                TimetableSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  @@index([slotId])
+  @@index([originalTeacherId])
+  @@index([substituteTeacherId])
+  @@index([startDate, endDate])
+  @@map("timetable_reassignments")
 }
 
 // ─── Events Management ────────────────────────────────────────────────────────
