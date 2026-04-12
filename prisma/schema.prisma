@@ -25,9 +25,15 @@ model School {
   website               String?                @db.VarChar(200)
   boardType             String?                @map("board_type") @db.VarChar(30)
   isDefault             Boolean                @default(false) @map("is_default")
-  attendanceMode        String                 @default("class") @map("attendance_mode") @db.VarChar(20)
-  latitude              Float?
-  longitude             Float?
+  attendanceMode              String   @default("class") @map("attendance_mode") @db.VarChar(20)
+  latitude                    Float?
+  longitude                   Float?
+  geoTaggingEnabled           Boolean  @default(false) @map("geo_tagging_enabled")
+  geoFencingEnabled           Boolean  @default(false) @map("geo_fencing_enabled")
+  geoFenceRadius              Float?   @map("geo_fence_radius")
+  idCardIntegrationEnabled    Boolean  @default(false) @map("id_card_integration_enabled")
+  faceRecognitionEnabled      Boolean  @default(false) @map("face_recognition_enabled")
+  integrationConfig           Json?    @map("integration_config")
   admissionApplications AdmissionApplication[]
   admissionWorkflows    AdmissionWorkflow[]
   announcements         Announcement[]

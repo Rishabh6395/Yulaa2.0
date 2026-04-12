@@ -40,6 +40,8 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
   const [records,        setRecords]        = useState<any[]>([]);
   const [loading,        setLoading]        = useState(true);
   const [attendanceMode, setAttendanceMode] = useState('class'); // default shows both tabs while loading
+  const [holidayMap,     setHolidayMap]     = useState<Record<number, string>>({});
+  const [weekoffDays,    setWeekoffDays]    = useState<number[]>([0, 6]);
 
   // Fetch school's attendance mode config
   useEffect(() => {
@@ -56,6 +58,29 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
       })
       .catch(() => {});
   }, []);
+
+  // Load holidays whenever the month changes
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const [y] = month.split('-').map(Number);
+    const academicYear = `${y}-${y + 1}`;
+    fetch(`/api/holidays?year=${academicYear}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        setWeekoffDays(d.weekoffDays ?? [0, 6]);
+        const map: Record<number, string> = {};
+        (d.holidays ?? []).forEach((h: any) => {
+          const hDate = new Date(h.date);
+          if (hDate.getUTCFullYear() === Number(month.split('-')[0]) &&
+              hDate.getUTCMonth() + 1 === Number(month.split('-')[1])) {
+            map[hDate.getUTCDate()] = h.name;
+          }
+        });
+        setHolidayMap(map);
+      })
+      .catch(() => {});
+  }, [month]);
 
   const fetchAttendance = useCallback(async () => {
     setLoading(true);
@@ -164,7 +189,8 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
                   const dateStr = `${year}-${String(mon).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
                   const isToday = dateStr === today.toISOString().split('T')[0];
                   const dow     = new Date(dateStr + 'T00:00:00').getDay();
-                  const weekend = dow === 0 || dow === 6;
+                  const isWeekoff = weekoffDays.includes(dow);
+                  const holiday = holidayMap[day];
                   const rec       = recordMap[day];
                   const isLeave   = rec?.remarks === '__leave__';
                   const cfg       = rec ? (isLeave ? STATUS_CFG.excused : STATUS_CFG[rec.status]) : null;
@@ -173,11 +199,19 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
                     : attendanceMode === 'daily'
                     ? (rec?.status === 'present' ? 'In' : rec?.status === 'absent' ? 'Out' : cfg?.full)
                     : cfg?.full;
-                  if (weekend) {
+                  if (isWeekoff) {
                     return (
-                      <div key={day} className="h-12 rounded-xl flex flex-col items-center justify-center bg-surface-50 dark:bg-gray-800/40 opacity-40">
-                        <span className="text-sm font-medium text-surface-400 dark:text-gray-600">{day}</span>
-                        <span className="text-[9px] text-surface-300 dark:text-gray-600 font-medium">OFF</span>
+                      <div key={day} title={holiday || 'Week Off'} className="h-12 rounded-xl flex flex-col items-center justify-center bg-sky-100 dark:bg-sky-900/30 opacity-75">
+                        <span className="text-sm font-medium text-sky-600 dark:text-sky-400">{day}</span>
+                        <span className="text-[9px] text-sky-500 dark:text-sky-500 font-medium">OFF</span>
+                      </div>
+                    );
+                  }
+                  if (holiday) {
+                    return (
+                      <div key={day} title={holiday} className="h-12 rounded-xl flex flex-col items-center justify-center bg-indigo-100 dark:bg-indigo-900/30">
+                        <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">{day}</span>
+                        <span className="text-[9px] text-indigo-500 font-medium">Hol</span>
                       </div>
                     );
                   }
@@ -202,6 +236,8 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
                 <span key={key} className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.bg} ${cfg.text}`}>{cfg.full}</span>
               ))
             )}
+            <span className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400">Week Off</span>
+            <span className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">Holiday</span>
           </div>
         </div>
       )}
@@ -303,6 +339,39 @@ function fmtTime(dt: any) {
   return new Date(dt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
+// ─── GPS status badge for geo-fencing ─────────────────────────────────────────
+
+type GpsStatus = 'idle' | 'checking' | 'within' | 'outside' | 'tagging' | 'unavailable' | 'no_geo';
+
+function GpsBadge({ status, distance, radius }: { status: GpsStatus; distance?: number; radius?: number }) {
+  if (status === 'idle' || status === 'no_geo') return null;
+
+  const cfg: Record<GpsStatus, { cls: string; icon: string; text: string }> = {
+    checking:    { cls: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400',          icon: '⟳', text: 'Checking location…' },
+    within:      { cls: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400', icon: '✓', text: `Within Fence${distance !== undefined ? ` (${Math.round(distance)} m)` : ''}` },
+    outside:     { cls: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400',              icon: '✗', text: `Outside Fence${distance !== undefined ? ` (${Math.round(distance)} m — limit ${radius} m)` : ''}` },
+    tagging:     { cls: 'bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400',              icon: '⊕', text: 'Geo Tagging — Punch from anywhere' },
+    unavailable: { cls: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400',      icon: '!', text: 'Location unavailable — enable GPS' },
+    idle:        { cls: '', icon: '', text: '' },
+    no_geo:      { cls: '', icon: '', text: '' },
+  };
+
+  const c = cfg[status];
+  return (
+    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold ${c.cls}`}>
+      <span className="text-sm leading-none">{c.icon}</span>
+      <span>{c.text}</span>
+    </div>
+  );
+}
+
+// Haversine distance in metres (client-side copy for the badge)
+function haversineM(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6_371_000, r = (d: number) => (d * Math.PI) / 180;
+  const a = Math.sin(r(lat2-lat1)/2)**2 + Math.cos(r(lat1))*Math.cos(r(lat2))*Math.sin(r(lon2-lon1)/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
 function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoolId: string }) {
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
@@ -313,8 +382,57 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
   const [punching,  setPunching]  = useState<'in' | 'out' | null>(null);
   const [message,   setMessage]   = useState('');
 
+  // Geo state
+  const [geoConfig,  setGeoConfig]  = useState<any>(null);
+  const [gpsStatus,  setGpsStatus]  = useState<GpsStatus>('idle');
+  const [gpsCoords,  setGpsCoords]  = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsDist,    setGpsDist]    = useState<number | undefined>(undefined);
+
+  // Holidays for the calendar
+  const [holidayMap,  setHolidayMap]  = useState<Record<number, string>>({});
+  const [weekoffDays, setWeekoffDays] = useState<number[]>([0, 6]);
+
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+  // Load geo config once
+  useEffect(() => {
+    if (!token) return;
+    fetch('/api/attendance-config', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        setGeoConfig(d);
+        if (d.geoTaggingEnabled) setGpsStatus('tagging');
+        else if (d.geoFencingEnabled) checkLocation(d);
+        // else: no_geo — hide badge
+        else setGpsStatus('no_geo');
+      })
+      .catch(() => setGpsStatus('no_geo'));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  function checkLocation(cfg: any) {
+    if (!navigator.geolocation) { setGpsStatus('unavailable'); return; }
+    setGpsStatus('checking');
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        setGpsCoords({ lat, lng });
+        if (cfg.geoFencingEnabled && cfg.latitude != null && cfg.longitude != null) {
+          const dist = haversineM(lat, lng, cfg.latitude, cfg.longitude);
+          setGpsDist(dist);
+          setGpsStatus(dist <= (cfg.geoFenceRadius ?? 500) ? 'within' : 'outside');
+        } else {
+          setGpsStatus('no_geo');
+        }
+      },
+      () => setGpsStatus('unavailable'),
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  }
+
+  // Refresh GPS check when fencing is active
+  const refreshGps = () => { if (geoConfig?.geoFencingEnabled) checkLocation(geoConfig); };
 
   const fetchCalendar = useCallback(async () => {
     setCalLoading(true);
@@ -329,13 +447,48 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
 
   useEffect(() => { fetchCalendar(); }, [fetchCalendar]);
 
+  // Load holidays for the current month's academic year
+  useEffect(() => {
+    if (!token) return;
+    const [y] = month.split('-').map(Number);
+    const academicYear = `${y}-${y + 1}`;
+    fetch(`/api/holidays?year=${academicYear}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        setWeekoffDays(d.weekoffDays ?? [0, 6]);
+        const map: Record<number, string> = {};
+        (d.holidays ?? []).forEach((h: any) => {
+          const hDate = new Date(h.date);
+          // Only include holidays in the current month being viewed
+          if (hDate.getUTCFullYear() === Number(month.split('-')[0]) &&
+              hDate.getUTCMonth() + 1 === Number(month.split('-')[1])) {
+            map[hDate.getUTCDate()] = h.name;
+          }
+        });
+        setHolidayMap(map);
+      })
+      .catch(() => {});
+  }, [token, month]);
+
   const handlePunch = async (action: 'punch_in' | 'punch_out') => {
     setPunching(action === 'punch_in' ? 'in' : 'out');
     setMessage('');
     try {
+      // Build payload — include coords if geo fencing is active
+      const payload: Record<string, unknown> = { type: 'employee', action, user_id: userId };
+      if (geoConfig?.geoFencingEnabled) {
+        if (!gpsCoords) {
+          setMessage('Error: Location required for Geo Fencing. Please enable GPS and try again.');
+          setPunching(null);
+          return;
+        }
+        payload.lat = gpsCoords.lat;
+        payload.lng = gpsCoords.lng;
+      }
+
       const res  = await fetch('/api/attendance', {
         method: 'POST', headers,
-        body: JSON.stringify({ type: 'employee', action, user_id: userId }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
@@ -346,14 +499,14 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
       }
     } catch { setMessage('Error: Network error'); }
     setPunching(null);
-    setTimeout(() => setMessage(''), 5000);
+    setTimeout(() => setMessage(''), 6000);
   };
 
   const [year, mon] = month.split('-').map(Number);
   const firstDay    = new Date(year, mon - 1, 1).getDay();
   const daysInMonth = new Date(year, mon, 0).getDate();
   const recordMap: Record<number, any> = {};
-  records.forEach(r => { recordMap[new Date(r.date).getUTCDate()] = r; });
+  records.forEach(r => { recordMap[new Date(r.date).getUTCDate()] = r.status; });
 
   const prevMonth = () => { const d = new Date(`${month}-01`); d.setMonth(d.getMonth() - 1); setMonth(d.toISOString().substring(0, 7)); };
   const nextMonth = () => { const d = new Date(`${month}-01`); d.setMonth(d.getMonth() + 1); if (d <= today) setMonth(d.toISOString().substring(0, 7)); };
@@ -361,6 +514,7 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
 
   const hasPunchIn  = !!todayRec?.punchInTime;
   const hasPunchOut = !!todayRec?.punchOutTime;
+  const geoBlocked  = geoConfig?.geoFencingEnabled && gpsStatus === 'outside';
 
   return (
     <div className="space-y-6">
@@ -378,6 +532,22 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
           )}
         </div>
 
+        {/* GPS status badge */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <GpsBadge status={gpsStatus} distance={gpsDist} radius={geoConfig?.geoFenceRadius} />
+          {geoConfig?.geoFencingEnabled && gpsStatus !== 'checking' && (
+            <button onClick={refreshGps} className="text-xs text-brand-500 hover:underline">
+              Refresh location
+            </button>
+          )}
+        </div>
+
+        {geoBlocked && (
+          <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-400 font-medium">
+            You are outside the school geo-fence. Move closer to school to punch in / out.
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           {/* Punch In */}
           <div className="p-4 rounded-xl border-2 border-surface-100 dark:border-gray-700 space-y-3">
@@ -390,8 +560,9 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
             {hasPunchIn ? (
               <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{fmtTime(todayRec.punchInTime)}</p>
             ) : (
-              <button onClick={() => handlePunch('punch_in')} disabled={punching !== null}
-                className="w-full py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold transition-colors disabled:opacity-60">
+              <button onClick={() => handlePunch('punch_in')} disabled={punching !== null || geoBlocked}
+                className="w-full py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+                title={geoBlocked ? 'Outside geo-fence — move closer to school' : ''}>
                 {punching === 'in' ? 'Saving…' : 'Punch In'}
               </button>
             )}
@@ -408,9 +579,9 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
             {hasPunchOut ? (
               <p className="text-lg font-bold text-red-600 dark:text-red-400">{fmtTime(todayRec.punchOutTime)}</p>
             ) : (
-              <button onClick={() => handlePunch('punch_out')} disabled={punching !== null || !hasPunchIn}
+              <button onClick={() => handlePunch('punch_out')} disabled={punching !== null || !hasPunchIn || geoBlocked}
                 className="w-full py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors disabled:opacity-60"
-                title={!hasPunchIn ? 'Punch In first' : ''}>
+                title={!hasPunchIn ? 'Punch In first' : geoBlocked ? 'Outside geo-fence' : ''}>
                 {punching === 'out' ? 'Saving…' : 'Punch Out'}
               </button>
             )}
@@ -453,14 +624,24 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
                 const dateStr  = `${year}-${String(mon).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
                 const isToday  = dateStr === today.toISOString().split('T')[0];
                 const dow      = new Date(dateStr + 'T00:00:00').getDay();
-                const weekend  = dow === 0 || dow === 6;
+                const isWeekoff = weekoffDays.includes(dow);
+                const holiday  = holidayMap[day];
                 const st       = recordMap[day];
                 const cfg      = st ? STATUS_CFG[st] : null;
-                if (weekend) {
+
+                if (isWeekoff) {
                   return (
-                    <div key={day} className="h-12 rounded-xl flex flex-col items-center justify-center bg-surface-50 dark:bg-gray-800/40 opacity-40">
-                      <span className="text-sm font-medium text-surface-400">{day}</span>
-                      <span className="text-[9px] text-surface-300 font-medium">OFF</span>
+                    <div key={day} title={holiday || 'Week Off'} className="h-12 rounded-xl flex flex-col items-center justify-center bg-sky-100 dark:bg-sky-900/30 opacity-70">
+                      <span className="text-sm font-medium text-sky-600 dark:text-sky-400">{day}</span>
+                      <span className="text-[9px] text-sky-500 dark:text-sky-500 font-medium">OFF</span>
+                    </div>
+                  );
+                }
+                if (holiday) {
+                  return (
+                    <div key={day} title={holiday} className="h-12 rounded-xl flex flex-col items-center justify-center bg-indigo-100 dark:bg-indigo-900/30">
+                      <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">{day}</span>
+                      <span className="text-[9px] text-indigo-500 font-medium truncate w-full text-center px-1">Hol</span>
                     </div>
                   );
                 }
@@ -473,6 +654,14 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
               })}
             </div>
           )}
+        </div>
+        {/* Calendar legend */}
+        <div className="px-4 pb-4 pt-1 flex flex-wrap gap-2">
+          {Object.entries(STATUS_CFG).map(([key, c]) => (
+            <span key={key} className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}>{c.full}</span>
+          ))}
+          <span className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400">Week Off</span>
+          <span className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">Holiday</span>
         </div>
       </div>
     </div>

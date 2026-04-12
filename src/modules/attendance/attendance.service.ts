@@ -3,6 +3,16 @@ import { parseCSV, generateCSV, type CSVField } from '@/services/upload.service'
 import prisma from '@/lib/prisma';
 import * as repo from './attendance.repo';
 
+// Haversine distance in metres between two lat/lng points
+function haversineMetres(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // ── Shared CSV field definition for attendance ────────────────────────────────
 
 const ATTENDANCE_FIELDS: CSVField[] = [
@@ -214,6 +224,33 @@ export async function markAttendance(schoolId: string, markedBy: string, body: R
     // Punch In / Punch Out — teacher self-service
     if (action === 'punch_in' || action === 'punch_out') {
       if (!user_id) throw new AppError('user_id is required for punch action');
+
+      // ── Geo-fence / geo-tagging validation ──────────────────────────────────
+      const school = await prisma.school.findUnique({
+        where: { id: schoolId },
+        select: { geoFencingEnabled: true, geoTaggingEnabled: true, latitude: true, longitude: true, geoFenceRadius: true },
+      });
+
+      if (school?.geoFencingEnabled) {
+        // Fencing: punch must be within the configured radius
+        const { lat, lng } = body as { lat?: number; lng?: number };
+        if (lat == null || lng == null) {
+          throw new AppError('Location (lat/lng) is required when Geo Fencing is active. Please enable location access and try again.');
+        }
+        if (school.latitude == null || school.longitude == null) {
+          throw new AppError('School geo-fence centre is not configured. Contact your administrator.');
+        }
+        const dist = haversineMetres(lat, lng, school.latitude, school.longitude);
+        const radius = school.geoFenceRadius ?? 500;
+        if (dist > radius) {
+          throw new AppError(
+            `You are ${Math.round(dist)} m from school (allowed radius: ${radius} m). Punch blocked outside the geo-fence.`,
+            403,
+          );
+        }
+      }
+      // geoTaggingEnabled = punches allowed from anywhere (no location check needed)
+
       const today = new Date();
       const dateOnly = new Date(today.toISOString().split('T')[0]);
       dateOnly.setUTCHours(0, 0, 0, 0);
