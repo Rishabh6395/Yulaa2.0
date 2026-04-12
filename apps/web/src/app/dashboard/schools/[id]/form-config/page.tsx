@@ -14,7 +14,6 @@ interface FieldRule {
 
 interface DynamicField { id: string; label: string; type: 'text' | 'dropdown'; slot: string }
 
-// Use shared definitions — single source of truth
 const FORMS = FORM_DEFINITIONS;
 
 const DEFAULT_RULE: FieldRule = { visible: true, editable: true, required: false, label: '' };
@@ -26,6 +25,8 @@ const TYPE_ICONS: Record<string, string> = {
 
 type AllConfigs = Record<string, Record<string, Record<string, FieldRule>>>;
 
+const ORG_ROLE = 'org'; // sentinel value for org-wide config
+
 function defaultRules(fields: Array<{ id: string }>): Record<string, FieldRule> {
   return Object.fromEntries(fields.map(f => [f.id, { ...DEFAULT_RULE }]));
 }
@@ -35,20 +36,24 @@ function defaultRules(fields: Array<{ id: string }>): Record<string, FieldRule> 
 export default function FormConfigPage({ params }: { params: { id: string } }) {
   const schoolId = params.id;
 
-  const [activeForm,    setActiveForm]    = useState(FORMS[0].id);
-  const [activeRole,    setActiveRole]    = useState(FORMS[0].roles[0].id);
-  const [configs,       setConfigs]       = useState<AllConfigs>({});
-  const [dynFields,     setDynFields]     = useState<Record<string, DynamicField[]>>({}); // formId → extra fields
-  const [loading,       setLoading]       = useState(true);
-  const [saving,        setSaving]        = useState(false);
-  const [saved,         setSaved]         = useState(false);
-  const [syncing,       setSyncing]       = useState(false);
-  const [error,         setError]         = useState('');
-  const [editingLabel,  setEditingLabel]  = useState<string | null>(null); // fieldId being edited
+  const [activeForm,   setActiveForm]   = useState(FORMS[0].id);
+  const [activeRole,   setActiveRole]   = useState(FORMS[0].roles[0].id);
+  const [configScope,  setConfigScope]  = useState<'role' | 'org'>('role');
+  const [configs,      setConfigs]      = useState<AllConfigs>({});
+  const [dynFields,    setDynFields]    = useState<Record<string, DynamicField[]>>({});
+  const [loading,      setLoading]      = useState(true);
+  const [saving,       setSaving]       = useState(false);
+  const [saved,        setSaved]        = useState(false);
+  const [syncing,      setSyncing]      = useState(false);
+  const [error,        setError]        = useState('');
+  const [editingLabel, setEditingLabel] = useState<string | null>(null);
 
-  const form    = FORMS.find(f => f.id === activeForm)!;
-  const allDyn  = dynFields[activeForm] ?? [];
+  const form      = FORMS.find(f => f.id === activeForm)!;
+  const allDyn    = dynFields[activeForm] ?? [];
   const allFields: Array<FieldDef | DynamicField> = [...form.fields, ...allDyn];
+
+  // The effective role key used for save/load — either a real role id or ORG_ROLE
+  const effectiveRole = configScope === 'org' ? ORG_ROLE : activeRole;
 
   // ── Load configs + dynamic fields ──────────────────────────────────────────
 
@@ -61,7 +66,6 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
       fetch(`/api/form-config?schoolId=${schoolId}`, { headers: hdrs }).then(r => r.json()),
       fetch(`/api/masters/content-types?schoolId=${schoolId}`, { headers: hdrs }).then(r => r.json()),
     ]).then(([cfgData, ctData]) => {
-      // ── Form configs: normalise legacy string → object format ─────────────
       const raw: Record<string, Record<string, Record<string, any>>> = cfgData.configs ?? {};
       const normalised: AllConfigs = {};
       for (const [fId, roleMap] of Object.entries(raw)) {
@@ -84,12 +88,11 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
       }
       setConfigs(normalised);
 
-      // ── Dynamic fields: group by formName ─────────────────────────────────
       const cts: any[] = ctData.contentTypes ?? [];
       const byForm: Record<string, DynamicField[]> = {};
-      for (const form of FORMS) {
-        byForm[form.id] = cts
-          .filter(ct => ct.formName === form.id && ct.isActive)
+      for (const f of FORMS) {
+        byForm[f.id] = cts
+          .filter(ct => ct.formName === f.id && ct.isActive)
           .map(ct => ({
             id:    ct.fieldSlot,
             label: ct.label,
@@ -111,30 +114,30 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
 
   const getRules = useCallback(
     (fId: string, role: string): Record<string, FieldRule> => {
-      const saved = configs[fId]?.[role];
-      const f = FORMS.find(x => x.id === fId)!;
+      const savedRules = configs[fId]?.[role];
+      const f  = FORMS.find(x => x.id === fId)!;
       const dyn = dynFields[fId] ?? [];
       const allF = [...f.fields, ...dyn];
-      if (!saved) return defaultRules(allF);
+      if (!savedRules) return defaultRules(allF);
       const result: Record<string, FieldRule> = defaultRules(allF);
       for (const key of Object.keys(result)) {
-        if (saved[key]) result[key] = { ...DEFAULT_RULE, ...saved[key] };
+        if (savedRules[key]) result[key] = { ...DEFAULT_RULE, ...savedRules[key] };
       }
       return result;
     },
     [configs, dynFields],
   );
 
-  const currentRules = getRules(activeForm, activeRole);
+  const currentRules = getRules(activeForm, effectiveRole);
 
   function setRuleField(fieldId: string, patch: Partial<FieldRule>) {
     setConfigs(c => ({
       ...c,
       [activeForm]: {
         ...c[activeForm],
-        [activeRole]: {
-          ...getRules(activeForm, activeRole),
-          [fieldId]: { ...getRule(activeForm, activeRole, fieldId), ...patch },
+        [effectiveRole]: {
+          ...getRules(activeForm, effectiveRole),
+          [fieldId]: { ...getRule(activeForm, effectiveRole, fieldId), ...patch },
         },
       },
     }));
@@ -147,8 +150,12 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
       ...c,
       [activeForm]: {
         ...c[activeForm],
-        [activeRole]: Object.fromEntries(
-          allF.map(f => [f.id, { ...getRule(activeForm, activeRole, f.id), visible: v, editable: v ? getRule(activeForm, activeRole, f.id).editable : false }]),
+        [effectiveRole]: Object.fromEntries(
+          allF.map(f => [f.id, {
+            ...getRule(activeForm, effectiveRole, f.id),
+            visible:  v,
+            editable: v ? getRule(activeForm, effectiveRole, f.id).editable : false,
+          }]),
         ),
       },
     }));
@@ -164,7 +171,12 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
       const res = await fetch('/api/form-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ schoolId, formId: activeForm, role: activeRole, fieldRules: currentRules }),
+        body: JSON.stringify({
+          schoolId,
+          formId:     activeForm,
+          role:       effectiveRole,
+          fieldRules: currentRules,
+        }),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Save failed'); }
       setSaved(true); setTimeout(() => setSaved(false), 2500);
@@ -186,7 +198,6 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || 'Sync failed');
-      // Reload page to reflect synced configs
       window.location.reload();
     } catch (e: any) { setError(e.message); setSyncing(false); }
   }
@@ -194,13 +205,23 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
   const switchForm = (fId: string) => {
     setActiveForm(fId);
     setActiveRole(FORMS.find(x => x.id === fId)!.roles[0].id);
+    setConfigScope('role');
     setSaved(false); setError(''); setEditingLabel(null);
   };
 
   const visibleCount  = allFields.filter(f => currentRules[f.id]?.visible).length;
   const editableCount = allFields.filter(f => currentRules[f.id]?.visible && currentRules[f.id]?.editable).length;
   const requiredCount = allFields.filter(f => currentRules[f.id]?.required).length;
-  const savedRolesForForm = Object.keys(configs[activeForm] ?? {}).length;
+
+  // All saved keys for this form (role ids + 'org' if present)
+  const savedKeys     = Object.keys(configs[activeForm] ?? {});
+  const savedOrgKey   = savedKeys.includes(ORG_ROLE);
+  const savedRoleKeys = savedKeys.filter(k => k !== ORG_ROLE);
+
+  // Label shown in the save button and editor header
+  const scopeLabel = configScope === 'org'
+    ? 'Organization (School-wide)'
+    : (form.roles.find(r => r.id === activeRole)?.label ?? activeRole);
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -212,7 +233,7 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
         <div>
           <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Form Configuration</h1>
           <p className="text-sm text-surface-400 mt-0.5">
-            Set field visibility, edit permissions and label overrides per form and per role.
+            Set field visibility, edit permissions and label overrides per form — by role or organization-wide.
           </p>
         </div>
         <button
@@ -236,7 +257,9 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
           {/* ── Form selector sidebar ───────────────────────────────────────── */}
           <div className="w-52 shrink-0 space-y-1">
             {FORMS.map(f => {
-              const savedCount = Object.keys(configs[f.id] ?? {}).length;
+              const keys    = Object.keys(configs[f.id] ?? {});
+              const orgSaved  = keys.includes(ORG_ROLE);
+              const rolesSaved = keys.filter(k => k !== ORG_ROLE).length;
               return (
                 <button key={f.id} onClick={() => switchForm(f.id)}
                   className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors ${
@@ -247,11 +270,18 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate">{f.label}</span>
-                    {savedCount > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shrink-0">
-                        {savedCount}/{f.roles.length}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {orgSaved && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
+                          Org
+                        </span>
+                      )}
+                      {rolesSaved > 0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                          {rolesSaved}/{f.roles.length}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <span className="text-[10px] text-surface-300 dark:text-gray-600">{f.module}</span>
                 </button>
@@ -262,26 +292,110 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
           {/* ── Editor panel ─────────────────────────────────────────────────── */}
           <div className="flex-1 min-w-0 space-y-4">
 
-            {/* Role tabs */}
-            <div className="card px-4 py-3">
-              <p className="text-xs text-surface-400 mb-2 uppercase tracking-wide font-medium">Role</p>
-              <div className="flex flex-wrap gap-2">
-                {form.roles.map(r => {
-                  const hasSaved = !!configs[activeForm]?.[r.id];
-                  return (
-                    <button key={r.id} onClick={() => { setActiveRole(r.id); setSaved(false); setEditingLabel(null); }}
-                      className={`relative text-xs px-3 py-1.5 rounded-lg font-medium transition-all border ${
-                        activeRole === r.id
-                          ? `${r.color} border-current ring-1 ring-current ring-offset-1`
-                          : 'text-surface-400 border-surface-100 dark:border-gray-700 hover:border-surface-300'
-                      }`}
-                    >
-                      {r.label}
-                      {hasSaved && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500" />}
-                    </button>
-                  );
-                })}
+            {/* ── Config scope + role selector ─────────────────────────────── */}
+            <div className="card px-4 py-4 space-y-3">
+              {/* Scope toggle */}
+              <div>
+                <p className="text-xs text-surface-400 mb-2 uppercase tracking-wide font-medium">Config Level</p>
+                <div className="inline-flex rounded-lg border border-surface-200 dark:border-gray-700 overflow-hidden">
+                  <button
+                    onClick={() => { setConfigScope('role'); setSaved(false); setEditingLabel(null); }}
+                    className={`px-4 py-2 text-xs font-medium transition-colors ${
+                      configScope === 'role'
+                        ? 'bg-brand-600 text-white'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-surface-50 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                      </svg>
+                      Role-based
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => { setConfigScope('org'); setSaved(false); setEditingLabel(null); }}
+                    className={`px-4 py-2 text-xs font-medium transition-colors border-l border-surface-200 dark:border-gray-700 ${
+                      configScope === 'org'
+                        ? 'bg-violet-600 text-white border-violet-600'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-surface-50 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+                      </svg>
+                      Organization (School-wide)
+                    </span>
+                  </button>
+                </div>
               </div>
+
+              {/* Role dropdown — only for role-based scope */}
+              {configScope === 'role' && (
+                <div>
+                  <p className="text-xs text-surface-400 mb-1.5 uppercase tracking-wide font-medium">Role</p>
+                  <div className="relative inline-block">
+                    <select
+                      value={activeRole}
+                      onChange={e => { setActiveRole(e.target.value); setSaved(false); setEditingLabel(null); }}
+                      className="appearance-none pl-3 pr-8 py-2 text-sm rounded-lg border border-surface-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-400 transition-colors cursor-pointer"
+                    >
+                      {form.roles.map(r => (
+                        <option key={r.id} value={r.id}>{r.label}</option>
+                      ))}
+                    </select>
+                    <svg
+                      width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-surface-400"
+                    >
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                    {/* saved indicator dot */}
+                    {configs[activeForm]?.[activeRole] && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 border-2 border-white dark:border-gray-900" />
+                    )}
+                  </div>
+
+                  {/* Saved status chips for all roles */}
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {form.roles.map(r => {
+                      const isSaved = !!configs[activeForm]?.[r.id];
+                      const isActive = activeRole === r.id;
+                      return (
+                        <button
+                          key={r.id}
+                          onClick={() => { setActiveRole(r.id); setSaved(false); setEditingLabel(null); }}
+                          className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                            isActive
+                              ? 'bg-brand-100 dark:bg-brand-950/50 border-brand-300 dark:border-brand-700 text-brand-700 dark:text-brand-300 font-medium'
+                              : isSaved
+                                ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+                                : 'border-surface-200 dark:border-gray-700 text-surface-400 hover:border-surface-300'
+                          }`}
+                        >
+                          {isSaved && !isActive && <span className="mr-0.5">✓</span>}
+                          {r.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Org scope info banner */}
+              {configScope === 'org' && (
+                <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-violet-500 mt-0.5 shrink-0">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  <p className="text-xs text-violet-700 dark:text-violet-400">
+                    Organization-wide config applies to <strong>all users</strong> in this school, regardless of role.
+                    {savedOrgKey && <span className="ml-1 text-emerald-600 dark:text-emerald-400 font-medium">✓ Saved</span>}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Field rules editor */}
@@ -290,8 +404,11 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
                 <div>
                   <h2 className="font-semibold text-gray-900 dark:text-gray-100">
                     {form.label}
-                    <span className="ml-2 text-xs font-normal text-surface-400">
-                      · {form.roles.find(r => r.id === activeRole)?.label}
+                    <span
+                      style={{ backgroundColor: configScope === 'org' ? '#7c3aed' : '#2564eb9d' }}
+                      className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-md !text-white"
+                    >
+                      {configScope === 'org' ? 'Org-wide' : scopeLabel}
                     </span>
                   </h2>
                   <p className="text-xs text-surface-400 mt-0.5">
@@ -352,32 +469,53 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
               )}
 
               <div className="flex items-center gap-3 pt-3 border-t border-surface-100 dark:border-gray-700">
-                <button onClick={save} disabled={saving} className="btn btn-primary">
-                  {saving ? 'Saving…' : `Save — ${form.roles.find(r => r.id === activeRole)?.label}`}
-                </button>
+                {configScope === 'org' ? (
+                  <button
+                    onClick={save}
+                    disabled={saving}
+                    style={{ backgroundColor: '#7c3aed', color: '#ffffff' }}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-violet-700 hover:opacity-90 disabled:opacity-60 transition-opacity"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+                    </svg>
+                    {saving ? 'Saving…' : 'Save Org Config'}
+                  </button>
+                ) : (
+                  <button onClick={save} disabled={saving} className="btn btn-primary">
+                    {saving ? 'Saving…' : `Save — ${scopeLabel}`}
+                  </button>
+                )}
                 {saved && (
                   <span className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                     Saved
                   </span>
                 )}
-                {savedRolesForForm > 0 && !saved && (
-                  <span className="text-xs text-surface-400 ml-auto">
-                    {savedRolesForForm}/{form.roles.length} roles configured
-                  </span>
-                )}
+                <span className="text-xs text-surface-400 ml-auto">
+                  {savedRoleKeys.length > 0 && `${savedRoleKeys.length}/${form.roles.length} roles`}
+                  {savedRoleKeys.length > 0 && savedOrgKey && ' · '}
+                  {savedOrgKey && <span className="text-violet-500">Org config saved</span>}
+                </span>
               </div>
             </div>
 
             {/* Summary matrix */}
-            {savedRolesForForm > 0 && (
+            {(savedRoleKeys.length > 0 || savedOrgKey) && (
               <div className="card p-4">
-                <p className="text-xs font-medium text-surface-400 uppercase tracking-wide mb-3">Summary — all roles</p>
+                <p className="text-xs font-medium text-surface-400 uppercase tracking-wide mb-3">Summary — all configurations</p>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-surface-100 dark:border-gray-700">
                         <th className="text-left py-1.5 pr-4 font-medium text-surface-500 dark:text-gray-400 w-44">Field</th>
+                        {/* Org column */}
+                        {savedOrgKey && (
+                          <th className="text-center py-1.5 px-2 font-medium text-violet-500 dark:text-violet-400 whitespace-nowrap text-[10px]">
+                            Org
+                          </th>
+                        )}
+                        {/* Role columns */}
                         {form.roles.map(r => (
                           <th key={r.id} className="text-center py-1.5 px-2 font-medium text-surface-500 dark:text-gray-400 whitespace-nowrap text-[10px]">
                             {r.label.split(' ')[0]}
@@ -391,14 +529,16 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
                           <td className="py-1.5 pr-4 text-gray-700 dark:text-gray-300 truncate max-w-[11rem]">
                             {field.label}
                           </td>
-                          {form.roles.map(r => {
-                            const rule = getRules(activeForm, r.id)[field.id] ?? DEFAULT_RULE;
-                            return (
-                              <td key={r.id} className="text-center py-1.5 px-2">
-                                <SummaryDot rule={rule} />
-                              </td>
-                            );
-                          })}
+                          {savedOrgKey && (
+                            <td className="text-center py-1.5 px-2">
+                              <SummaryDot rule={getRules(activeForm, ORG_ROLE)[field.id] ?? DEFAULT_RULE} />
+                            </td>
+                          )}
+                          {form.roles.map(r => (
+                            <td key={r.id} className="text-center py-1.5 px-2">
+                              <SummaryDot rule={getRules(activeForm, r.id)[field.id] ?? DEFAULT_RULE} />
+                            </td>
+                          ))}
                         </tr>
                       ))}
                     </tbody>
