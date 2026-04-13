@@ -7,15 +7,16 @@ const MASTER_SECTIONS = [
   {
     title: 'Student & Staff',
     items: [
-      { label: 'Gender',          href: '/dashboard/masters/gender',         icon: 'Users',       desc: 'Gender options for students and staff' },
-      { label: 'Blood Groups',    href: '/dashboard/masters/blood-groups',   icon: 'Heart',       desc: 'Blood group options' },
+      { label: 'Gender',          href: '/dashboard/masters/gender',         icon: 'Users',         desc: 'Gender options for students and staff' },
+      { label: 'Blood Groups',    href: '/dashboard/masters/blood-groups',   icon: 'Heart',         desc: 'Blood group options' },
       { label: 'Qualifications',  href: '/dashboard/masters/qualifications', icon: 'GraduationCap', desc: 'Staff qualification types' },
-      { label: 'Streams',         href: '/dashboard/masters/streams',        icon: 'BookMarked',  desc: 'Academic streams available' },
+      { label: 'Streams',         href: '/dashboard/masters/streams',        icon: 'BookMarked',    desc: 'Academic streams available' },
     ],
   },
   {
     title: 'Academic',
     items: [
+      { label: 'Grades',          href: '/dashboard/masters/grades',        icon: 'ListOrdered',    desc: 'Grade / class levels used across forms' },
       { label: 'Exam Types',      href: '/dashboard/masters/exam-types',    icon: 'ClipboardCheck', desc: 'Types of exams / terms' },
       { label: 'Grading Types',   href: '/dashboard/masters/grading-types', icon: 'BarChart',       desc: 'Grade scales per exam type' },
     ],
@@ -67,6 +68,7 @@ const icons: Record<string, React.ReactNode> = {
   Network: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v4M5.8 17.3l4.5-4M18.2 17.3l-4.5-4"/></svg>,
   Calendar: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
   FileText: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+  ListOrdered: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>,
 };
 
 export default function MastersPage() {

@@ -42,6 +42,7 @@ model School {
   homework              Homework[]
   leaveBalancePolicies  LeaveBalancePolicy[]
   leaveRequests         LeaveRequest[]
+  gradeMasters          GradeMaster[]
   leaveTypeMasters      LeaveTypeMaster[]
   leaveWorkflows        LeaveWorkflow[]
   queries               StudentQuery[]
@@ -1249,6 +1250,20 @@ model StreamMaster {
   @@unique([schoolId, name])
   @@index([schoolId])
   @@map("stream_masters")
+}
+
+model GradeMaster {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  name      String   @db.VarChar(50)
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+  @@map("grade_masters")
 }
 
 model EventTypeMaster {

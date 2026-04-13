@@ -31,8 +31,11 @@ function rule(rules: FieldRules, key: string): FieldRule {
 }
 function isVisible(rules: FieldRules, key: string) { return rule(rules, key) !== 'hidden'; }
 
-const GRADES = ['Nursery','LKG','UKG','Grade 1','Grade 2','Grade 3','Grade 4','Grade 5',
-                'Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'];
+// Fallbacks used only when the school hasn't configured masters yet
+const FALLBACK_GRADES  = ['Nursery','LKG','UKG','Grade 1','Grade 2','Grade 3','Grade 4','Grade 5',
+                          'Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'];
+const FALLBACK_GENDERS = ['Male','Female','Other'];
+const FALLBACK_BLOODS  = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
 
 // ── New Application Modal ─────────────────────────────────────────────────────
 
@@ -57,36 +60,83 @@ function FieldLabel({ label, req }: { label: string; req: FieldRule }) {
   );
 }
 
-// Self-contained modal — fetches its own form config on every open
-function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess: () => void }) {
-  const [fieldRules,  setFieldRules]  = useState<FieldRules>({});
-  const [configReady, setConfigReady] = useState(false);
-  const [parentName,  setParentName]  = useState('');
-  const [parentPhone, setParentPhone] = useState('');
-  const [parentEmail, setParentEmail] = useState('');
-  const [parentOcc,   setParentOcc]   = useState('');
-  const [address,     setAddress]     = useState('');
-  const [children,    setChildren]    = useState<ChildEntry[]>([emptyChild()]);
-  const [loading,     setLoading]     = useState(false);
-  const [error,       setError]       = useState('');
+// Helper: parse masters array from API result
+function parseMasterNames(value: any, key: string): string[] {
+  return (value?.[key] ?? [])
+    .filter((g: any) => g.isActive !== false)
+    .sort((a: any, b: any) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99))
+    .map((g: any) => String(g.name));
+}
 
-  // Fetch form config from super admin on every open
+// Self-contained modal — fetches form config + masters on every open
+function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess: () => void }) {
+  const [fieldRules,    setFieldRules]    = useState<FieldRules>({});
+  const [configReady,   setConfigReady]   = useState(false);
+  // Always start with fallbacks so form is usable even before/if fetch fails
+  const [genderOptions, setGenderOptions] = useState<string[]>(FALLBACK_GENDERS);
+  const [bloodOptions,  setBloodOptions]  = useState<string[]>(FALLBACK_BLOODS);
+  const [gradeOptions,  setGradeOptions]  = useState<string[]>(FALLBACK_GRADES);
+  const [parentName,    setParentName]    = useState('');
+  const [parentPhone,   setParentPhone]   = useState('');
+  const [parentEmail,   setParentEmail]   = useState('');
+  const [parentOcc,     setParentOcc]     = useState('');
+  const [address,       setAddress]       = useState('');
+  const [children,      setChildren]      = useState<ChildEntry[]>([emptyChild()]);
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState('');
+
+  // Fetch form config + masters on every open; always resolve to fallbacks on failure
   useEffect(() => {
     if (!open) return;
-    const user     = JSON.parse(localStorage.getItem('user') || '{}');
-    const token    = localStorage.getItem('token');
-    const schoolId = user.schoolId;
-    if (!schoolId) { setConfigReady(true); return; }
-    fetch(`/api/form-config?schoolId=${schoolId}&formId=admission`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        const rules = d?.configs?.admission?.admin;
-        if (rules) setFieldRules(rules);
-      })
-      .catch(() => {})
-      .finally(() => setConfigReady(true));
+
+    setFieldRules({});
+    setConfigReady(false);
+    // Reset to fallbacks (not empty) so form is usable if fetch is slow or fails
+    setGenderOptions(FALLBACK_GENDERS);
+    setBloodOptions(FALLBACK_BLOODS);
+    setGradeOptions(FALLBACK_GRADES);
+
+    const stored   = localStorage.getItem('user');
+    const token    = localStorage.getItem('token') ?? '';
+    const schoolId = stored ? JSON.parse(stored).schoolId : null;
+    const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+    const qs       = schoolId ? `?schoolId=${schoolId}` : '';
+
+    Promise.allSettled([
+      fetch(`/api/form-config?schoolId=${schoolId}&formId=admission`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`/api/masters/gender${qs}`,       { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`/api/masters/blood-groups${qs}`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`/api/masters/grades${qs}`,       { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([cfgRes, genderRes, bloodRes, gradeRes]) => {
+      // Form config
+      const cfgVal = cfgRes.status === 'fulfilled' ? cfgRes.value : null;
+      const rules  = cfgVal?.configs?.admission?.admin;
+      if (rules) setFieldRules(rules);
+
+      // Gender
+      const gVal = genderRes.status === 'fulfilled' ? genderRes.value : null;
+      const gItems = parseMasterNames(gVal, 'genderMasters');
+      if (gItems.length > 0) setGenderOptions(gItems);
+
+      // Blood groups
+      const bVal   = bloodRes.status === 'fulfilled' ? bloodRes.value : null;
+      const bItems = parseMasterNames(bVal, 'bloodGroupMasters');
+      if (bItems.length > 0) setBloodOptions(bItems);
+
+      // Grades
+      const grVal   = gradeRes.status === 'fulfilled' ? gradeRes.value : null;
+      const grItems = parseMasterNames(grVal, 'gradeMasters');
+      if (grItems.length > 0) setGradeOptions(grItems);
+    }).finally(() => setConfigReady(true));
+  }, [open]);
+
+  // Reset form fields when modal closes
+  useEffect(() => {
+    if (!open) {
+      setParentName(''); setParentPhone(''); setParentEmail('');
+      setParentOcc('');  setAddress('');     setChildren([emptyChild()]);
+      setError('');
+    }
   }, [open]);
 
   const addChild    = () => setChildren(c => [...c, emptyChild()]);
@@ -228,7 +278,7 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
                         <FieldLabel label="Applying for Class" req={rule(fieldRules, 'gradeApplying')} />
                         <select className="input-field" value={ch.grade} onChange={e => updateChild(i, 'grade', e.target.value)}>
                           <option value="">Select grade</option>
-                          {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                          {gradeOptions.map(g => <option key={g} value={g}>{g}</option>)}
                         </select>
                       </div>
                     )}
@@ -243,9 +293,7 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
                         <FieldLabel label="Gender" req={rule(fieldRules, 'childGender')} />
                         <select className="input-field" value={ch.gender} onChange={e => updateChild(i, 'gender', e.target.value)}>
                           <option value="">Select</option>
-                          <option value="male">Male</option>
-                          <option value="female">Female</option>
-                          <option value="other">Other</option>
+                          {genderOptions.map(g => <option key={g} value={g.toLowerCase()}>{g}</option>)}
                         </select>
                       </div>
                     )}
@@ -254,7 +302,7 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
                         <FieldLabel label="Blood Group" req={rule(fieldRules, 'bloodGroup')} />
                         <select className="input-field" value={ch.bloodGroup} onChange={e => updateChild(i, 'bloodGroup', e.target.value)}>
                           <option value="">Select</option>
-                          {['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(g => <option key={g} value={g}>{g}</option>)}
+                          {bloodOptions.map(g => <option key={g} value={g}>{g}</option>)}
                         </select>
                       </div>
                     )}

@@ -4,6 +4,8 @@ import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/util
 
 const ADMIN_ROLES = ['super_admin', 'school_admin'];
 
+const DEFAULT_BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
 function getSchoolId(user: NonNullable<Awaited<ReturnType<typeof getUserFromRequest>>>, override?: string) {
   if (user.roles.some((r) => r.role_code === 'super_admin') && override) return override;
   const schoolId = (user.roles.find((r) => r.is_primary) ?? user.roles[0])?.school_id;
@@ -17,7 +19,18 @@ export async function GET(request: Request) {
     if (!user) throw new UnauthorizedError();
     const { searchParams } = new URL(request.url);
     const schoolId = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
-    return Response.json({ bloodGroupMasters: await getBloodGroupMasters(schoolId) });
+
+    let items = await getBloodGroupMasters(schoolId);
+
+    // Auto-seed defaults on first use
+    if (items.length === 0) {
+      await Promise.all(
+        DEFAULT_BLOOD_GROUPS.map((name, i) => addBloodGroupMaster(schoolId, name, i).catch(() => null))
+      );
+      items = await getBloodGroupMasters(schoolId);
+    }
+
+    return Response.json({ bloodGroupMasters: items });
   } catch (err) { return handleError(err); }
 }
 

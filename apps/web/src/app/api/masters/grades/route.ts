@@ -1,10 +1,16 @@
 import { getUserFromRequest } from '@/lib/auth';
-import { getGenderMasters, addGenderMaster, patchGenderMaster } from '@/modules/masters/masters.service';
+import { getGradeMasters, addGradeMaster, patchGradeMaster } from '@/modules/masters/masters.service';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 
 const ADMIN_ROLES = ['super_admin', 'school_admin'];
 
-const DEFAULT_GENDERS = ['Male', 'Female', 'Other'];
+// Default grades seeded automatically the first time a school views the Grades master page
+const DEFAULT_GRADES = [
+  'Nursery', 'LKG', 'UKG',
+  'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5',
+  'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10',
+  'Grade 11', 'Grade 12',
+];
 
 function getSchoolId(user: NonNullable<Awaited<ReturnType<typeof getUserFromRequest>>>, override?: string) {
   if (user.roles.some((r) => r.role_code === 'super_admin') && override) return override;
@@ -20,17 +26,17 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const schoolId = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
 
-    let items = await getGenderMasters(schoolId);
+    let grades = await getGradeMasters(schoolId);
 
-    // Auto-seed defaults on first use
-    if (items.length === 0) {
+    // Auto-seed default grades on first use so admins see a useful starting list
+    if (grades.length === 0) {
       await Promise.all(
-        DEFAULT_GENDERS.map((name, i) => addGenderMaster(schoolId, name, i).catch(() => null))
+        DEFAULT_GRADES.map((name, i) => addGradeMaster(schoolId, name, i).catch(() => null))
       );
-      items = await getGenderMasters(schoolId);
+      grades = await getGradeMasters(schoolId);
     }
 
-    return Response.json({ genderMasters: items });
+    return Response.json({ gradeMasters: grades });
   } catch (err) { return handleError(err); }
 }
 
@@ -41,7 +47,7 @@ export async function POST(request: Request) {
     if (!user.roles.some((r) => ADMIN_ROLES.includes(r.role_code))) throw new ForbiddenError('Admin access required');
     const { schoolId: bodySchoolId, name, sortOrder } = await request.json();
     const schoolId = getSchoolId(user, bodySchoolId);
-    return Response.json({ genderMaster: await addGenderMaster(schoolId, name, sortOrder) }, { status: 201 });
+    return Response.json({ gradeMaster: await addGradeMaster(schoolId, name, sortOrder) }, { status: 201 });
   } catch (err) { return handleError(err); }
 }
 
@@ -51,6 +57,6 @@ export async function PATCH(request: Request) {
     if (!user) throw new UnauthorizedError();
     if (!user.roles.some((r) => ADMIN_ROLES.includes(r.role_code))) throw new ForbiddenError('Admin access required');
     const { id, ...data } = await request.json();
-    return Response.json({ genderMaster: await patchGenderMaster(id, data) });
+    return Response.json({ gradeMaster: await patchGradeMaster(id, data) });
   } catch (err) { return handleError(err); }
 }

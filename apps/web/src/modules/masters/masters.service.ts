@@ -7,6 +7,7 @@ export async function getGenderMasters(schoolId: string)       { return repo.lis
 export async function getBloodGroupMasters(schoolId: string)   { return repo.listBloodGroupMasters(schoolId); }
 export async function getQualificationMasters(schoolId: string){ return repo.listQualificationMasters(schoolId); }
 export async function getStreamMasters(schoolId: string)       { return repo.listStreamMasters(schoolId); }
+export async function getGradeMasters(schoolId: string)        { return repo.listGradeMasters(schoolId); }
 export async function getEventTypeMasters(schoolId: string)    { return repo.listEventTypeMasters(schoolId); }
 
 export async function addGenderMaster(schoolId: string, name: string, sortOrder?: number) {
@@ -25,6 +26,10 @@ export async function addStreamMaster(schoolId: string, name: string, sortOrder?
   if (!name?.trim()) throw new ConflictError('Name is required');
   return repo.createStreamMaster({ schoolId, name: name.trim(), sortOrder });
 }
+export async function addGradeMaster(schoolId: string, name: string, sortOrder?: number) {
+  if (!name?.trim()) throw new ConflictError('Name is required');
+  return repo.createGradeMaster({ schoolId, name: name.trim(), sortOrder });
+}
 export async function addEventTypeMaster(schoolId: string, name: string, code: string, sortOrder?: number) {
   if (!name?.trim() || !code?.trim()) throw new ConflictError('Name and code are required');
   return repo.createEventTypeMaster({ schoolId, name: name.trim(), code: code.trim().toLowerCase(), sortOrder });
@@ -41,6 +46,9 @@ export async function patchQualificationMaster(id: string, data: { name?: string
 }
 export async function patchStreamMaster(id: string, data: { name?: string; isActive?: boolean; sortOrder?: number }) {
   return repo.updateStreamMaster(id, data);
+}
+export async function patchGradeMaster(id: string, data: { name?: string; isActive?: boolean; sortOrder?: number }) {
+  return repo.updateGradeMaster(id, data);
 }
 export async function patchEventTypeMaster(id: string, data: { name?: string; code?: string; isActive?: boolean; sortOrder?: number }) {
   return repo.updateEventTypeMaster(id, data);

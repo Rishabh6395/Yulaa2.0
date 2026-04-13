@@ -6,18 +6,21 @@ export const listGenderMasters        = (schoolId: string) => prisma.genderMaste
 export const listBloodGroupMasters    = (schoolId: string) => prisma.bloodGroupMaster.findMany({ where: { schoolId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
 export const listQualificationMasters = (schoolId: string) => prisma.qualificationMaster.findMany({ where: { schoolId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
 export const listStreamMasters        = (schoolId: string) => prisma.streamMaster.findMany({ where: { schoolId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+export const listGradeMasters         = (schoolId: string) => prisma.gradeMaster.findMany({ where: { schoolId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
 export const listEventTypeMasters     = (schoolId: string) => prisma.eventTypeMaster.findMany({ where: { schoolId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
 
 export const createGenderMaster        = (data: { schoolId: string; name: string; sortOrder?: number }) => prisma.genderMaster.create({ data });
 export const createBloodGroupMaster    = (data: { schoolId: string; name: string; sortOrder?: number }) => prisma.bloodGroupMaster.create({ data });
 export const createQualificationMaster = (data: { schoolId: string; name: string; sortOrder?: number }) => prisma.qualificationMaster.create({ data });
 export const createStreamMaster        = (data: { schoolId: string; name: string; sortOrder?: number }) => prisma.streamMaster.create({ data });
+export const createGradeMaster         = (data: { schoolId: string; name: string; sortOrder?: number }) => prisma.gradeMaster.create({ data });
 export const createEventTypeMaster     = (data: { schoolId: string; name: string; code: string; sortOrder?: number }) => prisma.eventTypeMaster.create({ data });
 
 export const updateGenderMaster        = (id: string, data: { name?: string; isActive?: boolean; sortOrder?: number }) => prisma.genderMaster.update({ where: { id }, data });
 export const updateBloodGroupMaster    = (id: string, data: { name?: string; isActive?: boolean; sortOrder?: number }) => prisma.bloodGroupMaster.update({ where: { id }, data });
 export const updateQualificationMaster = (id: string, data: { name?: string; isActive?: boolean; sortOrder?: number }) => prisma.qualificationMaster.update({ where: { id }, data });
 export const updateStreamMaster        = (id: string, data: { name?: string; isActive?: boolean; sortOrder?: number }) => prisma.streamMaster.update({ where: { id }, data });
+export const updateGradeMaster         = (id: string, data: { name?: string; isActive?: boolean; sortOrder?: number }) => prisma.gradeMaster.update({ where: { id }, data });
 export const updateEventTypeMaster     = (id: string, data: { name?: string; code?: string; isActive?: boolean; sortOrder?: number }) => prisma.eventTypeMaster.update({ where: { id }, data });
 
 // ─── Location masters (school-specific) ──────────────────────────────────────
