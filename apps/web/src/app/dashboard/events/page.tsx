@@ -3,7 +3,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import Modal from '@/components/ui/Modal';
 
-const EVENT_TYPES = ['academic', 'cultural', 'sports', 'annual_day', 'trip', 'workshop', 'other'];
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const FALLBACK_EVENT_TYPES = [
+  { name: 'Academic', code: 'academic' },
+  { name: 'Cultural', code: 'cultural' },
+  { name: 'Sports', code: 'sports' },
+  { name: 'Annual Day', code: 'annual_day' },
+  { name: 'Trip', code: 'trip' },
+  { name: 'Workshop', code: 'workshop' },
+  { name: 'Other', code: 'other' },
+];
+
 const EVENT_STATUS = ['upcoming', 'ongoing', 'completed', 'cancelled'];
 const TASK_STATUS  = ['pending', 'in_progress', 'completed'];
 
@@ -30,110 +41,164 @@ const TASK_STATUS_CFG: Record<string, { label: string; cls: string }> = {
   completed:   { label: 'Completed',   cls: 'badge-success' },
 };
 
-const EMPTY_FORM = { title: '', eventType: 'academic', startDate: '', endDate: '', venue: '', description: '', academicYear: '' };
+const EMPTY_FORM = { title: '', eventType: '', startDate: '', endDate: '', venue: '', description: '', academicYear: '' };
 const EMPTY_TASK = { title: '', assignedTo: '', role: '', dueDate: '' };
 
-export default function EventsPage() {
-  const [events,     setEvents]     = useState<any[]>([]);
-  const [teachers,   setTeachers]   = useState<any[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [activeEvent, setActiveEvent] = useState<any | null>(null);
-  const [showForm,   setShowForm]   = useState(false);
-  const [showTask,   setShowTask]   = useState(false);
-  const [form,       setForm]       = useState(EMPTY_FORM);
-  const [taskForm,   setTaskForm]   = useState(EMPTY_TASK);
-  const [saving,     setSaving]     = useState(false);
-  const [msg,        setMsg]        = useState<{ type: string; text: string } | null>(null);
-  const [role,       setRole]       = useState('');
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+export default function EventsPage() {
+  const [events,      setEvents]      = useState<any[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [activeEvent, setActiveEvent] = useState<any | null>(null);
+
+  // New Event form state
+  const [showForm,    setShowForm]    = useState(false);
+  const [eventTypes,  setEventTypes]  = useState<{ name: string; code: string }[]>(FALLBACK_EVENT_TYPES);
+  const [form,        setForm]        = useState(EMPTY_FORM);
+  const [formLoading, setFormLoading] = useState(false);
+  const [saving,      setSaving]      = useState(false);
+  const [formError,   setFormError]   = useState('');
+
+  // Add Task form state
+  const [showTask,    setShowTask]    = useState(false);
+  const [teachers,    setTeachers]    = useState<any[]>([]);
+  const [taskForm,    setTaskForm]    = useState(EMPTY_TASK);
+  const [taskSaving,  setTaskSaving]  = useState(false);
+
+  const [msg,  setMsg]  = useState<{ type: string; text: string } | null>(null);
+  const [role, setRole] = useState('');
 
   const isAdmin = ['school_admin', 'super_admin', 'principal'].includes(role);
 
+  const tok = () => localStorage.getItem('token') ?? '';
+  const authH = () => ({ Authorization: `Bearer ${tok()}`, 'Content-Type': 'application/json' });
+
+  // ── Fetch events list ──────────────────────────────────────────────────────
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/events', { headers: { Authorization: `Bearer ${token}` } });
-      const d = await res.json();
+      const res = await fetch('/api/events', { headers: { Authorization: `Bearer ${tok()}` } });
+      const d   = await res.json();
       setEvents(d.events || []);
     } finally { setLoading(false); }
-  }, [token]);
-
-  const fetchTeachers = useCallback(async () => {
-    const res = await fetch('/api/teachers', { headers: { Authorization: `Bearer ${token}` } });
-    const d = await res.json();
-    setTeachers(d.teachers || []);
-  }, [token]);
+  }, []);
 
   const openEvent = useCallback(async (id: string) => {
-    const res = await fetch(`/api/events?eventId=${id}`, { headers: { Authorization: `Bearer ${token}` } });
-    const d = await res.json();
+    const res = await fetch(`/api/events?eventId=${id}`, { headers: { Authorization: `Bearer ${tok()}` } });
+    const d   = await res.json();
     setActiveEvent(d.event || null);
-  }, [token]);
+  }, []);
 
   useEffect(() => {
-    const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
     setRole(user.primaryRole || '');
     fetchEvents();
-    fetchTeachers();
-  }, [fetchEvents, fetchTeachers]);
+  }, [fetchEvents]);
 
+  // ── Open "New Event" — fetch masters immediately on click ──────────────────
+  const openNewEventForm = async () => {
+    setMsg(null);
+    setFormError('');
+    setForm(EMPTY_FORM);
+    setEventTypes(FALLBACK_EVENT_TYPES);   // show fallbacks instantly
+    setShowForm(true);
+    setFormLoading(true);
+
+    try {
+      const token    = tok();
+      const stored   = localStorage.getItem('user');
+      const schoolId = stored ? JSON.parse(stored).schoolId : null;
+      const qs       = schoolId ? `?schoolId=${schoolId}` : '';
+      const headers  = { Authorization: `Bearer ${token}` };
+
+      const res  = await fetch(`/api/masters/event-types${qs}`, { headers });
+      const data = res.ok ? await res.json() : null;
+
+      const items: any[] = data?.eventTypeMasters ?? [];
+      if (items.length > 0) {
+        const sorted = items
+          .filter((et: any) => et.isActive !== false)
+          .sort((a: any, b: any) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99));
+        setEventTypes(sorted.map((et: any) => ({ name: et.name, code: et.code })));
+        setForm(f => ({ ...f, eventType: sorted[0]?.code ?? '' }));
+      } else {
+        setForm(f => ({ ...f, eventType: FALLBACK_EVENT_TYPES[0].code }));
+      }
+    } catch {
+      setForm(f => ({ ...f, eventType: FALLBACK_EVENT_TYPES[0].code }));
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  // ── Open "Add Task" — fetch teachers immediately on click ──────────────────
+  const openAddTaskForm = async () => {
+    setTaskForm(EMPTY_TASK);
+    setTeachers([]);
+    setShowTask(true);
+
+    try {
+      const res  = await fetch('/api/teachers', { headers: { Authorization: `Bearer ${tok()}` } });
+      const data = res.ok ? await res.json() : null;
+      if (data?.teachers) setTeachers(data.teachers);
+    } catch { /* no teachers shown */ }
+  };
+
+  // ── Submit new event ───────────────────────────────────────────────────────
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
+    setSaving(true); setFormError('');
     try {
-      const res = await fetch('/api/events', { method: 'POST', headers, body: JSON.stringify({ ...form }) });
-      const d = await res.json();
-      if (!res.ok) { setMsg({ type: 'error', text: d.error || 'Failed' }); return; }
-      setMsg({ type: 'success', text: 'Event created!' });
+      const res = await fetch('/api/events', { method: 'POST', headers: authH(), body: JSON.stringify({ ...form }) });
+      const d   = await res.json();
+      if (!res.ok) { setFormError(d.error || 'Failed to create event'); return; }
       setShowForm(false);
-      setForm(EMPTY_FORM);
+      setMsg({ type: 'success', text: 'Event created!' });
       fetchEvents();
     } finally { setSaving(false); }
   };
 
+  // ── Submit add task ────────────────────────────────────────────────────────
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeEvent) return;
-    setSaving(true);
+    setTaskSaving(true);
     try {
       const res = await fetch('/api/events', {
-        method: 'POST', headers,
+        method: 'POST', headers: authH(),
         body: JSON.stringify({ action: 'add_task', eventId: activeEvent.id, ...taskForm }),
       });
-      const d = await res.json();
-      if (!res.ok) { setMsg({ type: 'error', text: d.error || 'Failed' }); return; }
-      setMsg({ type: 'success', text: 'Task added!' });
-      setShowTask(false);
-      setTaskForm(EMPTY_TASK);
-      openEvent(activeEvent.id);
-    } finally { setSaving(false); }
+      if (res.ok) {
+        setShowTask(false);
+        openEvent(activeEvent.id);
+      }
+    } finally { setTaskSaving(false); }
   };
 
   const updateTaskStatus = async (taskId: string, status: string) => {
-    await fetch('/api/events', { method: 'PATCH', headers, body: JSON.stringify({ action: 'update_task', taskId, status }) });
+    await fetch('/api/events', { method: 'PATCH', headers: authH(), body: JSON.stringify({ action: 'update_task', taskId, status }) });
     if (activeEvent) openEvent(activeEvent.id);
   };
 
   const updateEventStatus = async (eventId: string, status: string) => {
-    await fetch('/api/events', { method: 'PATCH', headers, body: JSON.stringify({ action: 'update_event', eventId, status }) });
+    await fetch('/api/events', { method: 'PATCH', headers: authH(), body: JSON.stringify({ action: 'update_event', eventId, status }) });
     fetchEvents();
-    if (activeEvent?.id === eventId) setActiveEvent((prev: any) => prev ? { ...prev, status } : null);
+    if (activeEvent?.id === eventId) setActiveEvent((p: any) => p ? { ...p, status } : null);
   };
 
   const deleteEvent = async (eventId: string) => {
     if (!confirm('Delete this event?')) return;
-    await fetch('/api/events', { method: 'DELETE', headers, body: JSON.stringify({ eventId }) });
+    await fetch('/api/events', { method: 'DELETE', headers: authH(), body: JSON.stringify({ eventId }) });
     if (activeEvent?.id === eventId) setActiveEvent(null);
     fetchEvents();
   };
 
   const deleteTask = async (taskId: string) => {
-    await fetch('/api/events', { method: 'DELETE', headers, body: JSON.stringify({ taskId }) });
+    await fetch('/api/events', { method: 'DELETE', headers: authH(), body: JSON.stringify({ taskId }) });
     if (activeEvent) openEvent(activeEvent.id);
   };
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -143,8 +208,10 @@ export default function EventsPage() {
           <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">Plan and manage all school activities</p>
         </div>
         {isAdmin && (
-          <button onClick={() => { setMsg(null); setShowForm(true); }} className="btn-primary flex items-center gap-2">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <button onClick={openNewEventForm} className="btn-primary flex items-center gap-2">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
             New Event
           </button>
         )}
@@ -167,11 +234,10 @@ export default function EventsPage() {
               <p className="text-sm">No events yet.</p>
             </div>
           ) : events.map(ev => {
-            const cfg = TYPE_CFG[ev.eventType] || TYPE_CFG.other;
-            const sCfg = STATUS_CFG[ev.status] || STATUS_CFG.upcoming;
+            const cfg  = TYPE_CFG[ev.eventType] || TYPE_CFG.other;
+            const sCfg = STATUS_CFG[ev.status]   || STATUS_CFG.upcoming;
             return (
-              <div key={ev.id}
-                onClick={() => openEvent(ev.id)}
+              <div key={ev.id} onClick={() => openEvent(ev.id)}
                 className={`card p-4 cursor-pointer transition-all hover:shadow-md ${activeEvent?.id === ev.id ? 'ring-2 ring-brand-400' : ''}`}>
                 <div className="flex items-start gap-3">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${cfg.bg}`}>
@@ -205,7 +271,6 @@ export default function EventsPage() {
             </div>
           ) : (
             <div className="card p-6 space-y-6">
-              {/* Event header */}
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -215,7 +280,9 @@ export default function EventsPage() {
                       {(STATUS_CFG[activeEvent.status] || STATUS_CFG.upcoming).label}
                     </span>
                   </div>
-                  {activeEvent.description && <p className="text-sm text-surface-500 dark:text-gray-400">{activeEvent.description}</p>}
+                  {activeEvent.description && (
+                    <p className="text-sm text-surface-500 dark:text-gray-400">{activeEvent.description}</p>
+                  )}
                   <div className="flex items-center gap-4 mt-2 text-xs text-surface-400 dark:text-gray-500 flex-wrap">
                     {activeEvent.startDate && <span>📅 {new Date(activeEvent.startDate).toLocaleDateString('en-IN')}</span>}
                     {activeEvent.endDate && activeEvent.endDate !== activeEvent.startDate && (
@@ -226,17 +293,14 @@ export default function EventsPage() {
                 </div>
                 {isAdmin && (
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <select
-                      value={activeEvent.status}
-                      onChange={e => updateEventStatus(activeEvent.id, e.target.value)}
-                      className="input-field text-xs py-1 px-2"
-                    >
+                    <select value={activeEvent.status} onChange={e => updateEventStatus(activeEvent.id, e.target.value)} className="input-field text-xs py-1 px-2">
                       {EVENT_STATUS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                     <button onClick={() => deleteEvent(activeEvent.id)}
                       className="w-8 h-8 flex items-center justify-center rounded-lg text-surface-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                        <path d="M10 11v6"/><path d="M14 11v6"/>
                       </svg>
                     </button>
                   </div>
@@ -248,43 +312,35 @@ export default function EventsPage() {
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-sm">Tasks ({activeEvent.tasks?.length ?? 0})</h3>
                   {isAdmin && (
-                    <button onClick={() => setShowTask(true)} className="btn-secondary text-xs py-1 px-3">
-                      + Add Task
-                    </button>
+                    <button onClick={openAddTaskForm} className="btn-secondary text-xs py-1 px-3">+ Add Task</button>
                   )}
                 </div>
                 {activeEvent.tasks?.length === 0 ? (
                   <p className="text-xs text-surface-400 dark:text-gray-500 py-4 text-center">No tasks assigned.</p>
                 ) : (
                   <div className="space-y-2">
-                    {activeEvent.tasks?.map((t: any) => {
-                      const tCfg = TASK_STATUS_CFG[t.status] || TASK_STATUS_CFG.pending;
-                      return (
-                        <div key={t.id} className="flex items-center gap-3 p-3 bg-surface-50 dark:bg-gray-800/40 rounded-xl">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{t.title}</p>
-                            <p className="text-xs text-surface-400 dark:text-gray-500">
-                              {t.teacher ? `${t.teacher.user.firstName} ${t.teacher.user.lastName}` : 'Unassigned'}
-                              {t.role ? ` · ${t.role}` : ''}
-                              {t.dueDate ? ` · Due ${new Date(t.dueDate).toLocaleDateString('en-IN')}` : ''}
-                            </p>
-                          </div>
-                          <select
-                            value={t.status}
-                            onChange={e => updateTaskStatus(t.id, e.target.value)}
-                            className="input-field text-xs py-1 px-2 w-32"
-                          >
-                            {TASK_STATUS.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                          </select>
-                          {isAdmin && (
-                            <button onClick={() => deleteTask(t.id)}
-                              className="w-6 h-6 flex items-center justify-center rounded text-surface-300 hover:text-red-500 transition-colors">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                            </button>
-                          )}
+                    {activeEvent.tasks?.map((t: any) => (
+                      <div key={t.id} className="flex items-center gap-3 p-3 bg-surface-50 dark:bg-gray-800/40 rounded-xl">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{t.title}</p>
+                          <p className="text-xs text-surface-400 dark:text-gray-500">
+                            {t.teacher ? `${t.teacher.user.firstName} ${t.teacher.user.lastName}` : 'Unassigned'}
+                            {t.role ? ` · ${t.role}` : ''}
+                            {t.dueDate ? ` · Due ${new Date(t.dueDate).toLocaleDateString('en-IN')}` : ''}
+                          </p>
                         </div>
-                      );
-                    })}
+                        <select value={t.status} onChange={e => updateTaskStatus(t.id, e.target.value)} className="input-field text-xs py-1 px-2 w-32">
+                          {TASK_STATUS.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                        </select>
+                        {isAdmin && (
+                          <button onClick={() => deleteTask(t.id)} className="w-6 h-6 flex items-center justify-center rounded text-surface-300 hover:text-red-500 transition-colors">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -319,7 +375,7 @@ export default function EventsPage() {
                               {isAdmin ? (
                                 <input type="checkbox" checked={p.attended}
                                   onChange={async e => {
-                                    await fetch('/api/events', { method: 'PATCH', headers, body: JSON.stringify({ action: 'mark_attendance', participantId: p.id, attended: e.target.checked }) });
+                                    await fetch('/api/events', { method: 'PATCH', headers: authH(), body: JSON.stringify({ action: 'mark_attendance', participantId: p.id, attended: e.target.checked }) });
                                     openEvent(activeEvent.id);
                                   }}
                                   className="w-4 h-4 rounded accent-brand-500"
@@ -343,39 +399,53 @@ export default function EventsPage() {
       {/* Create Event Modal */}
       <Modal open={showForm} onClose={() => setShowForm(false)} title="Create New Event">
         <form onSubmit={handleCreateEvent} className="space-y-4">
+          {formLoading && (
+            <p className="text-xs text-surface-400 dark:text-gray-500">Loading form options...</p>
+          )}
+          {formError && (
+            <div className="px-3 py-2 rounded-lg text-sm text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-400">{formError}</div>
+          )}
           <div>
             <label className="label">Event Title *</label>
-            <input className="input-field" required value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))} placeholder="e.g. Annual Sports Day" />
+            <input className="input-field" required value={form.title}
+              onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Annual Sports Day" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Event Type *</label>
-              <select className="input-field" value={form.eventType} onChange={e => setForm(f => ({...f, eventType: e.target.value}))}>
-                {EVENT_TYPES.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+              <select className="input-field" required value={form.eventType}
+                onChange={e => setForm(f => ({ ...f, eventType: e.target.value }))}>
+                <option value="">Select type</option>
+                {eventTypes.map(t => <option key={t.code} value={t.code}>{t.name}</option>)}
               </select>
             </div>
             <div>
               <label className="label">Academic Year</label>
-              <input className="input-field" value={form.academicYear} onChange={e => setForm(f => ({...f, academicYear: e.target.value}))} placeholder="2025-2026" />
+              <input className="input-field" value={form.academicYear}
+                onChange={e => setForm(f => ({ ...f, academicYear: e.target.value }))} placeholder="2025-2026" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Start Date *</label>
-              <input type="date" className="input-field" required value={form.startDate} onChange={e => setForm(f => ({...f, startDate: e.target.value}))} />
+              <input type="date" className="input-field" required value={form.startDate}
+                onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
             </div>
             <div>
               <label className="label">End Date</label>
-              <input type="date" className="input-field" value={form.endDate} onChange={e => setForm(f => ({...f, endDate: e.target.value}))} />
+              <input type="date" className="input-field" value={form.endDate}
+                onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} />
             </div>
           </div>
           <div>
             <label className="label">Venue</label>
-            <input className="input-field" value={form.venue} onChange={e => setForm(f => ({...f, venue: e.target.value}))} placeholder="e.g. School Grounds" />
+            <input className="input-field" value={form.venue}
+              onChange={e => setForm(f => ({ ...f, venue: e.target.value }))} placeholder="e.g. School Grounds" />
           </div>
           <div>
             <label className="label">Description</label>
-            <textarea className="input-field" rows={3} value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} placeholder="Event details..." />
+            <textarea className="input-field" rows={3} value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Event details..." />
           </div>
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
@@ -389,11 +459,13 @@ export default function EventsPage() {
         <form onSubmit={handleAddTask} className="space-y-4">
           <div>
             <label className="label">Task Title *</label>
-            <input className="input-field" required value={taskForm.title} onChange={e => setTaskForm(f => ({...f, title: e.target.value}))} placeholder="e.g. Manage discipline" />
+            <input className="input-field" required value={taskForm.title}
+              onChange={e => setTaskForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Manage discipline" />
           </div>
           <div>
             <label className="label">Assign To</label>
-            <select className="input-field" value={taskForm.assignedTo} onChange={e => setTaskForm(f => ({...f, assignedTo: e.target.value}))}>
+            <select className="input-field" value={taskForm.assignedTo}
+              onChange={e => setTaskForm(f => ({ ...f, assignedTo: e.target.value }))}>
               <option value="">Select teacher</option>
               {teachers.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
@@ -401,16 +473,18 @@ export default function EventsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Role</label>
-              <input className="input-field" value={taskForm.role} onChange={e => setTaskForm(f => ({...f, role: e.target.value}))} placeholder="e.g. Coordinator" />
+              <input className="input-field" value={taskForm.role}
+                onChange={e => setTaskForm(f => ({ ...f, role: e.target.value }))} placeholder="e.g. Coordinator" />
             </div>
             <div>
               <label className="label">Due Date</label>
-              <input type="date" className="input-field" value={taskForm.dueDate} onChange={e => setTaskForm(f => ({...f, dueDate: e.target.value}))} />
+              <input type="date" className="input-field" value={taskForm.dueDate}
+                onChange={e => setTaskForm(f => ({ ...f, dueDate: e.target.value }))} />
             </div>
           </div>
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={() => setShowTask(false)} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Adding...' : 'Add Task'}</button>
+            <button type="submit" disabled={taskSaving} className="btn-primary flex-1">{taskSaving ? 'Adding...' : 'Add Task'}</button>
           </div>
         </form>
       </Modal>
