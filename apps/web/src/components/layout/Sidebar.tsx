@@ -43,6 +43,7 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Leave',            href: '/dashboard/leave',            icon: 'Calendar',        key: 'leave' },
     { label: 'Queries',          href: '/dashboard/queries',          icon: 'MessageSquare',   key: 'queries' },
     { label: 'Transport',        href: '/dashboard/transport',        icon: 'Bus',             key: 'transport' },
+    { label: 'Performance',      href: '/dashboard/performance',      icon: 'TrendingUp',      key: 'performance' },
     { label: 'Compliance',       href: '/dashboard/compliance',       icon: 'ShieldCheck',     key: 'compliance' },
     { label: 'Reports',          href: '/dashboard/reports',          icon: 'BarChart',        key: 'reports' },
     { label: 'Profile',          href: '/dashboard/settings',         icon: 'UserCircle',      key: 'settings' },
@@ -366,7 +367,10 @@ export default function Sidebar({ user, collapsed }: SidebarProps) {
   const role  = user?.primaryRole || 'school_admin';
   const items = menuItems[role] || menuItems.school_admin;
 
-  const [allowedKeys, setAllowedKeys] = useState<string[] | null>(null);
+  // null = super_admin (no filtering), [] = loading or no permissions granted
+  const [allowedKeys, setAllowedKeys] = useState<string[] | null>(
+    role === 'super_admin' ? null : []
+  );
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
 
   // Clear any previously-cached stale permission keys on mount
@@ -383,11 +387,11 @@ export default function Sidebar({ user, collapsed }: SidebarProps) {
     // super_admin menu is not school-specific, skip permission filtering
     if (role === 'super_admin') { setAllowedKeys(null); return; }
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) { setAllowedKeys([]); return; }
     fetch('/api/menu-permissions', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(d => { setAllowedKeys(Array.isArray(d.menuKeys) ? d.menuKeys : null); })
-      .catch(() => setAllowedKeys(null));
+      .then(d => { setAllowedKeys(Array.isArray(d.menuKeys) ? d.menuKeys : []); })
+      .catch(() => setAllowedKeys([]));
   }, [role]);
 
   const toggleGroup = (key: string) => {
@@ -396,7 +400,7 @@ export default function Sidebar({ user, collapsed }: SidebarProps) {
     );
   };
 
-  // null = no filter applied (fallback: show all items)
+  // null = super_admin (show all items), otherwise filter by granted keys
   const visibleItems = allowedKeys === null
     ? items
     : items.filter(item => {

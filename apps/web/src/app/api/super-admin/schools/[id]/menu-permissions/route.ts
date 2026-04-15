@@ -13,16 +13,6 @@ import prisma from '@/lib/prisma';
 
 const ADMIN_ROLES = ['super_admin', 'school_admin'];
 
-const ROLE_DEFAULTS: Record<string, string[]> = {
-  school_admin: ['dashboard','masters','admissions','classes','students','teachers','parents','attendance','fees','scheduling','announcements','leave','queries','transport','compliance','reports','settings'],
-  teacher:      ['dashboard','attendance','performance','homework','leave','queries','settings'],
-  student:      ['dashboard','attendance','fees','homework','announcements','queries'],
-  parent:       ['dashboard','attendance','fees','performance','homework','announcements','leave','queries','transport'],
-  hod:          ['dashboard','students','teachers','classes','attendance','homework','performance','leave','queries','announcements','reports','settings'],
-  principal:    ['dashboard','admissions','classes','students','teachers','parents','attendance','fees','scheduling','announcements','leave','queries','transport','compliance','reports','settings'],
-  employee:     ['dashboard','attendance','leave','queries','settings'],
-};
-
 function assertAdmin(user: any) {
   if (!user) throw new UnauthorizedError();
   const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
@@ -43,12 +33,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
       select: { menuKey: true, enabled: true },
     });
 
-    if (saved.length === 0) {
-      return Response.json({ menuKeys: ROLE_DEFAULTS[role] ?? [], isDefault: true });
-    }
-
     const menuKeys = saved.filter(p => p.enabled).map(p => p.menuKey);
-    return Response.json({ menuKeys, isDefault: false });
+    return Response.json({ menuKeys });
   } catch (err) { return handleError(err); }
 }
 

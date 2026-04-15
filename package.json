@@ -20,7 +20,7 @@
     "ioredis": "^5.10.0"
   },
   "devDependencies": {
-    "turbo": "^2.3.3"
+    "turbo": "^2.9.6"
   },
   "engines": {
     "node": ">=18"
