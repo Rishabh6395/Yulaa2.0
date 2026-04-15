@@ -18,18 +18,18 @@ export async function GET(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const { searchParams } = new URL(request.url);
-    const schoolId = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
+    const schoolId  = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
+    const activeOnly = searchParams.get('includeInactive') !== 'true';
 
-    let items = await getGenderMasters(schoolId);
-
-    // Auto-seed defaults on first use
-    if (items.length === 0) {
+    // Auto-seed: check total count (ignore active filter) so we don't re-seed when items are merely inactive
+    const total = await getGenderMasters(schoolId, false);
+    if (total.length === 0) {
       await Promise.all(
         DEFAULT_GENDERS.map((name, i) => addGenderMaster(schoolId, name, i).catch(() => null))
       );
-      items = await getGenderMasters(schoolId);
     }
 
+    const items = await getGenderMasters(schoolId, activeOnly);
     return Response.json({ genderMasters: items });
   } catch (err) { return handleError(err); }
 }

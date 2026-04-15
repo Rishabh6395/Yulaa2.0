@@ -17,8 +17,9 @@ export async function GET(request: Request) {
     if (!user) throw new UnauthorizedError();
     const { searchParams } = new URL(request.url);
     const schoolId = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
-    const formName = searchParams.get('formName') ?? undefined;
-    return Response.json({ contentTypes: await getContentTypes(schoolId, formName) });
+    const formName   = searchParams.get('formName') ?? undefined;
+    const activeOnly = searchParams.get('includeInactive') !== 'true';
+    return Response.json({ contentTypes: await getContentTypes(schoolId, formName, activeOnly) });
   } catch (err) { return handleError(err); }
 }
 

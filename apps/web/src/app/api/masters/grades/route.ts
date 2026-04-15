@@ -24,18 +24,18 @@ export async function GET(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const { searchParams } = new URL(request.url);
-    const schoolId = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
+    const schoolId   = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
+    const activeOnly = searchParams.get('includeInactive') !== 'true';
 
-    let grades = await getGradeMasters(schoolId);
-
-    // Auto-seed default grades on first use so admins see a useful starting list
-    if (grades.length === 0) {
+    // Auto-seed: check total count (ignore active filter) so we don't re-seed when items are merely inactive
+    const total = await getGradeMasters(schoolId, false);
+    if (total.length === 0) {
       await Promise.all(
         DEFAULT_GRADES.map((name, i) => addGradeMaster(schoolId, name, i).catch(() => null))
       );
-      grades = await getGradeMasters(schoolId);
     }
 
+    const grades = await getGradeMasters(schoolId, activeOnly);
     return Response.json({ gradeMasters: grades });
   } catch (err) { return handleError(err); }
 }

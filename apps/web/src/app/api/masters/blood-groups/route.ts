@@ -18,18 +18,18 @@ export async function GET(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const { searchParams } = new URL(request.url);
-    const schoolId = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
+    const schoolId   = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
+    const activeOnly = searchParams.get('includeInactive') !== 'true';
 
-    let items = await getBloodGroupMasters(schoolId);
-
-    // Auto-seed defaults on first use
-    if (items.length === 0) {
+    // Auto-seed: check total count (ignore active filter) so we don't re-seed when items are merely inactive
+    const total = await getBloodGroupMasters(schoolId, false);
+    if (total.length === 0) {
       await Promise.all(
         DEFAULT_BLOOD_GROUPS.map((name, i) => addBloodGroupMaster(schoolId, name, i).catch(() => null))
       );
-      items = await getBloodGroupMasters(schoolId);
     }
 
+    const items = await getBloodGroupMasters(schoolId, activeOnly);
     return Response.json({ bloodGroupMasters: items });
   } catch (err) { return handleError(err); }
 }
@@ -41,6 +41,8 @@ export async function POST(request: Request) {
     if (!user.roles.some((r) => ADMIN_ROLES.includes(r.role_code))) throw new ForbiddenError('Admin access required');
     const { schoolId: bodySchoolId, name, sortOrder } = await request.json();
     const schoolId = getSchoolId(user, bodySchoolId);
+    if (!name?.trim()) throw new AppError('Name is required', 400);
+    if (name.trim().length > 30) throw new AppError('Name must be 30 characters or fewer', 400);
     return Response.json({ bloodGroupMaster: await addBloodGroupMaster(schoolId, name, sortOrder) }, { status: 201 });
   } catch (err) { return handleError(err); }
 }

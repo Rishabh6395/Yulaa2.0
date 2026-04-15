@@ -2,12 +2,12 @@ import prisma from '@/lib/prisma';
 
 // ─── Simple masters (school-specific) ────────────────────────────────────────
 
-export const listGenderMasters        = (schoolId: string) => prisma.genderMaster.findMany({ where: { schoolId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
-export const listBloodGroupMasters    = (schoolId: string) => prisma.bloodGroupMaster.findMany({ where: { schoolId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
-export const listQualificationMasters = (schoolId: string) => prisma.qualificationMaster.findMany({ where: { schoolId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
-export const listStreamMasters        = (schoolId: string) => prisma.streamMaster.findMany({ where: { schoolId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
-export const listGradeMasters         = (schoolId: string) => prisma.gradeMaster.findMany({ where: { schoolId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
-export const listEventTypeMasters     = (schoolId: string) => prisma.eventTypeMaster.findMany({ where: { schoolId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+export const listGenderMasters        = (schoolId: string, activeOnly = true) => prisma.genderMaster.findMany({ where: { schoolId, ...(activeOnly && { isActive: true }) }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+export const listBloodGroupMasters    = (schoolId: string, activeOnly = true) => prisma.bloodGroupMaster.findMany({ where: { schoolId, ...(activeOnly && { isActive: true }) }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+export const listQualificationMasters = (schoolId: string, activeOnly = true) => prisma.qualificationMaster.findMany({ where: { schoolId, ...(activeOnly && { isActive: true }) }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+export const listStreamMasters        = (schoolId: string, activeOnly = true) => prisma.streamMaster.findMany({ where: { schoolId, ...(activeOnly && { isActive: true }) }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+export const listGradeMasters         = (schoolId: string, activeOnly = true) => prisma.gradeMaster.findMany({ where: { schoolId, ...(activeOnly && { isActive: true }) }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+export const listEventTypeMasters     = (schoolId: string, activeOnly = true) => prisma.eventTypeMaster.findMany({ where: { schoolId, ...(activeOnly && { isActive: true }) }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
 
 export const createGenderMaster        = (data: { schoolId: string; name: string; sortOrder?: number }) => prisma.genderMaster.create({ data });
 export const createBloodGroupMaster    = (data: { schoolId: string; name: string; sortOrder?: number }) => prisma.bloodGroupMaster.create({ data });
@@ -25,11 +25,11 @@ export const updateEventTypeMaster     = (id: string, data: { name?: string; cod
 
 // ─── Location masters (school-specific) ──────────────────────────────────────
 
-export const listCountries        = (schoolId: string) => prisma.countryMaster.findMany({ where: { schoolId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
-export const listStatesByCountry  = (schoolId: string, countryId: string) => prisma.stateMaster.findMany({ where: { schoolId, countryId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
-export const listDistrictsByState = (schoolId: string, stateId: string)   => prisma.districtMaster.findMany({ where: { schoolId, stateId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
-export const listAllStates        = (schoolId: string) => prisma.stateMaster.findMany({ where: { schoolId }, include: { country: { select: { name: true } } }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
-export const listAllDistricts     = (schoolId: string) => prisma.districtMaster.findMany({ where: { schoolId }, include: { state: { select: { name: true } } }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+export const listCountries        = (schoolId: string, activeOnly = true) => prisma.countryMaster.findMany({ where: { schoolId, ...(activeOnly && { isActive: true }) }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+export const listStatesByCountry  = (schoolId: string, countryId: string, activeOnly = true) => prisma.stateMaster.findMany({ where: { schoolId, countryId, ...(activeOnly && { isActive: true }) }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+export const listDistrictsByState = (schoolId: string, stateId: string, activeOnly = true)   => prisma.districtMaster.findMany({ where: { schoolId, stateId, ...(activeOnly && { isActive: true }) }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+export const listAllStates        = (schoolId: string, activeOnly = true) => prisma.stateMaster.findMany({ where: { schoolId, ...(activeOnly && { isActive: true }) }, include: { country: { select: { name: true } } }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+export const listAllDistricts     = (schoolId: string, activeOnly = true) => prisma.districtMaster.findMany({ where: { schoolId, ...(activeOnly && { isActive: true }) }, include: { state: { select: { name: true } } }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
 
 export const createCountry  = (data: { schoolId: string; name: string; code: string; sortOrder?: number }) => prisma.countryMaster.create({ data });
 export const createState    = (data: { schoolId: string; countryId: string; name: string; code?: string; sortOrder?: number }) => prisma.stateMaster.create({ data });
@@ -41,9 +41,9 @@ export const updateDistrict = (id: string, data: { name?: string; isActive?: boo
 
 // ─── School-specific masters ─────────────────────────────────────────────────
 
-export const listSchoolLocations = (schoolId: string) =>
+export const listSchoolLocations = (schoolId: string, activeOnly = true) =>
   prisma.schoolLocationMaster.findMany({
-    where:   { schoolId },
+    where:   { schoolId, ...(activeOnly && { isActive: true }) },
     include: { country: true, state: true, district: true },
     orderBy: { createdAt: 'asc' },
   });
@@ -66,9 +66,9 @@ export const updateSchoolLocation = (id: string, data: {
   isActive?:  boolean;
 }) => prisma.schoolLocationMaster.update({ where: { id }, data });
 
-export const listSchoolHierarchy = (schoolId: string) =>
+export const listSchoolHierarchy = (schoolId: string, activeOnly = true) =>
   prisma.schoolHierarchyMaster.findMany({
-    where:   { schoolId },
+    where:   { schoolId, ...(activeOnly && { isActive: true }) },
     orderBy: [{ level: 'asc' }, { name: 'asc' }],
   });
 export const createSchoolHierarchy = (data: { schoolId: string; name: string; level: number; parentId?: string }) =>
@@ -76,16 +76,16 @@ export const createSchoolHierarchy = (data: { schoolId: string; name: string; le
 export const updateSchoolHierarchy = (id: string, data: { name?: string; level?: number; parentId?: string; isActive?: boolean }) =>
   prisma.schoolHierarchyMaster.update({ where: { id }, data });
 
-export const listExamTypes = (schoolId: string) =>
-  prisma.examTypeMaster.findMany({ where: { schoolId }, orderBy: { termOrder: 'asc' } });
+export const listExamTypes = (schoolId: string, activeOnly = true) =>
+  prisma.examTypeMaster.findMany({ where: { schoolId, ...(activeOnly && { isActive: true }) }, orderBy: { termOrder: 'asc' } });
 export const createExamType = (data: { schoolId: string; name: string; code: string; termOrder?: number }) =>
   prisma.examTypeMaster.create({ data });
 export const updateExamType = (id: string, data: { name?: string; code?: string; termOrder?: number; isActive?: boolean }) =>
   prisma.examTypeMaster.update({ where: { id }, data });
 
-export const listGradingTypes = (schoolId: string, examTypeId?: string) =>
+export const listGradingTypes = (schoolId: string, examTypeId?: string, activeOnly = true) =>
   prisma.gradingTypeMaster.findMany({
-    where:   { schoolId, ...(examTypeId && { examTypeId }) },
+    where:   { schoolId, ...(activeOnly && { isActive: true }), ...(examTypeId && { examTypeId }) },
     include: { examType: { select: { name: true, code: true } } },
     orderBy: [{ examTypeId: 'asc' }, { minPercent: 'desc' }],
   });
@@ -107,16 +107,16 @@ export const updateGradingType = (id: string, data: {
   isActive?:    boolean;
 }) => prisma.gradingTypeMaster.update({ where: { id }, data });
 
-export const listAnnouncementTypes = (schoolId: string) =>
-  prisma.announcementTypeMaster.findMany({ where: { schoolId }, orderBy: { name: 'asc' } });
+export const listAnnouncementTypes = (schoolId: string, activeOnly = true) =>
+  prisma.announcementTypeMaster.findMany({ where: { schoolId, ...(activeOnly && { isActive: true }) }, orderBy: { name: 'asc' } });
 export const createAnnouncementType = (data: { schoolId: string; name: string; code: string }) =>
   prisma.announcementTypeMaster.create({ data });
 export const updateAnnouncementType = (id: string, data: { name?: string; code?: string; isActive?: boolean }) =>
   prisma.announcementTypeMaster.update({ where: { id }, data });
 
-export const listContentTypes = (schoolId: string, formName?: string) =>
+export const listContentTypes = (schoolId: string, formName?: string, activeOnly = true) =>
   prisma.contentTypeMaster.findMany({
-    where:   { schoolId, ...(formName && { formName }) },
+    where:   { schoolId, ...(activeOnly && { isActive: true }), ...(formName && { formName }) },
     orderBy: [{ formName: 'asc' }, { sortOrder: 'asc' }],
   });
 export const createContentType = (data: {
@@ -138,8 +138,8 @@ export const updateContentType = (id: string, data: {
 
 // ─── Leave type master (existing — list by school) ───────────────────────────
 
-export const listLeaveTypes = (schoolId: string) =>
-  prisma.leaveTypeMaster.findMany({ where: { schoolId }, orderBy: { name: 'asc' } });
+export const listLeaveTypes = (schoolId: string, activeOnly = true) =>
+  prisma.leaveTypeMaster.findMany({ where: { schoolId, ...(activeOnly && { isActive: true }) }, orderBy: { name: 'asc' } });
 export const createLeaveType = (data: { schoolId: string; name: string; code: string; applicableTo: string[] }) =>
   prisma.leaveTypeMaster.create({ data });
 export const updateLeaveType = (id: string, data: { name?: string; code?: string; applicableTo?: string[]; isActive?: boolean }) =>

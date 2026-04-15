@@ -948,7 +948,7 @@ model GenderMaster {
 model BloodGroupMaster {
   id        String   @id @default(uuid())
   schoolId  String   @map("school_id")
-  name      String   @db.VarChar(10)
+  name      String   @db.VarChar(30)
   isActive  Boolean  @default(true) @map("is_active")
   sortOrder Int      @default(0) @map("sort_order")
   createdAt DateTime @default(now()) @map("created_at")

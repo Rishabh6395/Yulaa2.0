@@ -3,12 +3,12 @@ import * as repo from './masters.repo';
 
 // ─── Simple masters (school-specific) ────────────────────────────────────────
 
-export async function getGenderMasters(schoolId: string)       { return repo.listGenderMasters(schoolId); }
-export async function getBloodGroupMasters(schoolId: string)   { return repo.listBloodGroupMasters(schoolId); }
-export async function getQualificationMasters(schoolId: string){ return repo.listQualificationMasters(schoolId); }
-export async function getStreamMasters(schoolId: string)       { return repo.listStreamMasters(schoolId); }
-export async function getGradeMasters(schoolId: string)        { return repo.listGradeMasters(schoolId); }
-export async function getEventTypeMasters(schoolId: string)    { return repo.listEventTypeMasters(schoolId); }
+export async function getGenderMasters(schoolId: string, activeOnly = true)       { return repo.listGenderMasters(schoolId, activeOnly); }
+export async function getBloodGroupMasters(schoolId: string, activeOnly = true)   { return repo.listBloodGroupMasters(schoolId, activeOnly); }
+export async function getQualificationMasters(schoolId: string, activeOnly = true){ return repo.listQualificationMasters(schoolId, activeOnly); }
+export async function getStreamMasters(schoolId: string, activeOnly = true)       { return repo.listStreamMasters(schoolId, activeOnly); }
+export async function getGradeMasters(schoolId: string, activeOnly = true)        { return repo.listGradeMasters(schoolId, activeOnly); }
+export async function getEventTypeMasters(schoolId: string, activeOnly = true)    { return repo.listEventTypeMasters(schoolId, activeOnly); }
 
 export async function addGenderMaster(schoolId: string, name: string, sortOrder?: number) {
   if (!name?.trim()) throw new ConflictError('Name is required');
@@ -56,11 +56,11 @@ export async function patchEventTypeMaster(id: string, data: { name?: string; co
 
 // ─── Location masters (school-specific) ──────────────────────────────────────
 
-export async function getCountries(schoolId: string)                             { return repo.listCountries(schoolId); }
-export async function getStatesByCountry(schoolId: string, countryId: string)   { return repo.listStatesByCountry(schoolId, countryId); }
-export async function getDistrictsByState(schoolId: string, stateId: string)    { return repo.listDistrictsByState(schoolId, stateId); }
-export async function getAllStates(schoolId: string)                              { return repo.listAllStates(schoolId); }
-export async function getAllDistricts(schoolId: string)                           { return repo.listAllDistricts(schoolId); }
+export async function getCountries(schoolId: string, activeOnly = true)                             { return repo.listCountries(schoolId, activeOnly); }
+export async function getStatesByCountry(schoolId: string, countryId: string, activeOnly = true)   { return repo.listStatesByCountry(schoolId, countryId, activeOnly); }
+export async function getDistrictsByState(schoolId: string, stateId: string, activeOnly = true)    { return repo.listDistrictsByState(schoolId, stateId, activeOnly); }
+export async function getAllStates(schoolId: string, activeOnly = true)                              { return repo.listAllStates(schoolId, activeOnly); }
+export async function getAllDistricts(schoolId: string, activeOnly = true)                           { return repo.listAllDistricts(schoolId, activeOnly); }
 
 export async function addCountry(schoolId: string, name: string, code: string, sortOrder?: number) {
   if (!name?.trim() || !code?.trim()) throw new ConflictError('Name and code are required');
@@ -87,7 +87,7 @@ export async function patchDistrict(id: string, data: { name?: string; isActive?
 
 // ─── School-specific masters ─────────────────────────────────────────────────
 
-export async function getSchoolLocations(schoolId: string)  { return repo.listSchoolLocations(schoolId); }
+export async function getSchoolLocations(schoolId: string, activeOnly = true)  { return repo.listSchoolLocations(schoolId, activeOnly); }
 export async function addSchoolLocation(schoolId: string, data: {
   address: string; city?: string; pincode?: string;
   countryId?: string; stateId?: string; districtId?: string;
@@ -100,7 +100,7 @@ export async function patchSchoolLocation(id: string, data: {
   countryId?: string; stateId?: string; districtId?: string; isActive?: boolean;
 }) { return repo.updateSchoolLocation(id, data); }
 
-export async function getSchoolHierarchy(schoolId: string)  { return repo.listSchoolHierarchy(schoolId); }
+export async function getSchoolHierarchy(schoolId: string, activeOnly = true)  { return repo.listSchoolHierarchy(schoolId, activeOnly); }
 export async function addSchoolHierarchy(schoolId: string, data: { name: string; level: number; parentId?: string }) {
   if (!data.name?.trim()) throw new ConflictError('Name is required');
   return repo.createSchoolHierarchy({ schoolId, ...data });
@@ -109,7 +109,7 @@ export async function patchSchoolHierarchy(id: string, data: { name?: string; le
   return repo.updateSchoolHierarchy(id, data);
 }
 
-export async function getExamTypes(schoolId: string)  { return repo.listExamTypes(schoolId); }
+export async function getExamTypes(schoolId: string, activeOnly = true)  { return repo.listExamTypes(schoolId, activeOnly); }
 export async function addExamType(schoolId: string, data: { name: string; code: string; termOrder?: number }) {
   if (!data.name?.trim() || !data.code?.trim()) throw new ConflictError('Name and code are required');
   return repo.createExamType({ schoolId, name: data.name.trim(), code: data.code.trim().toLowerCase(), termOrder: data.termOrder });
@@ -118,8 +118,8 @@ export async function patchExamType(id: string, data: { name?: string; code?: st
   return repo.updateExamType(id, data);
 }
 
-export async function getGradingTypes(schoolId: string, examTypeId?: string) {
-  return repo.listGradingTypes(schoolId, examTypeId);
+export async function getGradingTypes(schoolId: string, examTypeId?: string, activeOnly = true) {
+  return repo.listGradingTypes(schoolId, examTypeId, activeOnly);
 }
 export async function addGradingType(schoolId: string, data: {
   examTypeId: string; grade: string; minPercent: number; maxPercent: number;
@@ -134,7 +134,7 @@ export async function patchGradingType(id: string, data: {
   gradePoints?: number; description?: string; isActive?: boolean;
 }) { return repo.updateGradingType(id, data); }
 
-export async function getAnnouncementTypes(schoolId: string)  { return repo.listAnnouncementTypes(schoolId); }
+export async function getAnnouncementTypes(schoolId: string, activeOnly = true)  { return repo.listAnnouncementTypes(schoolId, activeOnly); }
 export async function addAnnouncementType(schoolId: string, data: { name: string; code: string }) {
   if (!data.name?.trim() || !data.code?.trim()) throw new ConflictError('Name and code are required');
   return repo.createAnnouncementType({ schoolId, name: data.name.trim(), code: data.code.trim().toLowerCase() });
@@ -143,8 +143,8 @@ export async function patchAnnouncementType(id: string, data: { name?: string; c
   return repo.updateAnnouncementType(id, data);
 }
 
-export async function getContentTypes(schoolId: string, formName?: string) {
-  return repo.listContentTypes(schoolId, formName);
+export async function getContentTypes(schoolId: string, formName?: string, activeOnly = true) {
+  return repo.listContentTypes(schoolId, formName, activeOnly);
 }
 export async function addContentType(schoolId: string, data: {
   formName: string; fieldSlot: string; fieldType: string; label: string;
@@ -161,7 +161,7 @@ export async function patchContentType(id: string, data: {
 
 // ─── Leave types (existing model) ────────────────────────────────────────────
 
-export async function getLeaveTypes(schoolId: string)  { return repo.listLeaveTypes(schoolId); }
+export async function getLeaveTypes(schoolId: string, activeOnly = true)  { return repo.listLeaveTypes(schoolId, activeOnly); }
 export async function addLeaveType(schoolId: string, data: { name: string; code: string; applicableTo: string[] }) {
   if (!data.name?.trim() || !data.code?.trim()) throw new ConflictError('Name and code are required');
   return repo.createLeaveType({ schoolId, name: data.name.trim(), code: data.code.trim().toLowerCase(), applicableTo: data.applicableTo });

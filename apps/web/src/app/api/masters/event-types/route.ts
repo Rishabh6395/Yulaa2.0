@@ -26,18 +26,18 @@ export async function GET(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const { searchParams } = new URL(request.url);
-    const schoolId = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
+    const schoolId   = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
+    const activeOnly = searchParams.get('includeInactive') !== 'true';
 
-    let items = await getEventTypeMasters(schoolId);
-
-    // Auto-seed defaults on first use
-    if (items.length === 0) {
+    // Auto-seed: check total count (ignore active filter) so we don't re-seed when items are merely inactive
+    const total = await getEventTypeMasters(schoolId, false);
+    if (total.length === 0) {
       await Promise.all(
         DEFAULT_EVENT_TYPES.map((et, i) => addEventTypeMaster(schoolId, et.name, et.code, i).catch(() => null))
       );
-      items = await getEventTypeMasters(schoolId);
     }
 
+    const items = await getEventTypeMasters(schoolId, activeOnly);
     return Response.json({ eventTypeMasters: items });
   } catch (err) { return handleError(err); }
 }

@@ -17,10 +17,11 @@ export async function GET(request: Request) {
     if (!user) throw new UnauthorizedError();
     const { searchParams } = new URL(request.url);
     const schoolId = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
-    const stateId = searchParams.get('stateId') ?? undefined;
+    const stateId    = searchParams.get('stateId') ?? undefined;
+    const activeOnly = searchParams.get('includeInactive') !== 'true';
     const districts = stateId
-      ? await getDistrictsByState(schoolId, stateId)
-      : await getAllDistricts(schoolId);
+      ? await getDistrictsByState(schoolId, stateId, activeOnly)
+      : await getAllDistricts(schoolId, activeOnly);
     return Response.json({ districts });
   } catch (err) { return handleError(err); }
 }

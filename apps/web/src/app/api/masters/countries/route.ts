@@ -16,8 +16,9 @@ export async function GET(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const { searchParams } = new URL(request.url);
-    const schoolId = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
-    return Response.json({ countries: await getCountries(schoolId) });
+    const schoolId   = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
+    const activeOnly = searchParams.get('includeInactive') !== 'true';
+    return Response.json({ countries: await getCountries(schoolId, activeOnly) });
   } catch (err) { return handleError(err); }
 }
 

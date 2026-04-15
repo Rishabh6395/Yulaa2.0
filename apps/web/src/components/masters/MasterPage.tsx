@@ -44,11 +44,12 @@ export default function MasterPage({ title, description, apiPath, dataKey, itemK
   // schoolId comes from ?schoolId= (super admin via school config) or falls back to user's own school
   const schoolIdParam = searchParams.get('schoolId') ?? undefined;
 
-  // Build URL with optional schoolId query param
+  // Build URL with schoolId and includeInactive=true (management view always shows all items)
   function withSchool(path: string) {
-    if (!schoolIdParam) return path;
     const sep = path.includes('?') ? '&' : '?';
-    return `${path}${sep}schoolId=${schoolIdParam}`;
+    const withInactive = `${path}${sep}includeInactive=true`;
+    if (!schoolIdParam) return withInactive;
+    return `${withInactive}&schoolId=${schoolIdParam}`;
   }
 
   const [rows, setRows] = useState<any[]>([]);

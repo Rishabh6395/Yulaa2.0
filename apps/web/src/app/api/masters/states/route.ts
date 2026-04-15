@@ -17,10 +17,11 @@ export async function GET(request: Request) {
     if (!user) throw new UnauthorizedError();
     const { searchParams } = new URL(request.url);
     const schoolId = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
-    const countryId = searchParams.get('countryId') ?? undefined;
+    const countryId  = searchParams.get('countryId') ?? undefined;
+    const activeOnly = searchParams.get('includeInactive') !== 'true';
     const states = countryId
-      ? await getStatesByCountry(schoolId, countryId)
-      : await getAllStates(schoolId);
+      ? await getStatesByCountry(schoolId, countryId, activeOnly)
+      : await getAllStates(schoolId, activeOnly);
     return Response.json({ states });
   } catch (err) { return handleError(err); }
 }

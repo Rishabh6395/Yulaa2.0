@@ -18,7 +18,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const schoolId   = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
     const examTypeId = searchParams.get('examTypeId') ?? undefined;
-    return Response.json({ gradingTypes: await getGradingTypes(schoolId, examTypeId) });
+    const activeOnly = searchParams.get('includeInactive') !== 'true';
+    return Response.json({ gradingTypes: await getGradingTypes(schoolId, examTypeId, activeOnly) });
   } catch (err) { return handleError(err); }
 }
 
