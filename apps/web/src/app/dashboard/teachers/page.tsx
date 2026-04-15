@@ -229,7 +229,14 @@ export default function TeachersPage() {
             {fc.visible('qualification') && (
               <div>
                 <label className="label">{fc.label('qualification')}{fc.required('qualification') && <span className="text-red-500 ml-0.5">*</span>}</label>
-                <input className="input-field" readOnly={!fc.editable('qualification')} value={form.qualification} onChange={e => setForm({...form, qualification: e.target.value})} placeholder="B.Ed, M.A..."/>
+                {fc.options('qualification').length > 0 ? (
+                  <select className="input-field" disabled={!fc.editable('qualification')} value={form.qualification} onChange={e => setForm({...form, qualification: e.target.value})}>
+                    <option value="">Select qualification</option>
+                    {fc.options('qualification').map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                ) : (
+                  <input className="input-field" readOnly={!fc.editable('qualification')} value={form.qualification} onChange={e => setForm({...form, qualification: e.target.value})} placeholder="B.Ed, M.A..."/>
+                )}
               </div>
             )}
             {fc.visible('joiningDate') && (

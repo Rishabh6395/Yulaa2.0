@@ -78,6 +78,7 @@ model School {
   announcementTypes   AnnouncementTypeMaster[]
   contentTypes        ContentTypeMaster[]
   genericWorkflows    GenericWorkflow[]
+  genericMasterTypes  GenericMasterType[]
 
   @@map("schools")
 }
@@ -1478,4 +1479,38 @@ model GenericWorkflowStage {
   @@unique([workflowId, stageOrder])
   @@index([workflowId])
   @@map("generic_workflow_stages")
+}
+
+// ─── Dynamic / custom master types (school-defined) ──────────────────────────
+
+model GenericMasterType {
+  id          String               @id @default(uuid())
+  schoolId    String               @map("school_id")
+  name        String               @db.VarChar(100)
+  slug        String               @db.VarChar(100)
+  description String?              @db.VarChar(255)
+  formId      String?              @db.VarChar(100) @map("form_id")
+  fieldSlot   String?              @db.VarChar(100) @map("field_slot")
+  isActive    Boolean              @default(true)   @map("is_active")
+  createdAt   DateTime             @default(now())  @map("created_at")
+  school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  values      GenericMasterValue[]
+
+  @@unique([schoolId, slug])
+  @@index([schoolId])
+  @@map("generic_master_types")
+}
+
+model GenericMasterValue {
+  id         String            @id @default(uuid())
+  typeId     String            @map("type_id")
+  name       String            @db.VarChar(100)
+  sortOrder  Int               @default(0)    @map("sort_order")
+  isActive   Boolean           @default(true) @map("is_active")
+  createdAt  DateTime          @default(now()) @map("created_at")
+  masterType GenericMasterType @relation(fields: [typeId], references: [id], onDelete: Cascade)
+
+  @@unique([typeId, name])
+  @@index([typeId])
+  @@map("generic_master_values")
 }
