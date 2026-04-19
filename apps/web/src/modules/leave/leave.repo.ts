@@ -132,10 +132,25 @@ export async function upsertLeaveWorkflow(
 // ── Leave Type Master ─────────────────────────────────────────────────────────
 
 export async function findLeaveTypesByRole(schoolId: string, roleCode: string) {
-  return prisma.leaveTypeMaster.findMany({
-    where: { schoolId, isActive: true, applicableTo: { has: roleCode } },
-    orderBy: { name: 'asc' },
-  });
+  // 'employee' role matches leave types tagged with 'employee'.
+  // Specific roles (teacher/principal/school_admin) also match 'employee'-tagged types
+  // since those users now carry the employee role for self-service.
+  const EMPLOYEE_ROLE_CODES = ['teacher', 'principal', 'school_admin', 'hod', 'employee'];
+  const lookupCodes = EMPLOYEE_ROLE_CODES.includes(roleCode)
+    ? [roleCode, 'employee']
+    : [roleCode];
+
+  const results = await Promise.all(
+    lookupCodes.map(code =>
+      prisma.leaveTypeMaster.findMany({
+        where: { schoolId, isActive: true, applicableTo: { has: code } },
+        orderBy: { name: 'asc' },
+      })
+    )
+  );
+  // Deduplicate by id
+  const seen = new Set<string>();
+  return results.flat().filter(lt => seen.has(lt.id) ? false : (seen.add(lt.id), true));
 }
 
 export async function findLeaveBalancePoliciesByRole(schoolId: string, roleCode: string) {

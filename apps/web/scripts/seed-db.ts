@@ -352,18 +352,24 @@ async function seed() {
   // 4. User Roles
   console.log('  → User Roles');
   const userRoleData = [
-    { userId: IDs.users.superAdmin,        roleId: IDs.roles.superAdmin,  schoolId: null,             isPrimary: true  },
-    { userId: IDs.users.dpsAdmin,          roleId: IDs.roles.schoolAdmin, schoolId: IDs.schools.dps,  isPrimary: true  },
-    { userId: IDs.users.priyaTeacher,      roleId: IDs.roles.teacher,     schoolId: IDs.schools.dps,  isPrimary: true  },
-    { userId: IDs.users.amitTeacher,       roleId: IDs.roles.teacher,     schoolId: IDs.schools.dps,  isPrimary: true  },
-    { userId: IDs.users.vikramParent,      roleId: IDs.roles.parent,      schoolId: IDs.schools.dps,  isPrimary: true  },
-    { userId: IDs.users.nehaParent,        roleId: IDs.roles.parent,      schoolId: IDs.schools.dps,  isPrimary: true  },
+    { userId: IDs.users.superAdmin,        roleId: IDs.roles.superAdmin,  schoolId: null,               isPrimary: true  },
+    // School admins, teachers, principals — primary role + secondary employee role
+    { userId: IDs.users.dpsAdmin,          roleId: IDs.roles.schoolAdmin, schoolId: IDs.schools.dps,    isPrimary: true  },
+    { userId: IDs.users.dpsAdmin,          roleId: IDs.roles.employee,    schoolId: IDs.schools.dps,    isPrimary: false },
+    { userId: IDs.users.priyaTeacher,      roleId: IDs.roles.teacher,     schoolId: IDs.schools.dps,    isPrimary: true  },
+    { userId: IDs.users.priyaTeacher,      roleId: IDs.roles.employee,    schoolId: IDs.schools.dps,    isPrimary: false },
+    { userId: IDs.users.amitTeacher,       roleId: IDs.roles.teacher,     schoolId: IDs.schools.dps,    isPrimary: true  },
+    { userId: IDs.users.amitTeacher,       roleId: IDs.roles.employee,    schoolId: IDs.schools.dps,    isPrimary: false },
+    { userId: IDs.users.vikramParent,      roleId: IDs.roles.parent,      schoolId: IDs.schools.dps,    isPrimary: true  },
+    { userId: IDs.users.nehaParent,        roleId: IDs.roles.parent,      schoolId: IDs.schools.dps,    isPrimary: true  },
     { userId: IDs.users.nehaParent,        roleId: IDs.roles.parent,      schoolId: IDs.schools.stmary, isPrimary: false },
-    { userId: IDs.users.stmaryAdmin,       roleId: IDs.roles.schoolAdmin, schoolId: IDs.schools.stmary, isPrimary: true },
-    { userId: IDs.users.raviTeacher,       roleId: IDs.roles.teacher,     schoolId: IDs.schools.stmary, isPrimary: true },
-    { userId: IDs.users.vendor,            roleId: IDs.roles.vendor,      schoolId: IDs.schools.dps,  isPrimary: true  },
-    { userId: IDs.users.consultant,        roleId: IDs.roles.consultant,  schoolId: IDs.schools.dps,  isPrimary: true  },
-    { userId: IDs.users.expiredConsultant, roleId: IDs.roles.consultant,  schoolId: IDs.schools.dps,  isPrimary: true  },
+    { userId: IDs.users.stmaryAdmin,       roleId: IDs.roles.schoolAdmin, schoolId: IDs.schools.stmary, isPrimary: true  },
+    { userId: IDs.users.stmaryAdmin,       roleId: IDs.roles.employee,    schoolId: IDs.schools.stmary, isPrimary: false },
+    { userId: IDs.users.raviTeacher,       roleId: IDs.roles.teacher,     schoolId: IDs.schools.stmary, isPrimary: true  },
+    { userId: IDs.users.raviTeacher,       roleId: IDs.roles.employee,    schoolId: IDs.schools.stmary, isPrimary: false },
+    { userId: IDs.users.vendor,            roleId: IDs.roles.vendor,      schoolId: IDs.schools.dps,    isPrimary: true  },
+    { userId: IDs.users.consultant,        roleId: IDs.roles.consultant,  schoolId: IDs.schools.dps,    isPrimary: true  },
+    { userId: IDs.users.expiredConsultant, roleId: IDs.roles.consultant,  schoolId: IDs.schools.dps,    isPrimary: true  },
   ];
   for (const ur of userRoleData) {
     await prisma.userRole.create({ data: ur }).catch(() => {});

@@ -689,13 +689,22 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
                 <span className="text-sm text-gray-700 dark:text-gray-300">Upload holiday list for {academicYear}</span>
                 <p className="text-xs text-surface-400 mt-0.5">Columns: Date (YYYY-MM-DD), Name, Type (mandatory/optional). Week-off rows are ignored.</p>
               </div>
-              <a
-                href={`/api/super-admin/schools/${schoolId}/leave-config?action=holiday_template`}
-                className="btn btn-secondary text-xs flex items-center gap-1.5 shrink-0 no-underline"
-                download>
+              <button
+                onClick={async () => {
+                  const token = localStorage.getItem('token') ?? '';
+                  const res = await fetch(`/api/super-admin/schools/${schoolId}/leave-config?action=holiday_template`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url; a.download = 'holiday-template.xlsx'; a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="btn btn-secondary text-xs flex items-center gap-1.5 shrink-0">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Template
-              </a>
+              </button>
               <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleHolidayFile} />
               <button onClick={() => { setUploadResult(''); fileRef.current?.click(); }} disabled={holidayUploading}
                 className="btn btn-secondary text-xs flex items-center gap-1.5 shrink-0">

@@ -11,9 +11,10 @@ function createPrismaClient() {
   const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL!;
   const pool = new Pool({
     connectionString,
-    max: 5,
+    max: 3,                          // Neon free tier max connections
     idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 30_000, // Neon cold-start can take 15-25s
+    ssl: { rejectUnauthorized: false }, // suppress verify-full mismatch on Windows dev
   });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({

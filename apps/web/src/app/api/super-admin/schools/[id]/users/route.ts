@@ -43,18 +43,30 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return Response.json({ error: 'firstName, lastName, email, password and roleId are required' }, { status: 400 });
     }
     const passwordHash = await bcrypt.hash(password, 12);
+    const role = await prisma.role.findUnique({ where: { id: roleId } });
+
+    // Roles that also get a secondary 'employee' role for self-service features
+    const EMPLOYEE_ROLE_CODES = ['teacher', 'principal', 'school_admin'];
+    const employeeRole = EMPLOYEE_ROLE_CODES.includes(role?.code ?? '')
+      ? await prisma.role.findFirst({ where: { code: 'employee' } })
+      : null;
+
     const newUser = await prisma.user.create({
       data: {
         firstName: firstName.trim(), lastName: lastName.trim(),
         email: email.trim().toLowerCase(), phone: phone || null,
         passwordHash, status: 'active',
-        userRoles: { create: { roleId, schoolId: params.id, isPrimary: true } },
+        userRoles: {
+          create: [
+            { roleId, schoolId: params.id, isPrimary: true },
+            ...(employeeRole ? [{ roleId: employeeRole.id, schoolId: params.id, isPrimary: false }] : []),
+          ],
+        },
       },
       select: { id: true, email: true, firstName: true, lastName: true, status: true, userRoles: { include: { role: true } } },
     });
 
     // Sync: if the role is 'teacher', ensure a Teacher profile record exists
-    const role = await prisma.role.findUnique({ where: { id: roleId } });
     if (role?.code === 'teacher') {
       const exists = await prisma.teacher.findFirst({ where: { userId: newUser.id, schoolId: params.id } });
       if (!exists) await prisma.teacher.create({ data: { userId: newUser.id, schoolId: params.id } });
@@ -72,10 +84,20 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     if (action === 'addRole' && userId && roleId) {
       const ur = await prisma.userRole.create({ data: { userId, roleId, schoolId: params.id, isPrimary: false }, include: { role: true } });
-      // Sync: if adding teacher role, ensure Teacher profile record exists
-      if (ur.role.code === 'teacher') {
-        const exists = await prisma.teacher.findFirst({ where: { userId, schoolId: params.id } });
-        if (!exists) await prisma.teacher.create({ data: { userId, schoolId: params.id } });
+
+      const EMPLOYEE_ROLE_CODES = ['teacher', 'principal', 'school_admin'];
+      if (EMPLOYEE_ROLE_CODES.includes(ur.role.code)) {
+        // Auto-assign employee role if not already assigned
+        const employeeRole = await prisma.role.findFirst({ where: { code: 'employee' } });
+        if (employeeRole) {
+          const alreadyHas = await prisma.userRole.findFirst({ where: { userId, roleId: employeeRole.id, schoolId: params.id } });
+          if (!alreadyHas) await prisma.userRole.create({ data: { userId, roleId: employeeRole.id, schoolId: params.id, isPrimary: false } });
+        }
+        // Sync Teacher profile record if teacher role
+        if (ur.role.code === 'teacher') {
+          const exists = await prisma.teacher.findFirst({ where: { userId, schoolId: params.id } });
+          if (!exists) await prisma.teacher.create({ data: { userId, schoolId: params.id } });
+        }
       }
       return Response.json({ userRole: ur });
     }

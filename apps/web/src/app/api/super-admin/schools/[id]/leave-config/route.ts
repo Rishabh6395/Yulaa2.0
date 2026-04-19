@@ -39,6 +39,29 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const resource = url.searchParams.get('resource');
     const academicYear = url.searchParams.get('year') || '2025-2026';
 
+    const action = url.searchParams.get('action');
+    if (action === 'holiday_template') {
+      assertHolidayAccess(user);
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet('Holidays');
+      ws.columns = [
+        { header: 'Date (YYYY-MM-DD)', key: 'date', width: 20 },
+        { header: 'Holiday Name',       key: 'name', width: 30 },
+        { header: 'Type (mandatory/optional)', key: 'type', width: 25 },
+      ];
+      ws.addRow({ date: '2025-08-15', name: 'Independence Day', type: 'mandatory' });
+      ws.addRow({ date: '2025-10-02', name: 'Gandhi Jayanti',   type: 'mandatory' });
+      ws.addRow({ date: '2025-11-14', name: 'Diwali',           type: 'optional'  });
+      const buf = await wb.xlsx.writeBuffer();
+      return new Response(buf, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': 'attachment; filename="holiday-template.xlsx"',
+        },
+      });
+    }
+
     if (resource === 'holidays') {
       assertHolidayAccess(user);
       const holidays = await prisma.holidayCalendar.findMany({

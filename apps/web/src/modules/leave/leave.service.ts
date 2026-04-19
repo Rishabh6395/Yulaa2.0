@@ -148,7 +148,7 @@ export async function reviewLeaveStep(
   const result = await repo.advanceLeaveStep(id, action as 'approved' | 'rejected', reviewerId, leave.currentStep, totalSteps, comment);
 
   // Deduct from TeacherLeaveBalance when an employee leave is finally approved
-  const EMPLOYEE_ROLES_BAL = ['teacher', 'school_admin', 'principal', 'hod'];
+  const EMPLOYEE_ROLES_BAL = ['teacher', 'school_admin', 'principal', 'hod', 'employee'];
   if (action === 'approved' && result.status === 'approved' && EMPLOYEE_ROLES_BAL.includes(leave.roleCode) && !leave.studentId) {
     const days = daysBetween(leave.startDate, leave.endDate);
     const teacherId = await repo.findTeacherIdByUserId(schoolId, leave.userId);
