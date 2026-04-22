@@ -1,6 +1,6 @@
 import prisma from '@/lib/prisma';
 import { handleError, AppError } from '@/utils/errors';
-import { sendEmail } from '@/services/email.service';
+import { sendPasswordResetOtpEmail } from '@/services/email.service';
 
 const OTP_TTL_MINUTES = 10;
 
@@ -24,27 +24,16 @@ export async function POST(request: Request) {
 
     const otp       = generateOtp();
     const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
-    const key       = `reset:${user.email}`;
 
-    // Reuse OtpVerification table — store email in phone field with 'reset:' prefix
-    await prisma.otpVerification.deleteMany({ where: { phone: key, verified: false } });
-    await prisma.otpVerification.create({ data: { phone: key, email: user.email, otp, expiresAt } });
+    // phone='reset' is the type marker; email is the lookup key
+    await prisma.otpVerification.deleteMany({ where: { phone: 'reset', email: user.email, verified: false } });
+    await prisma.otpVerification.create({ data: { phone: 'reset', email: user.email, otp, expiresAt } });
 
-    // Dev: log to console; production: send via email service
+    // Always send via Brevo; also log OTP to console for dev debugging
     if (process.env.NODE_ENV === 'development') {
-      console.log(`\n[FORGOT PASSWORD - DEV MODE] ──────────────────────`);
-      console.log(`  Email : ${user.email}`);
-      console.log(`  OTP   : ${otp}`);
-      console.log(`  Exp   : ${expiresAt.toISOString()}`);
-      console.log(`────────────────────────────────────────────────────\n`);
-    } else {
-      await sendEmail({
-        to:      user.email,
-        subject: 'Password Reset OTP',
-        html:    `<p>Hi ${user.firstName},</p><p>Your password reset OTP is: <strong>${otp}</strong></p><p>Valid for ${OTP_TTL_MINUTES} minutes. Do not share it with anyone.</p>`,
-        text:    `Your password reset OTP is: ${otp}. Valid for ${OTP_TTL_MINUTES} minutes.`,
-      });
+      console.log(`\n[FORGOT PASSWORD] OTP for ${user.email} : ${otp} (exp ${expiresAt.toISOString()})\n`);
     }
+    await sendPasswordResetOtpEmail(user.email, user.firstName, otp, OTP_TTL_MINUTES);
 
     return Response.json({ ok: true, message: 'OTP sent to your registered email.' });
   } catch (err) {

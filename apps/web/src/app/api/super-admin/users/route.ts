@@ -1,6 +1,7 @@
 import { getUserFromRequest } from '@/lib/auth';
 import { listUsers, listRoles, createUser, assignRole, removeRole, setUserStatus } from '@/modules/super-admin/super-admin.service';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
+import { sendWelcomeEmail } from '@/services/email.service';
 
 function assertSuperAdmin(user: Awaited<ReturnType<typeof getUserFromRequest>>) {
   if (!user) throw new UnauthorizedError();
@@ -20,7 +21,13 @@ export async function POST(request: Request) {
   try {
     const user    = await getUserFromRequest(request);
     assertSuperAdmin(user);
-    const newUser = await createUser(await request.json());
+    const body    = await request.json();
+    const newUser = await createUser(body);
+    sendWelcomeEmail(
+      newUser.email,
+      `${newUser.firstName} ${newUser.lastName}`,
+      body.password,
+    ).catch(e => console.error('[Email] Welcome email failed:', e));
     return Response.json({ user: newUser }, { status: 201 });
   } catch (err) { return handleError(err); }
 }

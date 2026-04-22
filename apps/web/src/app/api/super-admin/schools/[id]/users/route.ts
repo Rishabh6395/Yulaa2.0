@@ -2,6 +2,7 @@ import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { sendWelcomeEmail } from '@/services/email.service';
 
 function assertSuperAdmin(user: any) {
   if (!user) throw new UnauthorizedError();
@@ -72,6 +73,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
       const exists = await prisma.teacher.findFirst({ where: { userId: newUser.id, schoolId: params.id } });
       if (!exists) await prisma.teacher.create({ data: { userId: newUser.id, schoolId: params.id } });
     }
+
+    // Send welcome email (non-blocking — don't fail user creation if email fails)
+    sendWelcomeEmail(
+      newUser.email,
+      `${newUser.firstName} ${newUser.lastName}`,
+      password,
+    ).catch(e => console.error('[Email] Welcome email failed:', e));
 
     return Response.json({ user: newUser }, { status: 201 });
   } catch (err) { return handleError(err); }

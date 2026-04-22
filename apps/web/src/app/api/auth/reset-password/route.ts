@@ -8,9 +8,8 @@ export async function POST(request: Request) {
     if (!email || !otp || !newPassword) throw new AppError('email, otp, and newPassword are required');
     if (newPassword.length < 8) throw new AppError('New password must be at least 8 characters');
 
-    const key    = `reset:${email.toLowerCase().trim()}`;
     const record = await prisma.otpVerification.findFirst({
-      where: { phone: key, otp, verified: false, expiresAt: { gt: new Date() } },
+      where: { phone: 'reset', email: email.toLowerCase().trim(), otp, verified: false, expiresAt: { gt: new Date() } },
     });
 
     if (!record) throw new AppError('Invalid or expired OTP. Please request a new one.', 400);
