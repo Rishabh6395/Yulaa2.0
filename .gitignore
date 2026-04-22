@@ -17,6 +17,7 @@ expo-build
 .env
 .env.local
 .env.*.local
+.env.sentry-build-plugin
 !.env.example
 
 # misc
