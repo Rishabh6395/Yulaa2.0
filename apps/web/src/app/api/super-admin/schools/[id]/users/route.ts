@@ -66,8 +66,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
       select: { id: true, email: true, firstName: true, lastName: true, status: true, userRoles: { include: { role: true } } },
     });
 
-    // Sync: if the role is 'teacher', ensure a Teacher profile record exists
-    if (role?.code === 'teacher') {
+    // All employee-role codes (teacher, principal, school_admin) need a Teacher/Employee profile record
+    // for attendance punch in/out tracking
+    if (employeeRole && role) {
       const exists = await prisma.teacher.findFirst({ where: { userId: newUser.id, schoolId: params.id } });
       if (!exists) await prisma.teacher.create({ data: { userId: newUser.id, schoolId: params.id } });
     }
@@ -93,11 +94,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           const alreadyHas = await prisma.userRole.findFirst({ where: { userId, roleId: employeeRole.id, schoolId: params.id } });
           if (!alreadyHas) await prisma.userRole.create({ data: { userId, roleId: employeeRole.id, schoolId: params.id, isPrimary: false } });
         }
-        // Sync Teacher profile record if teacher role
-        if (ur.role.code === 'teacher') {
-          const exists = await prisma.teacher.findFirst({ where: { userId, schoolId: params.id } });
-          if (!exists) await prisma.teacher.create({ data: { userId, schoolId: params.id } });
-        }
+        // All employee-role codes need a Teacher/Employee profile record for attendance tracking
+        const exists = await prisma.teacher.findFirst({ where: { userId, schoolId: params.id } });
+        if (!exists) await prisma.teacher.create({ data: { userId, schoolId: params.id } });
       }
       return Response.json({ userRole: ur });
     }

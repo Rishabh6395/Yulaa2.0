@@ -1237,7 +1237,7 @@ export default function AttendancePage() {
   const [userId, setUserId]               = useState('');
   const [schoolId, setSchoolId]           = useState('');
   const [activeChild, setActiveChild]     = useState<any>(null);
-  const [tab, setTab]                     = useState<'student' | 'employee'>('student');
+  const [tab, setTab]                     = useState<'student' | 'employee' | 'self'>('student');
   const [attendanceMode, setAttendanceMode] = useState('class');
 
   useEffect(() => {
@@ -1287,37 +1287,45 @@ export default function AttendancePage() {
     return <ParentAttendancePage studentId={activeChild.id} childName={`${activeChild.first_name} ${activeChild.last_name}`} />;
   }
 
-  // Teacher / Admin: two-tab view
-  const isAdmin = ['school_admin', 'super_admin', 'principal', 'hod'].includes(role);
+  // Teacher / Admin: tab view
+  const isAdmin         = ['school_admin', 'super_admin', 'principal', 'hod'].includes(role);
+  const hasSelfAttendance = ['school_admin', 'principal', 'hod'].includes(role);
+
+  const tabLabel: Record<string, string> = {
+    student:  'Mark and track student attendance',
+    employee: 'Track all employee attendance',
+    self:     'Your personal attendance — punch in & out',
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Attendance</h1>
-          <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">
-            {tab === 'student' ? 'Mark and track student attendance' : 'Track employee attendance'}
-          </p>
+          <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">{tabLabel[tab]}</p>
         </div>
         {/* Tab switcher */}
         <div className="flex gap-1 p-1 bg-surface-100 dark:bg-gray-800 rounded-xl">
           <button onClick={() => setTab('student')}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${tab === 'student' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-surface-400 hover:text-gray-700'}`}>
-            Student Attendance
+            Student
           </button>
           <button onClick={() => setTab('employee')}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${tab === 'employee' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-surface-400 hover:text-gray-700'}`}>
-            Employee Attendance
+            Employee
           </button>
+          {hasSelfAttendance && (
+            <button onClick={() => setTab('self')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${tab === 'self' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-surface-400 hover:text-gray-700'}`}>
+              My Attendance
+            </button>
+          )}
         </div>
       </div>
 
       {tab === 'student'  && <StudentAttendancePage userId={userId} attendanceMode={attendanceMode} />}
-      {tab === 'employee' && (
-        isAdmin
-          ? <EmployeeAttendanceAdmin />
-          : <EmployeeAttendanceTeacher userId={userId} schoolId={schoolId} />
-      )}
+      {tab === 'employee' && (isAdmin ? <EmployeeAttendanceAdmin /> : <EmployeeAttendanceTeacher userId={userId} schoolId={schoolId} />)}
+      {tab === 'self'     && <EmployeeAttendanceTeacher userId={userId} schoolId={schoolId} />}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Modal from '@/components/ui/Modal';
 
 interface Role   { id: string; code: string; displayName: string; description: string | null }
@@ -48,24 +48,11 @@ export default function UsersPage() {
   const [search,       setSearch]       = useState('');
   const [currentPage,  setCurrentPage]  = useState(1);
 
-  // Inline role popover
-  const [rolePopoverUser, setRolePopoverUser] = useState<UserItem | null>(null);
-  const [addRoleForm,     setAddRoleForm]     = useState({ roleId: '', schoolId: '' });
-  const [popoverError,    setPopoverError]    = useState('');
-  const [popoverSaving,   setPopoverSaving]   = useState(false);
-  const popoverRef = useRef<HTMLDivElement>(null);
-
-  // Close popover when clicking outside
-  useEffect(() => {
-    if (!rolePopoverUser) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        setRolePopoverUser(null);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [rolePopoverUser]);
+  // Role modal
+  const [roleModalUser,  setRoleModalUser]  = useState<UserItem | null>(null);
+  const [addRoleForm,    setAddRoleForm]    = useState({ roleId: '', schoolId: '' });
+  const [popoverError,   setPopoverError]   = useState('');
+  const [popoverSaving,  setPopoverSaving]  = useState(false);
 
   // Reset to page 1 when search changes
   useEffect(() => { setCurrentPage(1); }, [search]);
@@ -115,20 +102,20 @@ export default function UsersPage() {
     }
   }
 
-  async function handleAddRole(e: React.FormEvent) {
-    e.preventDefault();
-    if (!rolePopoverUser) return;
+  async function handleAddRole(e?: React.FormEvent | React.MouseEvent) {
+    e?.preventDefault();
+    if (!roleModalUser || !addRoleForm.roleId) return;
     setPopoverSaving(true);
     setPopoverError('');
     try {
       const res  = await fetch('/api/super-admin/users', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ userId: rolePopoverUser.id, ...addRoleForm, schoolId: addRoleForm.schoolId || null }),
+        body: JSON.stringify({ userId: roleModalUser.id, ...addRoleForm, schoolId: addRoleForm.schoolId || null }),
       });
       const data = await res.json();
       if (!res.ok) { setPopoverError(data.error || 'Error assigning role'); return; }
-      setRolePopoverUser(null);
+      setRoleModalUser(null);
       setAddRoleForm({ roleId: '', schoolId: '' });
       await loadAll();
     } catch {
@@ -258,77 +245,13 @@ export default function UsersPage() {
                             </span>
                           ))}
 
-                          {/* Inline role popover */}
-                          <div
-                            className="relative"
-                            ref={rolePopoverUser?.id === u.id ? popoverRef : undefined}
+                          <button
+                            onClick={() => { setRoleModalUser(u); setAddRoleForm({ roleId: '', schoolId: '' }); setPopoverError(''); }}
+                            className="p-1 rounded-md text-surface-400 dark:text-gray-500 hover:text-brand-500 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40 transition-colors"
+                            title="Manage roles"
                           >
-                            <button
-                              onClick={() => {
-                                if (rolePopoverUser?.id === u.id) {
-                                  setRolePopoverUser(null);
-                                } else {
-                                  setRolePopoverUser(u);
-                                  setAddRoleForm({ roleId: '', schoolId: '' });
-                                  setPopoverError('');
-                                }
-                              }}
-                              className={`text-xs font-medium px-2 py-0.5 rounded-md border border-dashed transition-colors ${
-                                rolePopoverUser?.id === u.id
-                                  ? 'border-brand-400 text-brand-500 dark:border-brand-600 dark:text-brand-400'
-                                  : 'border-surface-300 dark:border-gray-700 text-surface-400 dark:text-gray-500 hover:border-brand-400 hover:text-brand-500 dark:hover:border-brand-600 dark:hover:text-brand-400'
-                              }`}
-                            >
-                              + Role
-                            </button>
-
-                            {rolePopoverUser?.id === u.id && (
-                              <div className="absolute top-full left-0 mt-1.5 z-30 w-56 bg-white dark:bg-gray-900 border border-surface-200 dark:border-gray-800 rounded-xl shadow-xl">
-                                <div className="px-3 pt-3 pb-1">
-                                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Assign Role</p>
-                                  {popoverError && (
-                                    <p className="text-xs text-red-500 dark:text-red-400 mb-2">{popoverError}</p>
-                                  )}
-                                  <form onSubmit={handleAddRole} className="space-y-2">
-                                    <select
-                                      className="input-field w-full text-xs py-1.5"
-                                      value={addRoleForm.roleId}
-                                      onChange={e => setAddRoleForm(f => ({ ...f, roleId: e.target.value }))}
-                                      required
-                                      autoFocus
-                                    >
-                                      <option value="">Select role...</option>
-                                      {roles.map(r => <option key={r.id} value={r.id}>{r.displayName}</option>)}
-                                    </select>
-                                    <select
-                                      className="input-field w-full text-xs py-1.5"
-                                      value={addRoleForm.schoolId}
-                                      onChange={e => setAddRoleForm(f => ({ ...f, schoolId: e.target.value }))}
-                                    >
-                                      <option value="">No school</option>
-                                      {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                    </select>
-                                    <div className="flex gap-2 pb-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => setRolePopoverUser(null)}
-                                        className="flex-1 text-xs py-1.5 rounded-lg border border-surface-200 dark:border-gray-700 text-surface-500 dark:text-gray-400 hover:bg-surface-50 dark:hover:bg-gray-800 transition-colors"
-                                      >
-                                        Cancel
-                                      </button>
-                                      <button
-                                        type="submit"
-                                        disabled={popoverSaving}
-                                        className="flex-1 text-xs py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium transition-colors disabled:opacity-60"
-                                      >
-                                        {popoverSaving ? '...' : 'Assign'}
-                                      </button>
-                                    </div>
-                                  </form>
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -394,6 +317,73 @@ export default function UsersPage() {
           </>
         )}
       </div>
+
+      {/* Role management modal */}
+      <Modal open={!!roleModalUser} onClose={() => setRoleModalUser(null)} title={`Manage Roles — ${roleModalUser?.firstName} ${roleModalUser?.lastName}`} maxWidth="max-w-sm">
+        <div className="space-y-4">
+          {/* Current roles */}
+          {roleModalUser && roleModalUser.userRoles.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-surface-500 dark:text-gray-400 mb-2">Current Roles</p>
+              <div className="flex flex-wrap gap-1.5">
+                {roleModalUser.userRoles.map(ur => (
+                  <span key={ur.id} className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-brand-400">
+                    {ur.role.displayName}
+                    {ur.school && <span className="text-[10px] text-surface-400 dark:text-gray-500">· {ur.school.name}</span>}
+                    <button
+                      onClick={async () => { await removeRole(roleModalUser.id, ur.roleId); await loadAll(); setRoleModalUser(prev => prev ? { ...prev, userRoles: prev.userRoles.filter(r => r.id !== ur.id) } : null); }}
+                      className="ml-0.5 text-surface-300 hover:text-red-500 transition-colors"
+                      title="Remove role"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Add new role */}
+          <div>
+            <p className="text-xs font-semibold text-surface-500 dark:text-gray-400 mb-2">Add New Role</p>
+            {popoverError && <p className="text-xs text-red-500 mb-2">{popoverError}</p>}
+            <div className="space-y-3">
+              <div className="rounded-lg border border-surface-200 dark:border-gray-700 divide-y divide-surface-100 dark:divide-gray-800 overflow-hidden">
+                {roles.map(r => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setAddRoleForm(f => ({ ...f, roleId: r.id }))}
+                    className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                      addRoleForm.roleId === r.id
+                        ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 font-medium'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-surface-50 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    {r.displayName}
+                  </button>
+                ))}
+              </div>
+              <select
+                className="input-field w-full"
+                value={addRoleForm.schoolId}
+                onChange={e => setAddRoleForm(f => ({ ...f, schoolId: e.target.value }))}
+              >
+                <option value="">No school</option>
+                {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <button
+                type="button"
+                disabled={popoverSaving || !addRoleForm.roleId}
+                onClick={() => handleAddRole()}
+                className="w-full py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium transition-colors disabled:opacity-40"
+              >
+                {popoverSaving ? 'Assigning…' : 'Assign Role'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Add User">
         {error && (

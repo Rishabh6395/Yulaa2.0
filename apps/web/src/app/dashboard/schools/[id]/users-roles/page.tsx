@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function UsersRolesPage({ params }: { params: { id: string } }) {
   const schoolId = params.id;
@@ -11,6 +11,9 @@ export default function UsersRolesPage({ params }: { params: { id: string } }) {
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', roleId: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [roleTarget,   setRoleTarget]    = useState<any>(null);
+  const [selectedRole, setSelectedRole]  = useState('');
+  const [roleAdding,   setRoleAdding]    = useState(false);
   const [resetTarget, setResetTarget]   = useState<any>(null);
   const [resetPwd,    setResetPwd]      = useState('');
   const [resetSaving, setResetSaving]   = useState(false);
@@ -140,7 +143,13 @@ export default function UsersRolesPage({ params }: { params: { id: string } }) {
                           <button onClick={() => removeRole(u.id, ur.roleId)} className="hover:text-red-600 transition-colors ml-0.5">×</button>
                         </span>
                       ))}
-                      <RoleAdder roles={roles} existingRoleIds={u.userRoles?.map((r: any) => r.roleId) || []} onAdd={(rId) => addRole(u.id, rId)} />
+                      <button
+                        onClick={() => { setRoleTarget(u); setSelectedRole(''); }}
+                        className="p-1 rounded text-surface-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/40 transition-colors"
+                        title="Manage roles"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </button>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -206,6 +215,66 @@ export default function UsersRolesPage({ params }: { params: { id: string } }) {
         </div>
       )}
 
+      {/* Role management modal */}
+      {roleTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Manage Roles</h2>
+              <button onClick={() => setRoleTarget(null)} className="text-surface-400 hover:text-gray-700 dark:hover:text-gray-300">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <p className="text-sm text-surface-400">{roleTarget.firstName} {roleTarget.lastName}</p>
+
+            {/* Current roles */}
+            {roleTarget.userRoles?.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-surface-500 mb-1.5">Current Roles</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {roleTarget.userRoles.map((ur: any) => (
+                    <span key={ur.id} className="inline-flex items-center gap-1 text-xs bg-brand-50 dark:bg-brand-950/30 text-brand-600 dark:text-brand-400 px-2 py-1 rounded-md">
+                      {ur.role?.displayName || ur.role?.roleCode}
+                      <button
+                        onClick={async () => { await removeRole(roleTarget.id, ur.roleId); await load(); setRoleTarget((p: any) => p ? { ...p, userRoles: p.userRoles.filter((r: any) => r.id !== ur.id) } : null); }}
+                        className="ml-0.5 hover:text-red-500 transition-colors"
+                      >×</button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Add role */}
+            <div>
+              <p className="text-xs font-semibold text-surface-500 mb-1.5">Add Role</p>
+              <div className="rounded-lg border border-surface-200 dark:border-gray-700 divide-y divide-surface-100 dark:divide-gray-700 overflow-hidden max-h-56 overflow-y-auto">
+                {roles.filter(r => !roleTarget.userRoles?.some((ur: any) => ur.roleId === r.id)).map((r: any) => (
+                  <button
+                    key={r.id}
+                    onClick={() => setSelectedRole(r.id)}
+                    className={`w-full text-left px-3 py-2 text-sm transition-colors ${selectedRole === r.id ? 'bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-brand-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-surface-50 dark:hover:bg-gray-700'}`}
+                  >
+                    {r.displayName || r.roleCode}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setRoleTarget(null)} className="btn btn-secondary flex-1">Close</button>
+              <button
+                disabled={!selectedRole || roleAdding}
+                onClick={async () => { setRoleAdding(true); await addRole(roleTarget.id, selectedRole); setRoleAdding(false); setRoleTarget(null); }}
+                className="btn btn-primary flex-1"
+              >
+                {roleAdding ? 'Assigning…' : 'Assign Role'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
@@ -238,35 +307,3 @@ export default function UsersRolesPage({ params }: { params: { id: string } }) {
   );
 }
 
-function RoleAdder({ roles, existingRoleIds, onAdd }: { roles: any[]; existingRoleIds: string[]; onAdd: (id: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [open]);
-
-  const available = roles.filter(r => !existingRoleIds.includes(r.id));
-  if (available.length === 0) return null;
-  return (
-    <div className="relative" ref={containerRef}>
-      <button onClick={() => setOpen(v => !v)} className="text-xs text-brand-600 hover:text-brand-700 px-1.5 py-0.5 rounded border border-brand-200 dark:border-brand-700">+ Role</button>
-      {open && (
-        <div className="absolute left-0 top-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-surface-200 dark:border-gray-700 z-10 min-w-[140px]">
-          {available.map(r => (
-            <button key={r.id} onClick={() => { onAdd(r.id); setOpen(false); }} className="block w-full text-left text-xs px-3 py-2 hover:bg-surface-50 dark:hover:bg-gray-700">
-              {r.displayName || r.roleCode}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}

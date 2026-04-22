@@ -211,16 +211,17 @@ export async function markAttendance(schoolId: string, markedBy: string, body: R
   if (body.type === 'employee') {
     const { records, date: dateStr, action, user_id } = body;
 
-    // Punch In / Punch Out — teacher self-service
+    // Punch In / Punch Out — employee self-service (teacher, principal, school_admin)
     if (action === 'punch_in' || action === 'punch_out') {
       if (!user_id) throw new AppError('user_id is required for punch action');
       const today = new Date();
       const dateOnly = new Date(today.toISOString().split('T')[0]);
       dateOnly.setUTCHours(0, 0, 0, 0);
-      const teacher = await prisma.teacher.findFirst({ where: { userId: user_id, schoolId }, select: { id: true } });
-      if (!teacher) throw new AppError('Teacher record not found');
+      // Auto-create employee profile if not found (school_admin / principal have employee role but no Teacher record)
+      let employee = await prisma.teacher.findFirst({ where: { userId: user_id, schoolId }, select: { id: true } });
+      if (!employee) employee = await prisma.teacher.create({ data: { userId: user_id, schoolId }, select: { id: true } });
       const field = action === 'punch_in' ? 'punchInTime' : 'punchOutTime';
-      const rec = await repo.punchTeacherAttendance(schoolId, teacher.id, markedBy, dateOnly, field, today);
+      const rec = await repo.punchTeacherAttendance(schoolId, employee.id, markedBy, dateOnly, field, today);
       return { message: `${action === 'punch_in' ? 'Punch In' : 'Punch Out'} recorded`, time: today, record: rec };
     }
 
