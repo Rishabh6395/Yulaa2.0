@@ -15,7 +15,7 @@ export async function POST(request: Request) {
       maxAge: 7 * 24 * 60 * 60, // 7 Days
     });
 
-    return Response.json(result);
+    return response;
   } catch (err) {
     return handleError(err);
   }
