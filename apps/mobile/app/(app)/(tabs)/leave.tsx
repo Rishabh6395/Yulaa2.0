@@ -88,7 +88,13 @@ export default function LeaveScreen() {
   }, [refetch]);
 
   const leaves: any[] = leavesData?.leaves ?? [];
-  const balance: any  = balanceData ?? {};
+  // API may return an array [{leave_type, total_days, used_days, remaining}]
+  // or an object {casual: 5, sick: 3, ...}
+  const balanceRaw: any = balanceData ?? {};
+  const balanceItems: Array<{ label: string; value: number | string }> = Array.isArray(balanceRaw)
+    ? balanceRaw.map((b: any) => ({ label: b.leave_type ?? b.type, value: b.remaining ?? b.remaining_days ?? 0 }))
+    : Object.entries(balanceRaw).map(([k, v]) => ({ label: k, value: v as any }));
+  const balance: any = balanceRaw;
   const leaveTypes: any[] = typesData?.types ?? typesData?.leaveTypes ?? [
     { code: 'casual',   label: 'Casual Leave' },
     { code: 'sick',     label: 'Sick Leave' },
@@ -142,7 +148,7 @@ export default function LeaveScreen() {
         </MotiView>
 
         {/* Balance cards for teachers */}
-        {!isAdmin && Object.keys(balance).length > 0 && (
+        {!isAdmin && balanceItems.length > 0 && (
           <MotiView
             from={{ opacity: 0, translateY: 16 }}
             animate={{ opacity: 1, translateY: 0 }}
@@ -151,10 +157,10 @@ export default function LeaveScreen() {
           >
             <Text style={styles.balanceTitle}>Leave Balance</Text>
             <View style={styles.balanceRow}>
-              {Object.entries(balance).slice(0, 4).map(([key, val]: any, i) => (
-                <View key={key} style={styles.balanceItem}>
-                  <Text style={styles.balanceVal}>{val}</Text>
-                  <Text style={styles.balanceKey}>{key.replace(/_/g, ' ')}</Text>
+              {balanceItems.slice(0, 4).map((item, i) => (
+                <View key={i} style={styles.balanceItem}>
+                  <Text style={styles.balanceVal}>{item.value}</Text>
+                  <Text style={styles.balanceKey}>{String(item.label).replace(/_/g, ' ')}</Text>
                 </View>
               ))}
             </View>

@@ -3,8 +3,18 @@
   "compilerOptions": {
     "strict": false,
     "paths": {
-      "@/*": ["./src/*"],
-      "@api-types": ["../../packages/api-types/src/index.ts"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@api-types": [
+        "../../packages/api-types/src/index.ts"
+      ]
     }
-  }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
 }

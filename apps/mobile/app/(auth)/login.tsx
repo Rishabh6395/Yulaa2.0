@@ -1,14 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  Dimensions,
+  View, Text, TextInput, TouchableOpacity,
+  StyleSheet, KeyboardAvoidingView, Platform,
+  Alert, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,16 +13,55 @@ import { useAuth } from '../../src/context/AuthContext';
 import { requestOtp } from '../../src/api/client';
 import { COLORS, FONTS, RADIUS } from '../../src/theme';
 
-const { width } = Dimensions.get('window');
+type Method = 'email' | 'phone';
+type PhoneStep = 'phone' | 'otp';
 
 export default function LoginScreen() {
-  const { login }             = useAuth();
-  const [phone, setPhone]     = useState('');
-  const [otp, setOtp]         = useState(['', '', '', '', '', '']);
-  const [step, setStep]       = useState<'phone' | 'otp'>('phone');
-  const [busy, setBusy]       = useState(false);
-  const otpRefs               = useRef<(TextInput | null)[]>([]);
+  const { loginWithOtp, loginWithEmail } = useAuth();
 
+  const [method, setMethod] = useState<Method>('email');
+  const [busy, setBusy] = useState(false);
+
+  // Email/password state
+  const [email,    setEmail]    = useState('');
+  const [password, setPassword] = useState('');
+  const [showPwd,  setShowPwd]  = useState(false);
+
+  // Phone/OTP state
+  const [phone,    setPhone]    = useState('');
+  const [otp,      setOtp]      = useState(['', '', '', '', '', '']);
+  const [step,     setStep]     = useState<PhoneStep>('phone');
+  const otpRefs = useRef<(TextInput | null)[]>([]);
+
+  useEffect(() => {
+    if (step === 'otp') setTimeout(() => otpRefs.current[0]?.focus(), 300);
+  }, [step]);
+
+  function switchMethod(m: Method) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setMethod(m);
+    setStep('phone');
+    setOtp(['', '', '', '', '', '']);
+  }
+
+  // ── Email login ──────────────────────────────────────────────────────────────
+  async function handleEmailLogin() {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Required', 'Enter your email and password.');
+      return;
+    }
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setBusy(true);
+    try {
+      await loginWithEmail(email.trim().toLowerCase(), password);
+    } catch (e: any) {
+      Alert.alert('Sign In Failed', e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // ── OTP login ────────────────────────────────────────────────────────────────
   async function handleSendOtp() {
     if (!phone.trim()) return;
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -43,13 +76,13 @@ export default function LoginScreen() {
     }
   }
 
-  async function handleVerify() {
+  async function handleVerifyOtp() {
     const code = otp.join('');
     if (code.length < 6) return;
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setBusy(true);
     try {
-      await login(phone.trim(), code);
+      await loginWithOtp(phone.trim(), code);
     } catch (e: any) {
       Alert.alert('Invalid OTP', e.message);
       setOtp(['', '', '', '', '', '']);
@@ -62,43 +95,29 @@ export default function LoginScreen() {
   function handleOtpChange(val: string, idx: number) {
     const digits = val.replace(/[^0-9]/g, '');
     if (digits.length > 1) {
-      // Handle paste
       const arr = digits.slice(0, 6).split('');
       const next = [...otp];
       arr.forEach((d, i) => { if (i < 6) next[i] = d; });
       setOtp(next);
-      const focusIdx = Math.min(arr.length, 5);
-      otpRefs.current[focusIdx]?.focus();
+      otpRefs.current[Math.min(arr.length, 5)]?.focus();
       return;
     }
-    const next = [...otp];
-    next[idx] = digits;
-    setOtp(next);
+    const next = [...otp]; next[idx] = digits; setOtp(next);
     if (digits && idx < 5) otpRefs.current[idx + 1]?.focus();
   }
 
   function handleOtpKeyPress(key: string, idx: number) {
     if (key === 'Backspace' && !otp[idx] && idx > 0) {
-      const next = [...otp];
-      next[idx - 1] = '';
-      setOtp(next);
+      const next = [...otp]; next[idx - 1] = ''; setOtp(next);
       otpRefs.current[idx - 1]?.focus();
     }
   }
 
-  useEffect(() => {
-    if (step === 'otp') {
-      setTimeout(() => otpRefs.current[0]?.focus(), 300);
-    }
-  }, [step]);
-
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="light" />
-      <LinearGradient
-        colors={[COLORS.bg, '#071020', '#0a1628']}
-        style={StyleSheet.absoluteFill}
-      />
+      <LinearGradient colors={[COLORS.bg, '#071020', '#0a1628']} style={StyleSheet.absoluteFill} />
+
       {/* Glow orb */}
       <MotiView
         from={{ opacity: 0, scale: 0.6 }}
@@ -109,277 +128,348 @@ export default function LoginScreen() {
 
       <KeyboardAvoidingView
         style={styles.kav}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {/* Logo section */}
-        <MotiView
-          from={{ opacity: 0, translateY: -30 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: 'spring', delay: 100, damping: 18 }}
-          style={styles.logoSection}
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <LinearGradient
-            colors={[COLORS.gold, '#e8c07a', COLORS.gold]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.logoCircle}
-          >
-            <Text style={styles.logoY}>Y</Text>
-          </LinearGradient>
+          {/* Logo */}
           <MotiView
-            from={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: 'spring', delay: 250, damping: 14 }}
+            from={{ opacity: 0, translateY: -30 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'spring', delay: 100, damping: 18 }}
+            style={styles.logoSection}
           >
+            <LinearGradient
+              colors={[COLORS.gold, '#e8c07a', COLORS.gold]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={styles.logoCircle}
+            >
+              <Text style={styles.logoY}>Y</Text>
+            </LinearGradient>
             <Text style={styles.brandName}>YULAA</Text>
             <Text style={styles.brandTagline}>School Management System</Text>
           </MotiView>
-        </MotiView>
 
-        {/* Card */}
-        <MotiView
-          from={{ opacity: 0, translateY: 40 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: 'spring', delay: 300, damping: 18, stiffness: 100 }}
-          style={styles.card}
-        >
-          <AnimatePresence exitBeforeEnter>
-            {step === 'phone' ? (
-              <MotiView
-                key="phone"
-                from={{ opacity: 0, translateX: -20 }}
-                animate={{ opacity: 1, translateX: 0 }}
-                exit={{ opacity: 0, translateX: -20 }}
-                transition={{ type: 'timing', duration: 250 }}
+          {/* Card */}
+          <MotiView
+            from={{ opacity: 0, translateY: 40 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'spring', delay: 280, damping: 18, stiffness: 100 }}
+            style={styles.card}
+          >
+            <Text style={styles.cardTitle}>Welcome back</Text>
+            <Text style={styles.cardSub}>Sign in to your account</Text>
+
+            {/* Method toggle */}
+            <View style={styles.toggle}>
+              <TouchableOpacity
+                style={[styles.toggleBtn, method === 'email' && styles.toggleBtnActive]}
+                onPress={() => switchMethod('email')}
+                activeOpacity={0.8}
               >
-                <Text style={styles.stepTitle}>Welcome back</Text>
-                <Text style={styles.stepSub}>Enter your registered mobile number</Text>
+                <Text style={[styles.toggleText, method === 'email' && styles.toggleTextActive]}>
+                  ✉️  Email
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.toggleBtn, method === 'phone' && styles.toggleBtnActive]}
+                onPress={() => switchMethod('phone')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.toggleText, method === 'phone' && styles.toggleTextActive]}>
+                  📱  Phone OTP
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-                <View style={styles.phoneRow}>
-                  <View style={styles.countryCode}>
-                    <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
-                  </View>
-                  <TextInput
-                    style={styles.phoneInput}
-                    placeholder="XXXXX XXXXX"
-                    placeholderTextColor={COLORS.textMuted}
-                    keyboardType="phone-pad"
-                    value={phone}
-                    onChangeText={setPhone}
-                    returnKeyType="done"
-                    onSubmitEditing={handleSendOtp}
-                    maxLength={10}
-                    autoFocus
-                  />
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.btn, busy && styles.btnDisabled]}
-                  onPress={handleSendOtp}
-                  disabled={busy}
-                  activeOpacity={0.85}
+            {/* ── Email form ─────────────────────────────────────────── */}
+            <AnimatePresence exitBeforeEnter>
+              {method === 'email' && (
+                <MotiView
+                  key="email"
+                  from={{ opacity: 0, translateX: -16 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: -16 }}
+                  transition={{ type: 'timing', duration: 220 }}
                 >
-                  <LinearGradient
-                    colors={[COLORS.brand, COLORS.brandDark]}
-                    style={styles.btnGradient}
-                  >
-                    {busy ? (
-                      <View style={styles.spinnerWrap}>
-                        <MotiView
-                          from={{ rotate: '0deg' }}
-                          animate={{ rotate: '360deg' }}
-                          transition={{ loop: true, type: 'timing', duration: 900 }}
-                          style={styles.spinner}
-                        />
-                      </View>
-                    ) : (
-                      <Text style={styles.btnText}>Send OTP</Text>
-                    )}
-                  </LinearGradient>
-                </TouchableOpacity>
-              </MotiView>
-            ) : (
-              <MotiView
-                key="otp"
-                from={{ opacity: 0, translateX: 20 }}
-                animate={{ opacity: 1, translateX: 0 }}
-                exit={{ opacity: 0, translateX: 20 }}
-                transition={{ type: 'timing', duration: 250 }}
-              >
-                <Text style={styles.stepTitle}>Enter OTP</Text>
-                <Text style={styles.stepSub}>Sent to +91 {phone}</Text>
-
-                <View style={styles.otpRow}>
-                  {otp.map((digit, idx) => (
+                  <View style={styles.fieldWrap}>
+                    <Text style={styles.fieldLabel}>Email address</Text>
                     <TextInput
-                      key={idx}
-                      ref={r => { otpRefs.current[idx] = r; }}
-                      style={[styles.otpBox, digit && styles.otpBoxFilled]}
-                      value={digit}
-                      onChangeText={v => handleOtpChange(v, idx)}
-                      onKeyPress={({ nativeEvent }) => handleOtpKeyPress(nativeEvent.key, idx)}
-                      keyboardType="number-pad"
-                      maxLength={1}
-                      selectTextOnFocus
+                      style={styles.input}
+                      placeholder="you@school.com"
+                      placeholderTextColor={COLORS.textMuted}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      returnKeyType="next"
+                      value={email}
+                      onChangeText={setEmail}
                     />
-                  ))}
-                </View>
+                  </View>
 
-                <TouchableOpacity
-                  style={[styles.btn, (busy || otp.join('').length < 6) && styles.btnDisabled]}
-                  onPress={handleVerify}
-                  disabled={busy || otp.join('').length < 6}
-                  activeOpacity={0.85}
+                  <View style={styles.fieldWrap}>
+                    <Text style={styles.fieldLabel}>Password</Text>
+                    <View style={styles.pwdRow}>
+                      <TextInput
+                        style={[styles.input, styles.pwdInput]}
+                        placeholder="Enter password"
+                        placeholderTextColor={COLORS.textMuted}
+                        secureTextEntry={!showPwd}
+                        returnKeyType="done"
+                        onSubmitEditing={handleEmailLogin}
+                        value={password}
+                        onChangeText={setPassword}
+                      />
+                      <TouchableOpacity
+                        style={styles.eyeBtn}
+                        onPress={() => setShowPwd(v => !v)}
+                      >
+                        <Text style={styles.eyeIcon}>{showPwd ? '🙈' : '👁️'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <PrimaryButton
+                    label="Sign In"
+                    onPress={handleEmailLogin}
+                    busy={busy}
+                  />
+                </MotiView>
+              )}
+
+              {/* ── Phone / OTP form ──────────────────────────────────── */}
+              {method === 'phone' && (
+                <MotiView
+                  key="phone"
+                  from={{ opacity: 0, translateX: 16 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: 16 }}
+                  transition={{ type: 'timing', duration: 220 }}
                 >
-                  <LinearGradient
-                    colors={[COLORS.brand, COLORS.brandDark]}
-                    style={styles.btnGradient}
-                  >
-                    {busy ? (
-                      <View style={styles.spinnerWrap}>
-                        <MotiView
-                          from={{ rotate: '0deg' }}
-                          animate={{ rotate: '360deg' }}
-                          transition={{ loop: true, type: 'timing', duration: 900 }}
-                          style={styles.spinner}
-                        />
-                      </View>
+                  <AnimatePresence exitBeforeEnter>
+                    {step === 'phone' ? (
+                      <MotiView
+                        key="enterPhone"
+                        from={{ opacity: 0, translateX: -12 }}
+                        animate={{ opacity: 1, translateX: 0 }}
+                        exit={{ opacity: 0, translateX: -12 }}
+                        transition={{ type: 'timing', duration: 200 }}
+                      >
+                        <View style={styles.fieldWrap}>
+                          <Text style={styles.fieldLabel}>Mobile number</Text>
+                          <View style={styles.phoneRow}>
+                            <View style={styles.countryCode}>
+                              <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
+                            </View>
+                            <TextInput
+                              style={styles.phoneInput}
+                              placeholder="XXXXX XXXXX"
+                              placeholderTextColor={COLORS.textMuted}
+                              keyboardType="phone-pad"
+                              returnKeyType="done"
+                              onSubmitEditing={handleSendOtp}
+                              maxLength={10}
+                              value={phone}
+                              onChangeText={setPhone}
+                            />
+                          </View>
+                        </View>
+                        <PrimaryButton label="Send OTP" onPress={handleSendOtp} busy={busy} />
+                      </MotiView>
                     ) : (
-                      <Text style={styles.btnText}>Verify & Sign In</Text>
+                      <MotiView
+                        key="enterOtp"
+                        from={{ opacity: 0, translateX: 12 }}
+                        animate={{ opacity: 1, translateX: 0 }}
+                        exit={{ opacity: 0, translateX: 12 }}
+                        transition={{ type: 'timing', duration: 200 }}
+                      >
+                        <Text style={styles.otpHint}>OTP sent to +91 {phone}</Text>
+                        <View style={styles.otpRow}>
+                          {otp.map((digit, idx) => (
+                            <TextInput
+                              key={idx}
+                              ref={r => { otpRefs.current[idx] = r; }}
+                              style={[styles.otpBox, digit && styles.otpBoxFilled]}
+                              value={digit}
+                              onChangeText={v => handleOtpChange(v, idx)}
+                              onKeyPress={({ nativeEvent }) => handleOtpKeyPress(nativeEvent.key, idx)}
+                              keyboardType="number-pad"
+                              maxLength={1}
+                              selectTextOnFocus
+                            />
+                          ))}
+                        </View>
+                        <PrimaryButton
+                          label="Verify & Sign In"
+                          onPress={handleVerifyOtp}
+                          busy={busy}
+                          disabled={otp.join('').length < 6}
+                        />
+                        <TouchableOpacity
+                          style={styles.backLink}
+                          onPress={() => { setStep('phone'); setOtp(['', '', '', '', '', '']); }}
+                        >
+                          <Text style={styles.backLinkText}>← Change number</Text>
+                        </TouchableOpacity>
+                      </MotiView>
                     )}
-                  </LinearGradient>
-                </TouchableOpacity>
+                  </AnimatePresence>
+                </MotiView>
+              )}
+            </AnimatePresence>
+          </MotiView>
 
-                <TouchableOpacity
-                  style={styles.backLink}
-                  onPress={() => { setStep('phone'); setOtp(['', '', '', '', '', '']); }}
-                >
-                  <Text style={styles.backLinkText}>← Change number</Text>
-                </TouchableOpacity>
-              </MotiView>
-            )}
-          </AnimatePresence>
-        </MotiView>
-
-        <MotiView
-          from={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ type: 'timing', delay: 600, duration: 600 }}
-        >
-          <Text style={styles.footer}>Secure · Encrypted · Trusted by schools</Text>
-        </MotiView>
+          <MotiView
+            from={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ type: 'timing', delay: 700, duration: 600 }}
+          >
+            <Text style={styles.footer}>Secure · Encrypted · Trusted by schools</Text>
+          </MotiView>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
+// ── Shared primary button ────────────────────────────────────────────────────
+function PrimaryButton({
+  label, onPress, busy, disabled,
+}: {
+  label: string; onPress: () => void; busy?: boolean; disabled?: boolean;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.btn, (busy || disabled) && styles.btnDisabled]}
+      onPress={onPress}
+      disabled={busy || disabled}
+      activeOpacity={0.85}
+    >
+      <LinearGradient colors={[COLORS.brand, COLORS.brandDark]} style={styles.btnGradient}>
+        {busy ? (
+          <MotiView
+            from={{ rotate: '0deg' }}
+            animate={{ rotate: '360deg' }}
+            transition={{ loop: true, type: 'timing', duration: 900 }}
+            style={styles.spinner}
+          />
+        ) : (
+          <Text style={styles.btnText}>{label}</Text>
+        )}
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  kav:  { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  kav:  { flex: 1 },
+  scroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24, paddingVertical: 40 },
 
   glowOrb: {
-    position: 'absolute',
-    width: 400,
-    height: 400,
-    borderRadius: 200,
-    backgroundColor: COLORS.brand,
-    top: -100,
-    right: -100,
+    position: 'absolute', width: 400, height: 400,
+    borderRadius: 200, backgroundColor: COLORS.brand,
+    top: -100, right: -100,
   },
 
-  logoSection: { alignItems: 'center', marginBottom: 40 },
+  // Logo
+  logoSection: { alignItems: 'center', marginBottom: 32 },
   logoCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    shadowColor: COLORS.gold,
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 10,
+    width: 68, height: 68, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 14,
+    shadowColor: COLORS.gold, shadowOpacity: 0.5, shadowRadius: 16, elevation: 10,
   },
-  logoY:        { ...FONTS.xbold, color: '#fff', fontSize: 36 },
-  brandName:    { ...FONTS.xbold, color: COLORS.white, fontSize: 28, letterSpacing: 8, textAlign: 'center' },
+  logoY:        { ...FONTS.xbold, color: '#fff', fontSize: 34 },
+  brandName:    { ...FONTS.xbold, color: COLORS.white, fontSize: 26, letterSpacing: 8, textAlign: 'center' },
   brandTagline: { ...FONTS.regular, color: COLORS.textMuted, fontSize: 12, textAlign: 'center', letterSpacing: 2, marginTop: 4 },
 
+  // Card
   card: {
-    width: '100%',
-    maxWidth: 380,
+    width: '100%', maxWidth: 380,
     backgroundColor: COLORS.card,
-    borderRadius: RADIUS.xl,
-    padding: 28,
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
-    shadowColor: COLORS.brand,
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 8,
+    borderRadius: RADIUS.xl, padding: 24,
+    borderWidth: 1, borderColor: COLORS.cardBorder,
+    shadowColor: COLORS.brand, shadowOpacity: 0.12, shadowRadius: 24, elevation: 8,
   },
+  cardTitle: { ...FONTS.bold, fontSize: 20, color: COLORS.text, marginBottom: 4 },
+  cardSub:   { ...FONTS.regular, fontSize: 13, color: COLORS.textMuted, marginBottom: 20 },
 
-  stepTitle: { ...FONTS.bold, fontSize: 22, color: COLORS.text, marginBottom: 6 },
-  stepSub:   { ...FONTS.regular, fontSize: 14, color: COLORS.textMuted, marginBottom: 24, lineHeight: 20 },
-
-  phoneRow: {
+  // Toggle
+  toggle: {
     flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
-    marginBottom: 20,
-    overflow: 'hidden',
+    borderRadius: RADIUS.lg,
+    borderWidth: 1, borderColor: COLORS.cardBorder,
+    padding: 4, marginBottom: 22,
+  },
+  toggleBtn: {
+    flex: 1, paddingVertical: 10,
+    alignItems: 'center', borderRadius: RADIUS.md,
+  },
+  toggleBtnActive: { backgroundColor: COLORS.brand },
+  toggleText:      { ...FONTS.medium, fontSize: 13, color: COLORS.textMuted },
+  toggleTextActive:{ color: COLORS.white },
+
+  // Fields
+  fieldWrap:  { marginBottom: 16 },
+  fieldLabel: { ...FONTS.medium, fontSize: 13, color: COLORS.textMuted, marginBottom: 7 },
+  input: {
+    backgroundColor: COLORS.surface, borderRadius: RADIUS.md,
+    borderWidth: 1, borderColor: COLORS.cardBorder,
+    paddingHorizontal: 14, paddingVertical: 13,
+    color: COLORS.text, fontSize: 15,
+  },
+  pwdRow:  { position: 'relative' },
+  pwdInput:{ paddingRight: 48 },
+  eyeBtn:  { position: 'absolute', right: 12, top: 10 },
+  eyeIcon: { fontSize: 20 },
+
+  // Phone
+  phoneRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: COLORS.surface, borderRadius: RADIUS.md,
+    borderWidth: 1, borderColor: COLORS.cardBorder, overflow: 'hidden',
   },
   countryCode: {
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    borderRightWidth: 1,
-    borderRightColor: COLORS.cardBorder,
+    paddingHorizontal: 12, paddingVertical: 13,
+    borderRightWidth: 1, borderRightColor: COLORS.cardBorder,
     backgroundColor: COLORS.card,
   },
-  countryCodeText: { ...FONTS.medium, color: COLORS.text, fontSize: 15 },
+  countryCodeText: { ...FONTS.medium, color: COLORS.text, fontSize: 14 },
   phoneInput: {
-    flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    color: COLORS.text,
-    fontSize: 16,
-    ...FONTS.medium,
+    flex: 1, paddingHorizontal: 14, paddingVertical: 13,
+    color: COLORS.text, fontSize: 15, ...FONTS.medium,
   },
 
-  otpRow:       { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
+  // OTP
+  otpHint: { ...FONTS.regular, fontSize: 13, color: COLORS.textMuted, marginBottom: 16, textAlign: 'center' },
+  otpRow:  { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   otpBox: {
-    width: 46,
-    height: 56,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.cardBorder,
-    textAlign: 'center',
-    fontSize: 22,
-    ...FONTS.bold,
-    color: COLORS.text,
+    width: 44, height: 54,
+    borderRadius: RADIUS.md, backgroundColor: COLORS.surface,
+    borderWidth: 1.5, borderColor: COLORS.cardBorder,
+    textAlign: 'center', fontSize: 22, ...FONTS.bold, color: COLORS.text,
   },
   otpBoxFilled: { borderColor: COLORS.brand, backgroundColor: COLORS.brand + '22' },
 
+  // Button
   btn: { borderRadius: RADIUS.md, overflow: 'hidden', marginBottom: 8 },
-  btnDisabled:  { opacity: 0.6 },
-  btnGradient:  { paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
-  btnText:      { ...FONTS.bold, color: COLORS.white, fontSize: 16 },
-
-  spinnerWrap: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
+  btnDisabled: { opacity: 0.55 },
+  btnGradient: { paddingVertical: 15, alignItems: 'center', justifyContent: 'center' },
+  btnText:     { ...FONTS.bold, color: COLORS.white, fontSize: 16 },
   spinner: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2.5,
-    borderColor: COLORS.white,
-    borderTopColor: 'transparent',
+    width: 22, height: 22, borderRadius: 11,
+    borderWidth: 2.5, borderColor: COLORS.white, borderTopColor: 'transparent',
   },
 
-  backLink:     { alignItems: 'center', marginTop: 8 },
+  backLink:     { alignItems: 'center', marginTop: 6 },
   backLinkText: { ...FONTS.medium, color: COLORS.brand, fontSize: 14 },
 
-  footer: { ...FONTS.regular, color: COLORS.textMuted, fontSize: 12, textAlign: 'center', marginTop: 32, letterSpacing: 0.5 },
+  footer: { ...FONTS.regular, color: COLORS.textMuted, fontSize: 12, textAlign: 'center', marginTop: 28, letterSpacing: 0.5 },
 });

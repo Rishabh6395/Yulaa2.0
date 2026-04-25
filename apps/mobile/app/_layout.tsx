@@ -18,7 +18,7 @@ function Guard() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(auth)/login" />
       <Stack.Screen name="(app)" />
     </Stack>
   );

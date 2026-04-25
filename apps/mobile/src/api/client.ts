@@ -5,7 +5,7 @@
  */
 import * as SecureStore from 'expo-secure-store';
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://app.yulaa.in';
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://yulaa2-0.onrender.com';
 
 const TOKEN_KEY = 'yulaa_token';
 
@@ -109,6 +109,17 @@ export const getFormConfig = (schoolId: string, formId: string) =>
   apiFetch<any>(`/api/form-config?schoolId=${schoolId}&formId=${formId}`);
 export const saveFormConfig = (body: any) =>
   apiFetch<any>('/api/form-config', { method: 'POST', body: JSON.stringify(body) });
+
+// ─── Profile ──────────────────────────────────────────────────────────────────
+export const getProfile = () => apiFetch<any>('/api/profile');
+
+// ─── Homework ─────────────────────────────────────────────────────────────────
+export const getHomework       = (p?: string) => apiFetch<any>(`/api/homework${p ? '?' + p : ''}`);
+export const submitHomework    = (body: any)  => apiFetch<any>('/api/homework', { method: 'POST', body: JSON.stringify(body) });
+export const getHomeworkSubmissions = (p?: string) => apiFetch<any>(`/api/homework/submissions${p ? '?' + p : ''}`);
+
+// ─── Exams ────────────────────────────────────────────────────────────────────
+export const getExamResults = (p?: string) => apiFetch<any>(`/api/exam${p ? '?' + p : ''}`);
 
 // ─── Schools (super admin) ───────────────────────────────────────────────────
 export const getSchools = () => apiFetch<any>('/api/schools');
