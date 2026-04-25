@@ -111,7 +111,7 @@ function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
 // ── Login page ────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
-  const [email,       setEmail]       = useState('');
+  const [username,       setUsername]       = useState('');
   const [password,    setPassword]    = useState('');
   const [error,       setError]       = useState('');
   const [loading,     setLoading]     = useState(false);
@@ -127,7 +127,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
 
       const data = await res.json();
@@ -138,7 +138,7 @@ export default function LoginPage() {
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
-      document.cookie = `token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}`;
+      // document.cookie = `token=${data.token}; path=/; max-age=${7 * 24 * 60 * 60}`;
       router.push(data.user.mustResetPassword ? '/change-password' : '/dashboard');
     } catch {
       setError('Network error. Please try again.');
@@ -148,7 +148,7 @@ export default function LoginPage() {
   };
 
   const demoLogin = async (email: string) => {
-    setEmail(email);
+    setUsername(email);
     setPassword('password123');
     setError('');
     setLoading(true);
@@ -157,7 +157,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: 'password123' }),
+        body: JSON.stringify({ username: email, password: 'password123' }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -265,8 +265,8 @@ export default function LoginPage() {
                 type="email"
                 className="input-field"
                 placeholder="you@school.edu.in"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
               />
             </div>
