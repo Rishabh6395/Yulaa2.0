@@ -3,10 +3,10 @@ import { cacheGet, cacheSet, cacheInvalidate, tryLock, releaseLock } from '@/lib
 export { cacheInvalidate };
 
 export const CacheTTL = {
-  dashboard:       120,  // 2 min
-  dashboardParent:  60,  // 1 min
-  notifications:    60,  // 1 min — notification bell
-  list:            300,  // 5 min
+  dashboard: 120,  // 2 min
+  dashboardParent: 60,  // 1 min
+  notifications: 60,  // 1 min — notification bell
+  list: 300,  // 5 min
 } as const;
 
 /**
@@ -68,4 +68,14 @@ export async function withCacheLock<T>(
   const result = await fn();
   await cacheSet(key, result, ttl);
   return result;
+}
+
+
+export async function setCache(
+  key: string,
+  value: any,
+  ttl: number,
+) {
+  return await cacheSet(key, value, ttl);
+
 }

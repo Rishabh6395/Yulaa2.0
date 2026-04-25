@@ -1,21 +1,50 @@
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
-import { signToken } from '@/lib/auth';
 import { AppError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 import type { LoginInput, LoginResponse, ChangePasswordInput } from './auth.types';
+import { generateToken, hashPassword } from '@/utils/utils';
+import { setCache } from '@/services/cache.service';
 
-export async function login({ email, password }: LoginInput): Promise<LoginResponse> {
-  if (!email || !password) throw new AppError('Email and password are required');
 
-  const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase().trim(), status: 'active' },
-    include: { userRoles: { include: { role: true, school: true } } },
+
+export async function login(
+  { username, password, login_context }: LoginInput): Promise<LoginResponse> {
+  if (!username || !password) throw new AppError('Username and password are required');
+
+  const encryptedPassword = hashPassword(password);
+
+  // setting default context as parent
+  login_context = login_context ?? 'parent';
+
+  // if (login_context === 'super-admin') {
+  // } else if (login_context === 'school-admin') {
+  // }
+
+  const user = await prisma.userV1.findFirst({
+    where: {
+      username: username,
+      OR: [
+        { password: password },
+        { password: encryptedPassword },
+      ],
+      status: true,
+    },
   });
 
-  if (!user) throw new UnauthorizedError('Invalid email or password');
+  if (!user) {
+    throw new UnauthorizedError('Invalid username or password');
+  }
 
-  const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid)  throw new UnauthorizedError('Invalid email or password');
+  if (login_context === 'parent') {
+    const parents = await prisma.parentV1.findMany({
+      where: {
+        userId: user.userId,
+        active: true,
+      },
+    });
+
+    // todo loop through parents and save in the response
+  }
 
   // Consultant contract expiry check
   if (user.userRoles.some((ur) => ur.role.code === 'consultant')) {
@@ -44,35 +73,38 @@ export async function login({ email, password }: LoginInput): Promise<LoginRespo
   }
 
   const roles = user.userRoles.map((ur) => ({
-    role_code:   ur.role.code,
-    role_name:   ur.role.displayName,
-    school_id:   ur.schoolId,
+    role_code: ur.role.code,
+    role_name: ur.role.displayName,
+    school_id: ur.schoolId,
     school_name: ur.school?.name ?? null,
-    is_primary:  ur.isPrimary,
+    is_primary: ur.isPrimary,
   }));
 
   const primaryRole = roles.find((r) => r.is_primary) ?? roles[0];
-  const token = signToken({
-    userId:      user.id,
-    email:       user.email,
-    primaryRole: primaryRole?.role_code,
-    schoolId:    primaryRole?.school_id,
-  });
+  const token = generateToken();
 
-  return {
+  const result = {
     token,
     user: {
-      id:                user.id,
-      email:             user.email,
-      firstName:         user.firstName,
-      lastName:          user.lastName,
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
       roles,
-      primaryRole:       primaryRole?.role_code,
-      schoolId:          primaryRole?.school_id ?? null,
-      schoolName:        primaryRole?.school_name ?? null,
+      primaryRole: primaryRole?.role_code,
+      schoolId: primaryRole?.school_id ?? null,
+      schoolName: primaryRole?.school_name ?? null,
       mustResetPassword: user.mustResetPassword,
     },
-  };
+  };;
+
+  await setCache(
+    token,
+    result,
+    60 * 60 * 24
+  );
+
+  return result;
 }
 
 export async function changePassword(userId: string, { currentPassword, newPassword }: ChangePasswordInput): Promise<void> {
