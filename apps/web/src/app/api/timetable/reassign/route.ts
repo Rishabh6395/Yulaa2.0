@@ -1,6 +1,7 @@
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
+import { sendNotification } from '@/services/notification.service';
 
 const ALLOWED_ROLES = ['teacher', 'school_admin', 'principal', 'hod'];
 
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
     }
 
     const dateFilter = date
-      ? { startDate: { lte: new Date(date) }, endDate: { gte: new Date(date) } }
+      ? { startDate: { lte: new Date(date + 'T00:00:00') }, endDate: { gte: new Date(date + 'T00:00:00') } }
       : {};
 
     const reassignments = await prisma.timetableReassignment.findMany({
@@ -110,14 +111,17 @@ export async function POST(request: Request) {
     if (!slotId || !substituteTeacherId || !startDate || !endDate)
       throw new AppError('slotId, substituteTeacherId, startDate, endDate are required');
 
-    const start = new Date(startDate);
-    const end   = new Date(endDate);
+    // Use local midnight (T00:00:00) to match how the timetable teacher route
+    // builds its dateObj — new Date('YYYY-MM-DD') parses as UTC midnight and
+    // would compare incorrectly on IST servers.
+    const start = new Date(startDate + 'T00:00:00');
+    const end   = new Date(endDate   + 'T00:00:00');
     if (end < start) throw new AppError('endDate must be on or after startDate');
 
     // Validate slot belongs to this school
     const slot = await prisma.timetableSlot.findFirst({
       where: { id: slotId, timetable: { schoolId } },
-      select: { id: true, teacherId: true },
+      select: { id: true, teacherId: true, subject: true, periodNo: true, startTime: true, endTime: true },
     });
     if (!slot) throw new AppError('Slot not found', 404);
 
@@ -164,6 +168,31 @@ export async function POST(request: Request) {
         isActive:  true,
       },
     });
+
+    // Notify the substitute teacher
+    const subTeacher = await prisma.teacher.findUnique({
+      where: { id: substituteTeacherId },
+      select: { userId: true, user: { select: { firstName: true } } },
+    });
+    if (subTeacher?.userId) {
+      const originalTeacher = await prisma.teacher.findUnique({
+        where: { id: originalTeacherId },
+        select: { user: { select: { firstName: true, lastName: true } } },
+      });
+      const originalName = originalTeacher?.user
+        ? `${originalTeacher.user.firstName} ${originalTeacher.user.lastName}`.trim()
+        : 'A colleague';
+      const dateRange = start.toDateString() === end.toDateString()
+        ? start.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+        : `${start.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – ${end.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}`;
+      await sendNotification({
+        userId: subTeacher.userId,
+        title:  'Class Reassigned to You',
+        body:   `${originalName} has assigned you Period ${slot.periodNo} (${slot.subject}) on ${dateRange}${reason ? ` — ${reason}` : ''}.`,
+        channels: ['in_app', 'push'],
+        data: { type: 'timetable_reassignment', reassignmentId: reassignment.id },
+      });
+    }
 
     return Response.json({ reassignment }, { status: 201 });
   } catch (err) { return handleError(err); }

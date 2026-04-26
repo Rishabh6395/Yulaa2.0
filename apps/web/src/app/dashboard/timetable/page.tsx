@@ -42,6 +42,7 @@ export default function TimetablePage() {
   const [loading,     setLoading]     = useState(true);
   const [role,        setRole]        = useState('');
   const [msg,         setMsg]         = useState<{ type: string; text: string } | null>(null);
+  const [dayReassignments, setDayReassignments] = useState<any[]>([]);
 
   // Log modal
   const [activeSlot,  setActiveSlot]  = useState<any | null>(null);
@@ -56,9 +57,6 @@ export default function TimetablePage() {
   const [reassignForm,      setReassignForm]      = useState({ substituteTeacherId: '', startDate: todayStr(), endDate: '', reason: '' });
   const [reassigning,       setReassigning]       = useState(false);
 
-  // Active reassignments list
-  const [reassignments,     setReassignments]     = useState<any[]>([]);
-  const [showReassignList,  setShowReassignList]  = useState(false);
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const authH   = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -67,29 +65,26 @@ export default function TimetablePage() {
   const fetchSlots = useCallback(async (d: string) => {
     setLoading(true);
     try {
-      const res  = await fetch(`/api/timetable/teacher?date=${d}`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      setSlots(data.slots || []);
+      const [slotsRes, raRes] = await Promise.all([
+        fetch(`/api/timetable/teacher?date=${d}`,   { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`/api/timetable/reassign?date=${d}`,  { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      const slotsData = await slotsRes.json();
+      const raData    = await raRes.json();
+      setSlots(slotsData.slots || []);
+      setDayReassignments(raData.reassignments || []);
     } finally { setLoading(false); }
-  }, [token]);
-
-  const fetchReassignments = useCallback(async () => {
-    const res  = await fetch('/api/timetable/reassign', { headers: { Authorization: `Bearer ${token}` } });
-    const data = await res.json();
-    setReassignments(data.reassignments || []);
   }, [token]);
 
   useEffect(() => {
     const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
     setRole(user.primaryRole || '');
     fetchSlots(date);
-    // Fetch school teachers for substitute selector
-    if (user.schoolId) {
-      fetch(`/api/super-admin/schools/${user.schoolId}/teachers`, { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.json())
-        .then(d => setTeachers(d.teachers || []))
-        .catch(() => {});
-    }
+    // Fetch school teachers for substitute selector — /api/teachers is scoped to caller's school
+    fetch('/api/teachers', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setTeachers(d.teachers || []))
+      .catch(() => {});
   }, []);
 
   useEffect(() => { fetchSlots(date); }, [date, fetchSlots]);
@@ -146,14 +141,12 @@ export default function TimetablePage() {
       setMsg({ type: 'success', text: 'Class reassigned successfully!' });
       setShowReassign(false);
       fetchSlots(date);
-      fetchReassignments();
     } finally { setReassigning(false); }
   };
 
   const cancelReassignment = async (id: string) => {
     await fetch(`/api/timetable/reassign?id=${id}`, { method: 'DELETE', headers: authH });
-    fetchReassignments();
-    fetchSlots(date);
+    fetchSlots(date); // refreshes both slots + dayReassignments
   };
 
   const dayName = DAYS[new Date(date + 'T00:00:00').getDay()];
@@ -173,13 +166,6 @@ export default function TimetablePage() {
           <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">Day-wise schedule with topic logging</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {isTeacher && (
-            <button onClick={() => { fetchReassignments(); setShowReassignList(true); }}
-              className="btn btn-secondary text-xs flex items-center gap-1.5">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
-              My Reassignments
-            </button>
-          )}
           <button onClick={() => { const d = new Date(date + 'T00:00:00'); d.setDate(d.getDate() - 1); setDate(d.toISOString().split('T')[0]); }}
             className="btn-secondary px-3 py-2">‹ Prev</button>
           <input type="date" className="input-field text-sm" value={date} onChange={e => setDate(e.target.value)} />
@@ -261,9 +247,17 @@ export default function TimetablePage() {
 
                     {/* Reassigned-away notice */}
                     {type === 'reassigned_away' && slot.reassignedTo && (
-                      <p className="text-xs text-surface-400 italic mb-1">
-                        Handed off until {fmtDate(slot.reassignedTo.endDate)}
-                      </p>
+                      <div className="flex items-center gap-3 mb-1">
+                        <p className="text-xs text-surface-400 italic">
+                          Handed off until {fmtDate(slot.reassignedTo.endDate)}
+                        </p>
+                        <button
+                          onClick={() => cancelReassignment(slot.reassignedTo.reassignmentId)}
+                          className="text-xs text-red-500 dark:text-red-400 hover:underline"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     )}
 
                     {/* Substitute notice */}
@@ -303,6 +297,47 @@ export default function TimetablePage() {
                       </button>
                     )}
                   </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Reassignments active on this date */}
+      {dayReassignments.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Reassignments on this day</p>
+          {dayReassignments.map((r: any) => {
+            const isOriginal = r.originalTeacherName && r.substituteTeacherName;
+            return (
+              <div key={r.id} className="card p-4 border-2 border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl flex flex-col items-center justify-center text-xs font-bold flex-shrink-0 bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400">
+                    <span>↗️</span>
+                    <span>P{r.periodNo}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-semibold text-sm">{r.subject}</span>
+                      {r.className && (
+                        <span className="text-xs bg-surface-100 dark:bg-gray-700/60 text-surface-500 px-2 py-0.5 rounded-md">{r.className}</span>
+                      )}
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400">Reassigned</span>
+                    </div>
+                    <p className="text-xs text-surface-400">
+                      {r.originalTeacherName} → <span className="font-medium text-amber-600 dark:text-amber-400">{r.substituteTeacherName}</span>
+                    </p>
+                    <p className="text-xs text-surface-400 mt-0.5">
+                      {fmtDate(r.startDate)} – {fmtDate(r.endDate)}{r.reason ? ` · ${r.reason}` : ''}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => cancelReassignment(r.id)}
+                    className="text-xs text-red-500 dark:text-red-400 hover:underline shrink-0 pt-1"
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
             );
@@ -351,8 +386,8 @@ export default function TimetablePage() {
             <select className="input-field" required value={reassignForm.substituteTeacherId}
               onChange={e => setReassignForm(f => ({...f, substituteTeacherId: e.target.value}))}>
               <option value="">— Select a teacher —</option>
-              {teachers.filter(t => t.user).map(t => (
-                <option key={t.id} value={t.id}>{t.user?.firstName} {t.user?.lastName}</option>
+              {teachers.map((t: any) => (
+                <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>
               ))}
             </select>
           </div>
@@ -382,32 +417,6 @@ export default function TimetablePage() {
         </form>
       </Modal>
 
-      {/* Active Reassignments List Modal */}
-      <Modal open={showReassignList} onClose={() => setShowReassignList(false)} title="My Active Reassignments">
-        <div className="space-y-3">
-          {reassignments.length === 0 ? (
-            <p className="text-sm text-surface-400 text-center py-6">No active reassignments.</p>
-          ) : reassignments.map(r => (
-            <div key={r.id} className="flex items-start justify-between gap-3 p-3 rounded-xl bg-surface-50 dark:bg-gray-700/40">
-              <div className="space-y-0.5 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{r.subject}</span>
-                  <span className="text-xs bg-surface-100 dark:bg-gray-700 text-surface-400 px-1.5 rounded">{r.className}</span>
-                  <span className="text-xs text-surface-400">P{r.periodNo}</span>
-                </div>
-                <p className="text-xs text-surface-400">
-                  {r.originalTeacherName} → <span className="font-medium text-amber-600 dark:text-amber-400">{r.substituteTeacherName}</span>
-                </p>
-                <p className="text-xs text-surface-400">{fmtDate(r.startDate)} – {fmtDate(r.endDate)}{r.reason ? ` · ${r.reason}` : ''}</p>
-              </div>
-              <button onClick={() => cancelReassignment(r.id)}
-                className="text-xs text-red-600 dark:text-red-400 hover:underline shrink-0 pt-0.5">
-                Cancel
-              </button>
-            </div>
-          ))}
-        </div>
-      </Modal>
     </div>
   );
 }

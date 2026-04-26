@@ -89,7 +89,7 @@ export async function GET(request: Request) {
             reassignments: undefined,
             slotType:   activeReassignment ? 'reassigned_away' : 'assigned',
             reassignedTo: activeReassignment
-              ? { id: activeReassignment.substituteTeacherId, endDate: activeReassignment.endDate }
+              ? { reassignmentId: activeReassignment.id, substituteTeacherId: activeReassignment.substituteTeacherId, endDate: activeReassignment.endDate }
               : null,
           };
         }),
