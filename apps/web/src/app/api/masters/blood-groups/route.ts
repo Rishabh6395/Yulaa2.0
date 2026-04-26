@@ -1,6 +1,7 @@
 import { getUserFromRequest } from '@/lib/auth';
 import { getBloodGroupMasters, addBloodGroupMaster, patchBloodGroupMaster } from '@/modules/masters/masters.service';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
+import prisma from '@/lib/prisma';
 
 const ADMIN_ROLES = ['super_admin', 'school_admin'];
 
@@ -53,6 +54,11 @@ export async function PATCH(request: Request) {
     if (!user) throw new UnauthorizedError();
     if (!user.roles.some((r) => ADMIN_ROLES.includes(r.role_code))) throw new ForbiddenError('Admin access required');
     const { id, ...data } = await request.json();
+    if (!id) throw new AppError('id is required', 400);
+    const schoolId = getSchoolId(user);
+    const record = await prisma.bloodGroupMaster.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!record) throw new AppError('Record not found', 404);
+    if (record.schoolId !== schoolId) throw new ForbiddenError();
     return Response.json({ bloodGroupMaster: await patchBloodGroupMaster(id, data) });
   } catch (err) { return handleError(err); }
 }

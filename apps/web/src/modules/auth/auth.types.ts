@@ -18,6 +18,7 @@ export interface LoginResponse {
     email:             string;
     firstName:         string;
     lastName:          string;
+    phone:             string | null;
     roles:             AuthUserRole[];
     primaryRole:       string;
     schoolId:          string | null;

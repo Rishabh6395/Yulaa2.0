@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface ClassItem { id: string; name: string; grade: string; section: string; }
-interface Teacher   { id: string; user: { firstName: string; lastName: string } | null; }
+interface Teacher   { id: string; first_name: string; last_name: string; }
 interface Period    { no: number; startTime: string; endTime: string; }
 interface SlotData  { subject: string; teacherId: string; }
 
@@ -28,7 +28,12 @@ const DEFAULT_PERIODS: Period[] = [
   { no: 8, startTime: '14:30', endTime: '15:15' },
 ];
 
-const ACADEMIC_YEARS = ['2024-2025', '2025-2026', '2026-2027'];
+// Derive the active Indian academic year (April–March) from today's date
+function activeAcademicYear(): string {
+  const now = new Date();
+  const y   = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return `${y}-${y + 1}`;
+}
 
 function slotKey(day: number, period: number) { return `${day}_${period}`; }
 function initGrid(periods: Period[], activeDays: number[]): Record<string, SlotData> {
@@ -44,9 +49,10 @@ function fmtDate(d: string) {
 export default function TimetablePage({ params }: { params: { id: string } }) {
   const schoolId = params.id;
 
-  const [academicYear,   setAcademicYear]   = useState('2025-2026');
+  const academicYear = activeAcademicYear();
   const [classes,        setClasses]        = useState<ClassItem[]>([]);
   const [teachers,       setTeachers]       = useState<Teacher[]>([]);
+  const [classSubjects,  setClassSubjects]  = useState<string[]>([]);
   const [selectedClass,  setSelectedClass]  = useState('');
   const [activeDays,     setActiveDays]     = useState<number[]>([1, 2, 3, 4, 5]);
   const [periods,        setPeriods]        = useState<Period[]>(DEFAULT_PERIODS);
@@ -86,6 +92,15 @@ export default function TimetablePage({ params }: { params: { id: string } }) {
       setTeachers(td.teachers || []);
     }).catch(() => {});
   }, [schoolId]);
+
+  // Fetch subjects from stream master for this school's class when class changes
+  useEffect(() => {
+    if (!selectedClass) { setClassSubjects([]); return; }
+    fetch(`/api/masters/streams?classId=${selectedClass}&schoolId=${schoolId}`, { headers: headers(false) })
+      .then(r => r.json())
+      .then(d => setClassSubjects((d.streamMasters || []).map((m: any) => m.name)))
+      .catch(() => setClassSubjects([]));
+  }, [selectedClass, schoolId]);
 
   // Load timetable when class/year changes
   useEffect(() => {
@@ -215,7 +230,7 @@ export default function TimetablePage({ params }: { params: { id: string } }) {
         body: JSON.stringify({ action: 'bulk_upload', fileData, fileExt, academicYear }),
       });
       const d = await res.json();
-      if (!res.ok) { setError(d.error || 'Upload failed'); }
+      if (!res.ok) { setError(d.error || 'Failed to upload timetable — check the file format and try again'); }
       else { setUploadResult(`${d.saved} slot(s) imported across ${d.classes} class(es). Skipped: ${d.skipped}.`); }
     } catch { setError('Failed to upload file'); }
     finally { setUploading(false); e.target.value = ''; }
@@ -240,10 +255,10 @@ export default function TimetablePage({ params }: { params: { id: string } }) {
         }),
       });
       const d = await res.json();
-      if (!res.ok) { setError(d.error || 'Reassignment failed'); setReassigning(false); return; }
+      if (!res.ok) { setError(d.error || 'Failed to reassign teacher — please try again'); setReassigning(false); return; }
       setReassignModal(null);
       loadReassignments();
-    } catch { setError('Failed to reassign'); }
+    } catch { setError('Failed to reassign teacher — please try again'); }
     finally { setReassigning(false); }
   }
 
@@ -297,9 +312,9 @@ export default function TimetablePage({ params }: { params: { id: string } }) {
         <div className="flex flex-wrap gap-3 items-end">
           <div className="space-y-1">
             <label className="text-xs font-semibold text-surface-400 uppercase tracking-wide">Academic Year</label>
-            <select className="input w-36" value={academicYear} onChange={e => setAcademicYear(e.target.value)}>
-              {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
+            <div className="flex items-center h-9 px-3 text-sm font-semibold text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800 rounded-lg w-36">
+              {academicYear}
+            </div>
           </div>
           <div className="space-y-1">
             <label className="text-xs font-semibold text-surface-400 uppercase tracking-wide">Class / Section</label>
@@ -423,20 +438,31 @@ export default function TimetablePage({ params }: { params: { id: string } }) {
                       return (
                         <td key={day} className="py-1 px-1 align-top">
                           <div className={`rounded-xl border p-2 space-y-1.5 transition-colors ${hasSubject ? 'border-brand-200 dark:border-brand-800 bg-brand-50/60 dark:bg-brand-950/20' : 'border-surface-200 dark:border-gray-700 bg-surface-50 dark:bg-gray-800/40'}`}>
-                            <input
-                              className="w-full text-xs bg-transparent border-0 outline-none text-gray-800 dark:text-gray-200 placeholder-surface-300 dark:placeholder-gray-600 font-medium"
-                              placeholder="Subject..."
-                              value={slot.subject}
-                              onChange={e => updateSlot(day, period.no, 'subject', e.target.value)}
-                            />
+                            {classSubjects.length > 0 ? (
+                              <select
+                                className="w-full text-xs bg-transparent border-0 outline-none text-gray-800 dark:text-gray-200 font-medium cursor-pointer"
+                                value={slot.subject}
+                                onChange={e => updateSlot(day, period.no, 'subject', e.target.value)}
+                              >
+                                <option value="">— Subject —</option>
+                                {classSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                              </select>
+                            ) : (
+                              <input
+                                className="w-full text-xs bg-transparent border-0 outline-none text-gray-800 dark:text-gray-200 placeholder-surface-300 dark:placeholder-gray-600 font-medium"
+                                placeholder="Subject..."
+                                value={slot.subject}
+                                onChange={e => updateSlot(day, period.no, 'subject', e.target.value)}
+                              />
+                            )}
                             <select
                               className="w-full text-[11px] bg-white dark:bg-gray-800 border border-surface-200 dark:border-gray-600 rounded-lg px-1.5 py-1 text-gray-600 dark:text-gray-400 focus:outline-none focus:border-brand-400"
                               value={slot.teacherId}
                               onChange={e => updateSlot(day, period.no, 'teacherId', e.target.value)}
                             >
                               <option value="">— Teacher —</option>
-                              {teachers.filter(t => t.user).map(t => (
-                                <option key={t.id} value={t.id}>{t.user?.firstName} {t.user?.lastName}</option>
+                              {teachers.map(t => (
+                                <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>
                               ))}
                             </select>
                           </div>
@@ -478,9 +504,9 @@ export default function TimetablePage({ params }: { params: { id: string } }) {
 
             <div className="space-y-1">
               <label className="text-xs font-semibold text-surface-400 uppercase tracking-wide">Academic Year</label>
-              <select className="input w-36" value={academicYear} onChange={e => setAcademicYear(e.target.value)}>
-                {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
+              <div className="flex items-center h-9 px-3 text-sm font-semibold text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800 rounded-lg w-36">
+                {academicYear}
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 p-3 bg-surface-50 dark:bg-gray-700/40 rounded-xl">
@@ -532,8 +558,8 @@ export default function TimetablePage({ params }: { params: { id: string } }) {
               <label className="text-xs font-semibold text-surface-400 uppercase tracking-wide">Teacher (Proxy For)</label>
               <select className="input w-64" value={proxyTeacher} onChange={e => setProxyTeacher(e.target.value)}>
                 <option value="">— Select a teacher —</option>
-                {teachers.filter(t => t.user).map(t => (
-                  <option key={t.id} value={t.id}>{t.user?.firstName} {t.user?.lastName}</option>
+                {teachers.map(t => (
+                  <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>
                 ))}
               </select>
             </div>
@@ -543,7 +569,7 @@ export default function TimetablePage({ params }: { params: { id: string } }) {
           {proxyTeacher && (
             <div className="card p-6 space-y-4 max-w-4xl">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                Timetable for {teachers.find(t => t.id === proxyTeacher)?.user?.firstName} {teachers.find(t => t.id === proxyTeacher)?.user?.lastName}
+                Timetable for {teachers.find(t => t.id === proxyTeacher)?.first_name} {teachers.find(t => t.id === proxyTeacher)?.last_name}
               </h3>
 
               {proxyLoading ? (

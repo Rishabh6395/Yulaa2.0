@@ -44,7 +44,7 @@ function LinkChildModal({
       body: JSON.stringify({ parent_id: parent.id, student_id: selectedId }),
     });
     if (res.ok) { onSuccess(); onClose(); }
-    else { const d = await res.json(); setError(d.error || 'Failed'); }
+    else { const d = await res.json(); setError(d.error || 'Failed to link student — please try again'); }
     setSaving(false);
   };
 
@@ -136,7 +136,7 @@ export default function ParentsPage() {
       body: JSON.stringify(form),
     });
     const data = await res.json();
-    if (!res.ok) { setFormError(data.error || 'Failed'); setSaving(false); return; }
+    if (!res.ok) { setFormError(data.error || 'Failed to add parent — please try again'); setSaving(false); return; }
     setShowAddModal(false);
     setForm({ first_name: '', last_name: '', phone: '', email: '', password: '', student_ids: [] });
     mutate();

@@ -5,7 +5,7 @@ import { handleError } from '@/utils/errors';
 export async function GET() {
   try {
     const schools = await prisma.school.findMany({
-      where:   { status: 'active', admissionsOpen: true },
+      where:   { status: 'active' },
       select:  { id: true, name: true, logoUrl: true, address: true, city: true, state: true, description: true, facilities: true, admissionFeeAmt: true },
       orderBy: { name: 'asc' },
     });

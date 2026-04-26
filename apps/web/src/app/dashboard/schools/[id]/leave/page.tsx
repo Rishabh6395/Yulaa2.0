@@ -171,7 +171,7 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
       });
       setLeaveTypes(t => t.filter(x => x.id !== id));
       setPolicies(p => p.filter(x => x.leaveTypeId !== id));
-    } catch { setError('Failed to delete'); }
+    } catch { setError('Failed to delete leave type — please try again'); }
   }
 
   // ── Policy helpers ───────────────────────────────────────────────────────
@@ -203,7 +203,7 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
           return [...ps, data.policy];
         });
       }
-    } catch { setError('Failed to save policy'); }
+    } catch { setError('Failed to save leave policy — please try again'); }
   }
 
   async function saveCarryForwardDate() {

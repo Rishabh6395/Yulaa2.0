@@ -33,13 +33,19 @@ function daysBetween(start: Date, end: Date) {
 }
 
 export async function listLeaveRequests(
-  schoolId: string, userId: string, roleCode: string, isAdmin: boolean,
+  schoolId: string | null, userId: string, roleCode: string, isAdmin: boolean,
 ): Promise<{ leaves: LeaveRow[]; workflows: { parent: any; teacher: any } }> {
-  const [leaves, parentWf, teacherWf] = await Promise.all([
-    repo.findLeaveRequests(schoolId, isAdmin ? undefined : userId),
-    repo.findLeaveWorkflow(schoolId, 'parent'),
-    repo.findLeaveWorkflow(schoolId, 'teacher'),
-  ]);
+  const leaves = await repo.findLeaveRequests(schoolId, isAdmin ? undefined : userId);
+
+  // For parents (schoolId is null), derive a school from the first leave so we can
+  // fetch the relevant workflow for display — parents only apply to one school at a time.
+  const wfSchoolId: string | null = schoolId ?? (leaves[0] as any)?.schoolId ?? null;
+  const [parentWf, teacherWf] = wfSchoolId
+    ? await Promise.all([
+        repo.findLeaveWorkflow(wfSchoolId, 'parent'),
+        repo.findLeaveWorkflow(wfSchoolId, 'teacher'),
+      ])
+    : [null, null];
 
   const mapLeave = (lr: any): LeaveRow => ({
     id:               lr.id,

@@ -87,7 +87,7 @@ export default function SchoolLibraryPage() {
       const body   = editSchool ? { id: editSchool.id, ...form } : form;
       const res    = await fetch('/api/super-admin/schools', { method, headers: authHeaders(), body: JSON.stringify(body) });
       const data   = await res.json();
-      if (!res.ok) { setError(data.error || 'Something went wrong'); return; }
+      if (!res.ok) { setError(data.error || 'Failed to save school details — please try again'); return; }
       setShowForm(false);
       await load();
     } catch { setError('Network error'); }

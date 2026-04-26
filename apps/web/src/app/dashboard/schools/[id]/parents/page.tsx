@@ -40,7 +40,7 @@ function LinkChildModal({
       body: JSON.stringify({ parent_id: parent.id, student_id: selectedId }),
     });
     if (res.ok) { onSuccess(); onClose(); }
-    else { const d = await res.json(); setError(d.error || 'Failed'); }
+    else { const d = await res.json(); setError(d.error || 'Failed to link student — please try again'); }
     setSaving(false);
   };
 

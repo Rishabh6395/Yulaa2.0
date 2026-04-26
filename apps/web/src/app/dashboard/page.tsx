@@ -64,7 +64,7 @@ function PunchCard({ userId }: { userId: string }) {
         setMessage(`${action === 'punch_in' ? 'Punched In' : 'Punched Out'} at ${fmtTime(data.time) ?? ''}`);
         setTodayRec(data.record ?? null);
       } else {
-        setMessage(`Error: ${data.error || 'Failed'}`);
+        setMessage(`Error: ${data.error || 'Failed to record attendance — please try again'}`);
       }
     } catch { setMessage('Error: Network error'); }
     setPunching(null);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { validatePhone } from '@/utils/phone';
 
 interface School {
   id: string; name: string; logoUrl: string | null;
@@ -138,7 +139,10 @@ export default function ApplyPage() {
     if (isRequired(fieldRules, 'parentName') && !parentName.trim()) return err('Full name is required');
     if (isVisible(fieldRules, 'parentPhone')) {
       if (isRequired(fieldRules, 'parentPhone') && !phone) return err('Phone number is required');
-      if (phone && !/^\d{10}$/.test(phone)) return err('Phone number must be exactly 10 digits (numbers only)');
+      if (phone) {
+        const pv = validatePhone(phone);
+        if (!pv.valid) return err(pv.error!);
+      }
     }
     if (isVisible(fieldRules, 'parentEmail') && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
       return err('Enter a valid email address');
@@ -224,26 +228,27 @@ export default function ApplyPage() {
             </div>
           )}
 
-          {isVisible(fieldRules, 'parentPhone') && (
-            <div>
-              <Label rules={fieldRules} id="parentPhone">Phone Number</Label>
-              <input
-                className={`input-field ${phone.length > 0 && phone.length !== 10 ? 'border-amber-400 focus:ring-amber-400' : ''}`}
-                type="tel"
-                inputMode="numeric"
-                placeholder="10-digit mobile number"
-                value={phone}
-                maxLength={10}
-                onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-              />
-              {phone.length > 0 && phone.length < 10 && (
-                <p className="text-xs text-amber-600 mt-1">{10 - phone.length} more digit{10 - phone.length !== 1 ? 's' : ''} needed</p>
-              )}
-              {phone.length === 10 && (
-                <p className="text-xs text-emerald-600 mt-1">✓ Valid phone number</p>
-              )}
-            </div>
-          )}
+          {isVisible(fieldRules, 'parentPhone') && (() => {
+            const pv = phone ? validatePhone(phone) : null;
+            return (
+              <div>
+                <Label rules={fieldRules} id="parentPhone">Phone Number</Label>
+                <input
+                  className={`input-field ${phone && !pv?.valid ? 'border-amber-400 focus:ring-amber-400' : phone && pv?.valid ? 'border-emerald-400 focus:ring-emerald-400' : ''}`}
+                  type="tel"
+                  placeholder="e.g. 9876543210 or +14155552671"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                />
+                {phone && !pv?.valid && (
+                  <p className="text-xs text-amber-600 mt-1">{pv?.error}</p>
+                )}
+                {phone && pv?.valid && (
+                  <p className="text-xs text-emerald-600 mt-1">✓ {pv.e164}</p>
+                )}
+              </div>
+            );
+          })()}
 
           {isVisible(fieldRules, 'parentEmail') && (
             <div>

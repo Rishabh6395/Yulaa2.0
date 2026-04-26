@@ -4,13 +4,11 @@ import prisma from '@/lib/prisma';
 
 const ADMIN_ROLES = ['super_admin', 'school_admin', 'principal', 'hod'];
 
-async function getSchoolId(user: any, bodySchoolId?: string): Promise<string> {
+function getSchoolId(user: any, override?: string): string {
   const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-  if (bodySchoolId) return bodySchoolId;
+  if (override && user.roles.some((r: any) => r.role_code === 'super_admin')) return override;
   if (primary.school_id) return primary.school_id;
-  const def = await prisma.school.findFirst({ where: { isDefault: true }, select: { id: true } });
-  if (def) return def.id;
-  throw new AppError('No school found');
+  throw new AppError('No school associated with your account');
 }
 
 export async function GET(request: Request) {
@@ -110,8 +108,10 @@ export async function PATCH(request: Request) {
     const { id, status, chapter, topic, orderNo } = body;
     if (!id) throw new AppError('id required');
 
+    const schoolId = getSchoolId(user, body.schoolId);
     const existing = await prisma.syllabusItem.findUnique({ where: { id } });
     if (!existing) throw new AppError('Item not found');
+    if (existing.schoolId !== schoolId) throw new ForbiddenError();
     // Teacher can only update their own items
     if (primary.role_code === 'teacher' && existing.teacherId !== user.id) throw new ForbiddenError();
 
@@ -134,8 +134,13 @@ export async function DELETE(request: Request) {
     if (!user) throw new UnauthorizedError();
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
     if (!ADMIN_ROLES.includes(primary.role_code)) throw new ForbiddenError();
-    const { id } = await request.json();
+    const body = await request.json();
+    const { id } = body;
     if (!id) throw new AppError('id required');
+    const schoolId = getSchoolId(user);
+    const existing = await prisma.syllabusItem.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!existing) throw new AppError('Item not found');
+    if (existing.schoolId !== schoolId) throw new ForbiddenError();
     await prisma.syllabusItem.delete({ where: { id } });
     return Response.json({ ok: true });
   } catch (err) { return handleError(err); }

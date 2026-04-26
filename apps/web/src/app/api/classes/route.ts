@@ -30,7 +30,7 @@ export async function PATCH(request: Request) {
     if (!user) throw new UnauthorizedError();
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
     if (!ADMIN_ROLES.includes(primaryRole.role_code)) throw new ForbiddenError('Admin access required');
-    const cls         = await updateClass(await request.json());
+    const cls         = await updateClass(primaryRole.school_id!, await request.json());
     return Response.json({ class: cls });
   } catch (err) { return handleError(err); }
 }

@@ -66,6 +66,7 @@ export async function login({ email, password }: LoginInput): Promise<LoginRespo
       email:             user.email,
       firstName:         user.firstName,
       lastName:          user.lastName,
+      phone:             user.phone ?? null,
       roles,
       primaryRole:       primaryRole?.role_code,
       schoolId:          primaryRole?.school_id ?? null,

@@ -20,6 +20,7 @@ export interface CreateClassInput {
 
 export interface UpdateClassInput {
   id:              string;
+  schoolId:        string;
   grade?:          string;
   section?:        string;
   name?:           string;

@@ -84,7 +84,7 @@ export default function StreamMasterPage() {
         body: JSON.stringify(body),
       });
       const d = await res.json();
-      if (!res.ok) { setError(d.error || d.message || 'Save failed'); return; }
+      if (!res.ok) { setError(d.error || d.message || 'Failed to save subject — please try again'); return; }
       setSuccess(editing ? 'Subject updated.' : 'Subject added.');
       setShowForm(false);
       fetchAll();
@@ -95,7 +95,7 @@ export default function StreamMasterPage() {
   async function handleDelete(id: string) {
     try {
       const res = await fetch(`/api/masters/streams?id=${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) { const d = await res.json(); setError(d.error || 'Delete failed'); return; }
+      if (!res.ok) { const d = await res.json(); setError(d.error || 'Failed to delete subject — please try again'); return; }
       setEntries(prev => prev.filter(e => e.id !== id));
       setSuccess('Subject deleted.');
       setTimeout(() => setSuccess(''), 3000);

@@ -33,12 +33,13 @@ export async function createClass(schoolId: string, body: Record<string, any>) {
   });
 }
 
-export async function updateClass(body: Record<string, any>) {
+export async function updateClass(schoolId: string, body: Record<string, any>) {
   const { id, grade, section, class_teacher_id, academic_year, max_students, name } = body;
   if (!id) throw new AppError('id is required');
 
   return repo.updateClass({
     id,
+    schoolId,
     grade,
     section,
     name,

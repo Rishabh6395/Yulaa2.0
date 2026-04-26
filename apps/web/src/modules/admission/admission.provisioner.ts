@@ -144,5 +144,5 @@ export async function provisionApprovedApplication(applicationId: string) {
     console.log(`[NOTIFY] Application ${applicationId} approved — parent userId=${user.id}`);
 
     return { userId: user.id, parentId: parent.id };
-  });
+  }, { timeout: 30000 });
 }

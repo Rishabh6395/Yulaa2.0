@@ -27,7 +27,12 @@ const DEFAULT_PERIODS: Period[] = [
   { no: 8, startTime: '14:30', endTime: '15:15' },
 ];
 
-const ACADEMIC_YEARS = ['2024-2025', '2025-2026', '2026-2027'];
+// Derive the active Indian academic year (April–March) from today's date
+function activeAcademicYear(): string {
+  const now = new Date();
+  const y   = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return `${y}-${y + 1}`;
+}
 
 function slotKey(day: number, period: number) { return `${day}_${period}`; }
 function initGrid(periods: Period[], activeDays: number[]): Record<string, SlotData> {
@@ -48,7 +53,7 @@ const VIEWS: { id: 'periods' | 'grid' | 'upload' | 'reassign'; label: string }[]
 
 export default function SchedulingPage() {
   const [schoolId,       setSchoolId]       = useState('');
-  const [academicYear,   setAcademicYear]   = useState('2025-2026');
+  const academicYear = activeAcademicYear();
   const [classes,        setClasses]        = useState<ClassItem[]>([]);
   const [teachers,       setTeachers]       = useState<Teacher[]>([]);
   const [selectedClass,  setSelectedClass]  = useState('');
@@ -242,9 +247,9 @@ export default function SchedulingPage() {
         body: JSON.stringify({ action: 'bulk_upload', fileData, fileExt, academicYear }),
       });
       const d = await res.json();
-      if (!res.ok) { setError(d.error || 'Upload failed'); }
+      if (!res.ok) { setError(d.error || 'Failed to upload timetable — check the file format and try again'); }
       else { setUploadResult(`${d.saved} slot(s) imported across ${d.classes} class(es). Skipped: ${d.skipped}.`); }
-    } catch { setError('Failed to upload file'); }
+    } catch { setError('Failed to upload file — please try again'); }
     finally { setUploading(false); e.target.value = ''; }
   }
 
@@ -266,10 +271,10 @@ export default function SchedulingPage() {
         }),
       });
       const d = await res.json();
-      if (!res.ok) { setError(d.error || 'Reassignment failed'); setReassigning(false); return; }
+      if (!res.ok) { setError(d.error || 'Failed to reassign teacher — please try again'); setReassigning(false); return; }
       setReassignModal(null);
       loadReassignments();
-    } catch { setError('Failed to reassign'); }
+    } catch { setError('Failed to reassign teacher — please try again'); }
     finally { setReassigning(false); }
   }
 
@@ -316,9 +321,9 @@ export default function SchedulingPage() {
         <div className="flex flex-wrap gap-3 items-end">
           <div className="space-y-1">
             <label className="text-xs font-semibold text-surface-400 uppercase tracking-wide">Academic Year</label>
-            <select className="input w-36" value={academicYear} onChange={e => setAcademicYear(e.target.value)}>
-              {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
+            <div className="flex items-center h-9 px-3 text-sm font-semibold text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800 rounded-lg w-36">
+              {academicYear}
+            </div>
           </div>
           <div className="space-y-1">
             <label className="text-xs font-semibold text-surface-400 uppercase tracking-wide">Class / Section</label>
@@ -504,9 +509,9 @@ export default function SchedulingPage() {
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-surface-400 uppercase tracking-wide">Academic Year</label>
-              <select className="input w-36" value={academicYear} onChange={e => setAcademicYear(e.target.value)}>
-                {ACADEMIC_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
+              <div className="flex items-center h-9 px-3 text-sm font-semibold text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800 rounded-lg w-36">
+                {academicYear}
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-3 p-3 bg-surface-50 dark:bg-gray-700/40 rounded-xl">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-surface-400"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>

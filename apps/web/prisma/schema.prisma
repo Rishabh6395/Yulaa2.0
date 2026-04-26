@@ -778,6 +778,7 @@ model AdmissionChild {
   gender         String?              @db.VarChar(10)
   aadhaarNo      String?              @map("aadhaar_no") @db.VarChar(12)
   classApplying  String?              @map("class_applying") @db.VarChar(30)
+  section        String?              @db.VarChar(10)
   previousSchool String?              @map("previous_school") @db.VarChar(200)
   studentId      String?              @unique @map("student_id")
   createdAt      DateTime             @default(now()) @map("created_at")

@@ -1,8 +1,8 @@
 import prisma from '@/lib/prisma';
 
-export async function findLeaveRequests(schoolId: string, userId?: string) {
+export async function findLeaveRequests(schoolId: string | null, userId?: string) {
   return prisma.leaveRequest.findMany({
-    where: { schoolId, ...(userId && { userId }) },
+    where: { ...(schoolId ? { schoolId } : {}), ...(userId && { userId }) },
     include: {
       user:           { select: { firstName: true, lastName: true } },
       student:        { select: { firstName: true, lastName: true } },

@@ -4,13 +4,12 @@ import prisma from '@/lib/prisma';
 
 const ADMIN_ROLES = ['super_admin', 'school_admin', 'principal'];
 
-async function getSchoolId(user: any, bodySchoolId?: string): Promise<string> {
+function getSchoolId(user: any, override?: string): string {
   const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-  if (bodySchoolId) return bodySchoolId;
+  // Only super_admin may target a different school
+  if (override && user.roles.some((r: any) => r.role_code === 'super_admin')) return override;
   if (primary.school_id) return primary.school_id;
-  const def = await prisma.school.findFirst({ where: { isDefault: true }, select: { id: true } });
-  if (def) return def.id;
-  throw new AppError('No school found');
+  throw new AppError('No school associated with your account');
 }
 
 export async function GET(request: Request) {

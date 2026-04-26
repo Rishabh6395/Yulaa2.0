@@ -65,7 +65,8 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
     if (!token) return;
     const [y] = month.split('-').map(Number);
     const academicYear = `${y}-${y + 1}`;
-    fetch(`/api/holidays?year=${academicYear}`, { headers: { Authorization: `Bearer ${token}` } })
+    // Pass studentId so the API derives weekoff days from the class timetable
+    fetch(`/api/holidays?year=${academicYear}&studentId=${studentId}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => {
         setWeekoffDays(d.weekoffDays ?? [0, 6]);
@@ -80,7 +81,7 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
         setHolidayMap(map);
       })
       .catch(() => {});
-  }, [month]);
+  }, [month, studentId]);
 
   const fetchAttendance = useCallback(async () => {
     setLoading(true);
@@ -672,17 +673,29 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
 
 function EmployeeAttendanceAdmin() {
   const today = new Date();
-  const [viewMode,  setViewMode]  = useState<'daily' | 'report'>('daily');
-  const [date,      setDate]      = useState(today.toISOString().split('T')[0]);
-  const [month,     setMonth]     = useState(today.toISOString().substring(0, 7));
-  const [teachers,  setTeachers]  = useState<any[]>([]);
-  const [report,    setReport]    = useState<any[]>([]);
-  const [loading,   setLoading]   = useState(false);
-  const [saving,    setSaving]    = useState(false);
-  const [message,   setMessage]   = useState('');
+  const [viewMode,    setViewMode]    = useState<'daily' | 'report'>('daily');
+  const [date,        setDate]        = useState(today.toISOString().split('T')[0]);
+  const [month,       setMonth]       = useState(today.toISOString().substring(0, 7));
+  const [teachers,    setTeachers]    = useState<any[]>([]);
+  const [report,      setReport]      = useState<any[]>([]);
+  const [loading,     setLoading]     = useState(false);
+  const [saving,      setSaving]      = useState(false);
+  const [message,     setMessage]     = useState('');
+  const [weekoffDays, setWeekoffDays] = useState<number[]>([0, 6]);
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+  // Load weekoff days from leave config whenever the viewed month changes
+  useEffect(() => {
+    if (!token) return;
+    const [y] = month.split('-').map(Number);
+    const academicYear = `${y}-${y + 1}`;
+    fetch(`/api/holidays?year=${academicYear}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setWeekoffDays(d.weekoffDays ?? [0, 6]))
+      .catch(() => {});
+  }, [token, month]);
 
   const fetchDaily = useCallback(async () => {
     setLoading(true);
@@ -723,10 +736,10 @@ function EmployeeAttendanceAdmin() {
   const [reportYear, reportMon] = month.split('-').map(Number);
   const daysInMonth = new Date(reportYear, reportMon, 0).getDate();
   const dateCols = Array.from({ length: daysInMonth }, (_, i) => {
-    const d = i + 1;
+    const d   = i + 1;
     const str = `${month}-${String(d).padStart(2, '0')}`;
     const dow = new Date(str + 'T00:00:00').getDay();
-    return { day: d, str, isWeekend: dow === 0 || dow === 6 };
+    return { day: d, str, isWeekend: weekoffDays.includes(dow) };
   });
 
   return (
@@ -923,18 +936,30 @@ const SUB_STATUS_MAP: Record<string, { bg: string; text: string }> = {
 const FULL_STATUS: Record<string, string> = { P: 'present', A: 'absent', L: 'late' };
 
 function StudentAttendancePage({ userId, attendanceMode }: { userId: string; attendanceMode: string }) {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [classes, setClasses] = useState<any[]>([]);
+  const [date,        setDate]        = useState(new Date().toISOString().split('T')[0]);
+  const [classes,     setClasses]     = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
-  const [students, setStudents] = useState<any[]>([]);
-  const [subjects, setSubjects] = useState<{ key: string; label: string }[]>(FALLBACK_SUBJECTS);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [saveError, setSaveError] = useState('');
+  const [students,    setStudents]    = useState<any[]>([]);
+  const [subjects,    setSubjects]    = useState<{ key: string; label: string }[]>(FALLBACK_SUBJECTS);
+  const [loading,     setLoading]     = useState(false);
+  const [saving,      setSaving]      = useState(false);
+  const [message,     setMessage]     = useState('');
+  const [saveError,   setSaveError]   = useState('');
+  const [weekoffDays, setWeekoffDays] = useState<number[]>([0, 6]);
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+  // Load weekoff days from leave config — re-fetch when the selected date crosses an academic year
+  useEffect(() => {
+    if (!token) return;
+    const y = new Date(date).getFullYear();
+    const academicYear = `${y}-${y + 1}`;
+    fetch(`/api/holidays?year=${academicYear}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setWeekoffDays(d.weekoffDays ?? [0, 6]))
+      .catch(() => {});
+  }, [token, date.substring(0, 4)]);
 
   useEffect(() => {
     fetch('/api/classes', { headers: { Authorization: `Bearer ${token}` } })
@@ -1007,10 +1032,10 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
   };
 
   const selectedDayOfWeek = new Date(date + 'T00:00:00').getDay();
-  const isWeekend = selectedDayOfWeek === 0 || selectedDayOfWeek === 6;
+  const isWeekend = weekoffDays.includes(selectedDayOfWeek);
 
   const saveAttendance = async () => {
-    if (isWeekend) { setSaveError('Cannot mark attendance on weekends.'); return; }
+    if (isWeekend) { setSaveError('Cannot mark attendance on a weekoff day.'); return; }
     setSaving(true); setMessage(''); setSaveError('');
     try {
       const records = students.filter(s => s.schoolStatus && !s.isLeaveLocked).map(s => {

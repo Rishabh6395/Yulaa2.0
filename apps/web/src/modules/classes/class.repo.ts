@@ -30,7 +30,7 @@ export async function createClass(data: CreateClassInput) {
 
 export async function updateClass(data: UpdateClassInput) {
   return prisma.class.update({
-    where: { id: data.id },
+    where: { id: data.id, schoolId: data.schoolId },
     data: {
       ...(data.grade           && { grade:          data.grade }),
       ...(data.section         && { section:        data.section }),

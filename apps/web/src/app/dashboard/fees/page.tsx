@@ -23,7 +23,7 @@ function NotifyModal({ open, onClose, token }: { open: boolean; onClose: () => v
         body: JSON.stringify({ message }),
       });
       const d = await res.json();
-      if (!res.ok) { setError(d.error || 'Failed to send'); return; }
+      if (!res.ok) { setError(d.error || 'Failed to send fee notifications — please try again'); return; }
       setResult({ notified: d.notified, total: d.total });
     } catch { setError('Network error'); }
     finally { setSending(false); }

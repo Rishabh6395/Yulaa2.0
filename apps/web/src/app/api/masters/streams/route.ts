@@ -1,6 +1,7 @@
 import { getUserFromRequest } from '@/lib/auth';
 import { getStreamMasters, addStreamMaster, patchStreamMaster } from '@/modules/masters/masters.service';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
+import prisma from '@/lib/prisma';
 
 const ADMIN_ROLES = ['super_admin', 'school_admin'];
 
@@ -43,6 +44,10 @@ export async function PATCH(request: Request) {
     if (!user.roles.some((r) => ADMIN_ROLES.includes(r.role_code))) throw new ForbiddenError('Admin access required');
     const { id, ...data } = await request.json();
     if (!id) throw new AppError('id is required');
+    const schoolId = getSchoolId(user);
+    const record = await prisma.streamMaster.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!record) throw new AppError('Record not found', 404);
+    if (record.schoolId !== schoolId) throw new ForbiddenError();
     return Response.json({ streamMaster: await patchStreamMaster(id, data) });
   } catch (err) { return handleError(err); }
 }
@@ -55,7 +60,10 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) throw new AppError('id is required');
-    const { default: prisma } = await import('@/lib/prisma');
+    const schoolId = getSchoolId(user);
+    const record = await prisma.streamMaster.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!record) throw new AppError('Record not found', 404);
+    if (record.schoolId !== schoolId) throw new ForbiddenError();
     await prisma.streamMaster.delete({ where: { id } });
     return Response.json({ ok: true });
   } catch (err) { return handleError(err); }

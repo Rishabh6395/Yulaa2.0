@@ -1,5 +1,5 @@
 import { getUserFromRequest } from '@/lib/auth';
-import { listClasses, createClass, updateClass } from '@/modules/classes/class.service';
+import { getWorkflow, saveWorkflow } from '@/modules/admission/admission.service';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 
 function assertSuperAdmin(user: any) {
@@ -7,29 +7,23 @@ function assertSuperAdmin(user: any) {
   if (!user.roles.some((r: any) => r.role_code === 'super_admin')) throw new ForbiddenError();
 }
 
+/** GET /api/super-admin/schools/[id]/admission-workflow */
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     const user = await getUserFromRequest(request);
     assertSuperAdmin(user);
-    return Response.json({ classes: await listClasses(params.id) });
+    const workflow = await getWorkflow(params.id);
+    return Response.json({ workflow });
   } catch (err) { return handleError(err); }
 }
 
+/** POST /api/super-admin/schools/[id]/admission-workflow — body: { name, steps } */
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const user = await getUserFromRequest(request);
     assertSuperAdmin(user);
-    const cls = await createClass(params.id, await request.json());
-    return Response.json({ class: cls }, { status: 201 });
-  } catch (err) { return handleError(err); }
-}
-
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-  try {
-    const user = await getUserFromRequest(request);
-    assertSuperAdmin(user);
-    const body = await request.json();
-    const cls = await updateClass(params.id, body);
-    return Response.json({ class: cls });
+    const body     = await request.json();
+    const workflow = await saveWorkflow({ ...body, schoolId: params.id });
+    return Response.json({ workflow }, { status: 201 });
   } catch (err) { return handleError(err); }
 }

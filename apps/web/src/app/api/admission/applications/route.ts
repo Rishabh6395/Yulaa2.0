@@ -20,38 +20,34 @@ export async function GET(request: Request) {
       return Response.json(result);
     }
 
-    // Parents: list only their own applications
-    if (primaryRole.role_code === 'parent') {
-      const schoolId = primaryRole.school_id;
-      if (!schoolId) throw new ForbiddenError('No school associated');
+    // Non-admin roles (parent, guardian, or any other): list only their own applications across all schools
+    const applications = await prisma.admissionApplication.findMany({
+      where: {
+        OR: [
+          { parentUserId: user.id },
+          { parentEmail:  { equals: user.email, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        children: true,
+        school:   { select: { name: true } },
+      },
+      orderBy: { submittedAt: 'desc' },
+    });
 
-      const applications = await prisma.admissionApplication.findMany({
-        where: {
-          schoolId,
-          OR: [
-            { parentUserId: user.id },
-            { parentEmail:  user.email },
-          ],
-        },
-        include: { children: true },
-        orderBy: { submittedAt: 'desc' },
-      });
+    const rows = applications.map((a) => ({
+      id:             a.id,
+      parent_name:    a.parentName,
+      parent_phone:   a.parentPhone,
+      parent_email:   a.parentEmail,
+      school_name:    (a as any).school?.name ?? null,
+      status:         a.status,
+      risk_score:     a.riskScore,
+      children_count: a.children.length,
+      children:       a.children.map((c) => ({ name: `${c.firstName} ${c.lastName}`, class: c.classApplying })),
+      submitted_at:   a.submittedAt,
+    }));
 
-      const rows = applications.map((a) => ({
-        id:             a.id,
-        parent_name:    a.parentName,
-        parent_phone:   a.parentPhone,
-        parent_email:   a.parentEmail,
-        status:         a.status,
-        risk_score:     a.riskScore,
-        children_count: a.children.length,
-        children:       a.children.map((c) => ({ name: `${c.firstName} ${c.lastName}`, class: c.classApplying })),
-        submitted_at:   a.submittedAt,
-      }));
-
-      return Response.json({ applications: rows, total: rows.length, page: 1, limit: rows.length, totalPages: 1 });
-    }
-
-    throw new ForbiddenError();
+    return Response.json({ applications: rows, total: rows.length, page: 1, limit: rows.length, totalPages: 1 });
   } catch (err) { return handleError(err); }
 }

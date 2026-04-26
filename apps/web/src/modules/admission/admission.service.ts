@@ -1,4 +1,5 @@
 import { AppError } from '@/utils/errors';
+import { validatePhone } from '@/utils/phone';
 import { parsePagination } from '@/utils/pagination';
 import * as repo from './admission.repo';
 import { runValidation } from './admission.validator';
@@ -11,8 +12,9 @@ export async function submitApplication(data: CreateApplicationInput) {
   if (!data.children || data.children.length === 0) throw new AppError('At least one child is required');
 
   // Phone format validation
-  const phone = data.parentPhone?.replace(/\s/g, '') ?? '';
-  if (!/^\d{10}$/.test(phone)) throw new AppError('Phone number must be exactly 10 digits', 400);
+  const phoneResult = validatePhone(data.parentPhone ?? '');
+  if (!phoneResult.valid) throw new AppError(phoneResult.error!, 400);
+  const phone = phoneResult.e164!;
 
   // Duplicate phone check
   const phoneExists = await repo.findApplicationByPhone(data.schoolId, phone);
@@ -36,7 +38,7 @@ export async function submitApplication(data: CreateApplicationInput) {
   // Fetch active workflow
   const workflow = await repo.findActiveWorkflow(data.schoolId);
 
-  const app = await repo.createApplication(data, flags, riskScore, workflow?.id ?? null);
+  const app = await repo.createApplication({ ...data, parentPhone: phone }, flags, riskScore, workflow?.id ?? null);
 
   console.log(`[NOTIFY] New application ${app.id} submitted for school ${data.schoolId}`);
   return { applicationId: app.id, riskScore, flags };
@@ -100,7 +102,13 @@ export async function processAction(input: ApplicationActionInput) {
     return { status: 'under_review', currentStep: nextStep };
   }
 
-  // Final approval — provision
+  // Final approval — require section on every child
+  const missingSection = (app as any).children?.filter((c: any) => !c.section?.trim());
+  if (missingSection && missingSection.length > 0) {
+    const names = missingSection.map((c: any) => `${c.firstName} ${c.lastName}`.trim()).join(', ');
+    throw new AppError(`Section is required before final approval. Missing for: ${names}`, 400);
+  }
+
   await repo.updateApplicationStatus(input.applicationId, 'approved', app.currentStep);
   await repo.createAction(input.applicationId, input.actorUserId, app.currentStep, 'approve', input.comment);
   await provisionApprovedApplication(input.applicationId);

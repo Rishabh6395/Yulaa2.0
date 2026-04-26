@@ -18,7 +18,11 @@ export async function GET(request: Request) {
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
 
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId') ?? primary.school_id;
+    const isSuperAdmin = primary.role_code === 'super_admin';
+    // Only super_admin may query another school's config (e.g. from the admin portal)
+    const schoolId = (isSuperAdmin && searchParams.get('schoolId'))
+      ? searchParams.get('schoolId')!
+      : (primary.school_id ?? searchParams.get('schoolId'));
     const formId   = searchParams.get('formId');
     if (!schoolId) throw new ForbiddenError('No school');
 
@@ -50,7 +54,9 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const { formId, role, fieldRules } = body;
-    const schoolId: string = body.schoolId ?? primary.school_id;
+    // Only super_admin may target a different school; all others are locked to their own school
+    const isSuperAdmin = primary.role_code === 'super_admin';
+    const schoolId: string = (isSuperAdmin && body.schoolId) ? body.schoolId : primary.school_id;
     if (!schoolId || !formId || !role || !fieldRules) {
       return Response.json({ error: 'schoolId, formId, role and fieldRules are required' }, { status: 400 });
     }

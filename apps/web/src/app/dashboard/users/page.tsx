@@ -91,7 +91,7 @@ export default function UsersPage() {
         body: JSON.stringify({ ...form, schoolId: form.schoolId || null }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || 'Error creating user'); return; }
+      if (!res.ok) { setError(data.error || 'Failed to create user — please check the details and try again'); return; }
       setShowCreate(false);
       setForm(EMPTY_FORM);
       await loadAll();
