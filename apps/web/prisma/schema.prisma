@@ -253,6 +253,7 @@ model Class {
   syllabusItems  SyllabusItem[]
   exams          Exam[]
   examEntries    ExamTimetableEntry[]
+  streamMasters  StreamMaster[]
 
   @@unique([schoolId, grade, section, academicYear])
   @@map("classes")
@@ -1242,14 +1243,17 @@ model QualificationMaster {
 model StreamMaster {
   id        String   @id @default(uuid())
   schoolId  String   @map("school_id")
+  classId   String?  @map("class_id")
   name      String   @db.VarChar(100)
   isActive  Boolean  @default(true) @map("is_active")
   sortOrder Int      @default(0) @map("sort_order")
   createdAt DateTime @default(now()) @map("created_at")
   school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class     Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
 
-  @@unique([schoolId, name])
+  @@unique([schoolId, classId, name])
   @@index([schoolId])
+  @@index([classId])
   @@map("stream_masters")
 }
 

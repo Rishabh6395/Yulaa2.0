@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -60,6 +60,12 @@ export default function MasterPage({ title, description, apiPath, dataKey, itemK
   const [editForm, setEditForm] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
   const [formErr, setFormErr] = useState('');
+
+  // Bulk upload state
+  const bulkFileRef = useRef<HTMLInputElement>(null);
+  const [bulkModal, setBulkModal] = useState(false);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ added: number; failed: number; errors: string[] } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -150,17 +156,82 @@ export default function MasterPage({ title, description, apiPath, dataKey, itemK
   const nameField = fields.find(f => f.key === 'name');
   const otherFields = fields.filter(f => f.key !== 'name');
 
+  function downloadTemplate() {
+    const uploadFields = fields.filter(f => f.key !== 'sortOrder');
+    const header = uploadFields.map(f => f.key).join(',');
+    const example = uploadFields.map(f => {
+      if (f.type === 'number') return '0';
+      if (f.type === 'multiselect') return (f.options?.[0] ?? 'value');
+      if (f.type === 'select') return (f.options?.[0] ?? 'value');
+      return f.placeholder ?? f.label ?? f.key;
+    }).join(',');
+    const blob = new Blob([`${header}\n${example}\n`], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${title.toLowerCase().replace(/\s+/g, '-')}-template.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleBulkUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBulkUploading(true); setBulkResult(null);
+    try {
+      const text = await file.text();
+      const lines = text.trim().split('\n').filter(Boolean);
+      if (lines.length < 2) { setBulkResult({ added: 0, failed: 0, errors: ['File is empty or has no data rows'] }); return; }
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      const dataRows = lines.slice(1);
+      let added = 0; let failed = 0; const errors: string[] = [];
+      for (let i = 0; i < dataRows.length; i++) {
+        const vals = dataRows[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        const row: Record<string, any> = {};
+        headers.forEach((h, idx) => {
+          const field = fields.find(f => f.key === h);
+          if (!field) return;
+          const raw = vals[idx] ?? '';
+          if (field.type === 'number') row[h] = raw === '' ? (field.default ?? 0) : Number(raw);
+          else if (field.type === 'multiselect') row[h] = raw ? raw.split('|').map(v => v.trim()) : [];
+          else row[h] = raw;
+        });
+        // Fill defaults for missing fields
+        fields.forEach(f => { if (!(f.key in row)) row[f.key] = f.default ?? (f.type === 'number' ? 0 : f.type === 'multiselect' ? [] : ''); });
+        if (schoolIdParam) row.schoolId = schoolIdParam;
+        try {
+          const res = await fetch(apiPath, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+            body: JSON.stringify(row),
+          });
+          const json = await res.json();
+          if (!res.ok) { failed++; errors.push(`Row ${i + 2}: ${json.error ?? 'Failed'}`); }
+          else added++;
+        } catch { failed++; errors.push(`Row ${i + 2}: Network error`); }
+      }
+      setBulkResult({ added, failed, errors });
+      if (added > 0) load();
+    } catch { setBulkResult({ added: 0, failed: 0, errors: ['Failed to read file'] }); }
+    finally { setBulkUploading(false); e.target.value = ''; }
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link href={schoolIdParam ? `${backHref}?schoolId=${schoolIdParam}` : backHref} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-gray-800 text-surface-400 transition-colors">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">{title}</h1>
-          <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">{description}</p>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <Link href={schoolIdParam ? `${backHref}?schoolId=${schoolIdParam}` : backHref} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-gray-800 text-surface-400 transition-colors">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">{title}</h1>
+            <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">{description}</p>
+          </div>
         </div>
+        <button onClick={() => { setBulkModal(true); setBulkResult(null); }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-surface-200 dark:border-gray-700 text-sm text-surface-500 dark:text-gray-400 hover:border-brand-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M3 17v3a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-3"/></svg>
+          Bulk Upload
+        </button>
       </div>
 
       {/* Add form */}
@@ -264,6 +335,51 @@ export default function MasterPage({ title, description, apiPath, dataKey, itemK
           </table>
         )}
       </div>
+      {/* Hidden file input for bulk upload */}
+      <input ref={bulkFileRef} type="file" accept=".csv" className="hidden" onChange={handleBulkUpload} />
+
+      {/* Bulk Upload Modal */}
+      {bulkModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Bulk Upload — {title}</h2>
+              <button onClick={() => setBulkModal(false)} className="text-surface-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl leading-none">×</button>
+            </div>
+
+            <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-400 space-y-1">
+              <p className="font-semibold">CSV columns:</p>
+              <p className="font-mono">{fields.filter(f => f.key !== 'sortOrder').map(f => f.key).join(', ')}</p>
+              <p className="text-blue-600 dark:text-blue-500">For multiselect fields, separate values with a pipe <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">|</code></p>
+            </div>
+
+            {bulkResult && (
+              <div className={`p-3 rounded-xl border text-sm space-y-1 ${bulkResult.failed === 0 ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'}`}>
+                <p className="font-semibold">{bulkResult.added} added, {bulkResult.failed} failed</p>
+                {bulkResult.errors.map((e, i) => <p key={i} className="text-xs opacity-80">{e}</p>)}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={downloadTemplate}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-surface-200 dark:border-gray-700 text-sm text-surface-500 dark:text-gray-400 hover:border-brand-300 hover:text-brand-600 transition-colors">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download Template
+              </button>
+              <button onClick={() => { setBulkResult(null); bulkFileRef.current?.click(); }} disabled={bulkUploading}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium disabled:opacity-60 transition-colors">
+                {bulkUploading
+                  ? <><svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Uploading…</>
+                  : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Upload CSV</>
+                }
+              </button>
+              <button onClick={() => setBulkModal(false)} className="px-3 py-2 rounded-lg border border-surface-200 dark:border-gray-700 text-sm text-surface-500 dark:text-gray-400 hover:bg-surface-50 dark:hover:bg-gray-700 transition-colors">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

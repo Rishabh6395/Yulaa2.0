@@ -16,9 +16,10 @@ export async function GET(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const { searchParams } = new URL(request.url);
-    const schoolId   = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
-    const activeOnly = searchParams.get('includeInactive') !== 'true';
-    return Response.json({ streamMasters: await getStreamMasters(schoolId, activeOnly) });
+    const schoolId    = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
+    const activeOnly  = searchParams.get('includeInactive') !== 'true';
+    const classId     = searchParams.get('classId') ?? undefined;
+    return Response.json({ streamMasters: await getStreamMasters(schoolId, activeOnly, classId) });
   } catch (err) { return handleError(err); }
 }
 
@@ -27,9 +28,11 @@ export async function POST(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     if (!user.roles.some((r) => ADMIN_ROLES.includes(r.role_code))) throw new ForbiddenError('Admin access required');
-    const { schoolId: bodySchoolId, name, sortOrder } = await request.json();
+    const { schoolId: bodySchoolId, name, sortOrder, classId } = await request.json();
+    if (!name?.trim()) throw new AppError('Subject name is required');
+    if (!classId)      throw new AppError('Class is required');
     const schoolId = getSchoolId(user, bodySchoolId);
-    return Response.json({ streamMaster: await addStreamMaster(schoolId, name, sortOrder) }, { status: 201 });
+    return Response.json({ streamMaster: await addStreamMaster(schoolId, name, sortOrder, classId) }, { status: 201 });
   } catch (err) { return handleError(err); }
 }
 
@@ -39,6 +42,21 @@ export async function PATCH(request: Request) {
     if (!user) throw new UnauthorizedError();
     if (!user.roles.some((r) => ADMIN_ROLES.includes(r.role_code))) throw new ForbiddenError('Admin access required');
     const { id, ...data } = await request.json();
+    if (!id) throw new AppError('id is required');
     return Response.json({ streamMaster: await patchStreamMaster(id, data) });
+  } catch (err) { return handleError(err); }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const user = await getUserFromRequest(request);
+    if (!user) throw new UnauthorizedError();
+    if (!user.roles.some((r) => ADMIN_ROLES.includes(r.role_code))) throw new ForbiddenError('Admin access required');
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) throw new AppError('id is required');
+    const { default: prisma } = await import('@/lib/prisma');
+    await prisma.streamMaster.delete({ where: { id } });
+    return Response.json({ ok: true });
   } catch (err) { return handleError(err); }
 }

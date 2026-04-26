@@ -903,8 +903,8 @@ const STUDENT_STATUSES = ['present', 'absent', 'late', 'half_day', 'excused'] as
 const DAILY_STATUSES   = ['present', 'absent'] as const;
 const DAILY_LABELS: Record<string, string> = { present: 'School In', absent: 'School Out' };
 
-// Subject-wise columns used in class mode
-const SUBJECTS = [
+// Subject-wise columns — populated dynamically from stream master; fallback to legacy keys
+const FALLBACK_SUBJECTS = [
   { key: 'eng',   label: 'Eng' },
   { key: 'hindi', label: 'Hindi' },
   { key: 'maths', label: 'Maths' },
@@ -927,6 +927,7 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
   const [classes, setClasses] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [students, setStudents] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<{ key: string; label: string }[]>(FALLBACK_SUBJECTS);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -948,6 +949,22 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
       });
   }, [token, userId]);
 
+  // Fetch subjects from stream master when class changes
+  useEffect(() => {
+    if (!selectedClass) { setSubjects(FALLBACK_SUBJECTS); return; }
+    fetch(`/api/masters/streams?classId=${selectedClass}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        const masters: any[] = d.streamMasters || [];
+        if (masters.length > 0) {
+          setSubjects(masters.map(m => ({ key: m.name.toLowerCase().replace(/\s+/g, '_'), label: m.name })));
+        } else {
+          setSubjects(FALLBACK_SUBJECTS);
+        }
+      })
+      .catch(() => setSubjects(FALLBACK_SUBJECTS));
+  }, [selectedClass, token]);
+
   const fetchClassAttendance = useCallback(async () => {
     if (!selectedClass) return;
     setLoading(true);
@@ -957,13 +974,14 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
     const data = await res.json();
     setStudents((data.students || []).map((s: any) => {
       const isLeaveLocked = s.remarks === '__leave__';
+      const subjectKeys = subjects.length > 0 ? subjects : FALLBACK_SUBJECTS;
       return {
         ...s,
         isLeaveLocked,
         schoolStatus:  isLeaveLocked ? 'excused' : (s.status || 'present'),
         subjectStatus: s.subject_attendance
           ? Object.fromEntries(Object.entries(s.subject_attendance as Record<string, string>).map(([k, v]) => [k, v === 'present' ? 'P' : v === 'absent' ? 'A' : v === 'late' ? 'L' : v]))
-          : Object.fromEntries(SUBJECTS.map(sub => [sub.key, 'P'])),
+          : Object.fromEntries(subjectKeys.map(sub => [sub.key, 'P'])),
       };
     }));
     setLoading(false);
@@ -1074,7 +1092,7 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
                   ) : (
                     <>
                       <th className="min-w-[140px]">Overall</th>
-                      {SUBJECTS.map(sub => (
+                      {subjects.map(sub => (
                         <th key={sub.key} className="text-center min-w-[52px] p-1">
                           <div className="text-[11px] font-semibold mb-0.5">{sub.label}</div>
                           <div className="flex gap-0.5 justify-center">
@@ -1095,10 +1113,10 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
               <tbody>
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}>{Array.from({ length: attendanceMode === 'class' ? 10 : 3 }).map((_, j) => <td key={j}><div className="h-5 bg-surface-100 dark:bg-gray-700 rounded animate-pulse"/></td>)}</tr>
+                    <tr key={i}>{Array.from({ length: attendanceMode === 'class' ? subjects.length + 2 : 3 }).map((_, j) => <td key={j}><div className="h-5 bg-surface-100 dark:bg-gray-700 rounded animate-pulse"/></td>)}</tr>
                   ))
                 ) : students.length === 0 ? (
-                  <tr><td colSpan={attendanceMode === 'class' ? 10 : 3} className="text-center py-8 text-surface-400">No students in this class</td></tr>
+                  <tr><td colSpan={attendanceMode === 'class' ? subjects.length + 2 : 3} className="text-center py-8 text-surface-400">No students in this class</td></tr>
                 ) : students.map(s => {
                   const cur = s.schoolStatus || 'present';
                   const cfg = STATUS_CFG[cur];
@@ -1131,7 +1149,7 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
                                 Leave
                               </span>
                             </td>
-                            {SUBJECTS.map(sub => (
+                            {subjects.map(sub => (
                               <td key={sub.key} className="text-center p-1">
                                 <span className="inline-block w-6 h-6 rounded text-[10px] font-bold leading-6 text-center bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 opacity-70">A</span>
                               </td>
@@ -1178,7 +1196,7 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
                               })}
                             </div>
                           </td>
-                          {SUBJECTS.map(sub => {
+                          {subjects.map(sub => {
                             const val = (s.subjectStatus as Record<string, string>)?.[sub.key] ?? 'P';
                             return (
                               <td key={sub.key} className="text-center p-1">

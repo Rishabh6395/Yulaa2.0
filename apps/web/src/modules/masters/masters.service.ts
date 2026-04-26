@@ -6,7 +6,7 @@ import * as repo from './masters.repo';
 export async function getGenderMasters(schoolId: string, activeOnly = true)       { return repo.listGenderMasters(schoolId, activeOnly); }
 export async function getBloodGroupMasters(schoolId: string, activeOnly = true)   { return repo.listBloodGroupMasters(schoolId, activeOnly); }
 export async function getQualificationMasters(schoolId: string, activeOnly = true){ return repo.listQualificationMasters(schoolId, activeOnly); }
-export async function getStreamMasters(schoolId: string, activeOnly = true)       { return repo.listStreamMasters(schoolId, activeOnly); }
+export async function getStreamMasters(schoolId: string, activeOnly = true, classId?: string) { return repo.listStreamMasters(schoolId, activeOnly, classId); }
 export async function getGradeMasters(schoolId: string, activeOnly = true)        { return repo.listGradeMasters(schoolId, activeOnly); }
 export async function getEventTypeMasters(schoolId: string, activeOnly = true)    { return repo.listEventTypeMasters(schoolId, activeOnly); }
 
@@ -22,9 +22,9 @@ export async function addQualificationMaster(schoolId: string, name: string, sor
   if (!name?.trim()) throw new ConflictError('Name is required');
   return repo.createQualificationMaster({ schoolId, name: name.trim(), sortOrder });
 }
-export async function addStreamMaster(schoolId: string, name: string, sortOrder?: number) {
+export async function addStreamMaster(schoolId: string, name: string, sortOrder?: number, classId?: string) {
   if (!name?.trim()) throw new ConflictError('Name is required');
-  return repo.createStreamMaster({ schoolId, name: name.trim(), sortOrder });
+  return repo.createStreamMaster({ schoolId, name: name.trim(), sortOrder, ...(classId ? { classId } : {}) });
 }
 export async function addGradeMaster(schoolId: string, name: string, sortOrder?: number) {
   if (!name?.trim()) throw new ConflictError('Name is required');
@@ -44,7 +44,7 @@ export async function patchBloodGroupMaster(id: string, data: { name?: string; i
 export async function patchQualificationMaster(id: string, data: { name?: string; isActive?: boolean; sortOrder?: number }) {
   return repo.updateQualificationMaster(id, data);
 }
-export async function patchStreamMaster(id: string, data: { name?: string; isActive?: boolean; sortOrder?: number }) {
+export async function patchStreamMaster(id: string, data: { name?: string; classId?: string; isActive?: boolean; sortOrder?: number }) {
   return repo.updateStreamMaster(id, data);
 }
 export async function patchGradeMaster(id: string, data: { name?: string; isActive?: boolean; sortOrder?: number }) {
