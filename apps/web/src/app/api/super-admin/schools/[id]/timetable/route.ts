@@ -179,8 +179,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
       if (!slotId || !substituteTeacherId || !startDate || !endDate)
         throw new AppError('slotId, substituteTeacherId, startDate, endDate required');
 
-      const start = new Date(startDate);
-      const end   = new Date(endDate);
+      const start = new Date(startDate + 'T00:00:00');
+      const end   = new Date(endDate   + 'T00:00:00');
       if (end < start) throw new AppError('endDate must be on or after startDate');
 
       const slot = await prisma.timetableSlot.findFirst({

@@ -81,9 +81,11 @@ export default function SchedulingPage() {
   // Init: pull schoolId + load classes/teachers
   useEffect(() => {
     const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
-    const sid  = user.schoolId || '';
+    // Prefer schoolId directly; fall back to primary role's school_id
+    const primaryRole = (user.roles || []).find((r: any) => r.is_primary) ?? (user.roles || [])[0];
+    const sid = user.schoolId || primaryRole?.school_id || '';
     setSchoolId(sid);
-    if (!sid) return;
+    if (!sid) { setError('No school assigned to your account. Contact your administrator.'); return; }
     Promise.all([
       fetch('/api/classes',  { headers: headers(false) }).then(r => r.json()),
       fetch('/api/teachers', { headers: headers(false) }).then(r => r.json()),
@@ -179,7 +181,8 @@ export default function SchedulingPage() {
   }
 
   async function saveTimetable() {
-    if (!selectedClass || !schoolId) return;
+    if (!selectedClass) { setError('Please select a class first.'); return; }
+    if (!schoolId) { setError('No school ID found. Please log out and log in again.'); return; }
     setSaving(true); setError('');
     try {
       const slots = [];
@@ -190,12 +193,24 @@ export default function SchedulingPage() {
           slots.push({ dayOfWeek: day, periodNo: period.no, startTime: period.startTime, endTime: period.endTime, subject: data.subject.trim(), teacherId: data.teacherId || null });
         }
       }
-      await fetch(ttBase(), {
+      const res = await fetch(ttBase(), {
         method: 'POST', headers: headers(),
         body: JSON.stringify({ classId: selectedClass, academicYear, slots }),
       });
-      setSaved(true); setTimeout(() => setSaved(false), 2500);
-    } catch { setError('Failed to save timetable'); }
+      const d = await res.json();
+      if (!res.ok) { setError(d.error || d.message || `Save failed (${res.status})`); return; }
+      setSaved(true); setTimeout(() => setSaved(false), 3000);
+      // Refetch to confirm data round-trips
+      const refetch = await fetch(`${ttBase()}?classId=${selectedClass}&year=${academicYear}`, { headers: headers(false) });
+      const rd = await refetch.json();
+      if (rd.timetable?.slots?.length) {
+        const newGrid: Record<string, SlotData> = {};
+        rd.timetable.slots.forEach((s: any) => {
+          newGrid[slotKey(s.dayOfWeek, s.periodNo)] = { subject: s.subject, teacherId: s.teacherId || '' };
+        });
+        setGrid(newGrid);
+      }
+    } catch (e: any) { setError(e.message || 'Failed to save timetable'); }
     finally { setSaving(false); }
   }
 

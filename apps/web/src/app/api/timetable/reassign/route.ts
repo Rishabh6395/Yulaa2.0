@@ -169,6 +169,7 @@ export async function POST(request: Request) {
       },
     });
 
+    
     // Notify the substitute teacher
     const subTeacher = await prisma.teacher.findUnique({
       where: { id: substituteTeacherId },
