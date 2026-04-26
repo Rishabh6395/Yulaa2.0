@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useApi } from '@/hooks/useApi';
 import { useFormConfig } from '@/hooks/useFormConfig';
 
-const EXAM_TYPES  = ['unit_test', 'mid_term', 'final', 'pre_board', 'internal', 'other'];
-const EXAM_STATUS = ['scheduled', 'ongoing', 'completed', 'cancelled'];
+const EXAM_TYPES    = ['unit_test', 'mid_term', 'final', 'pre_board', 'internal', 'other'];
+const EXAM_STATUS   = ['scheduled', 'ongoing', 'completed', 'cancelled'];
 const GRADING_TYPES = ['marks', 'grade', 'both'];
 
 const STATUS_CFG: Record<string, { label: string; cls: string }> = {
@@ -16,8 +16,13 @@ const STATUS_CFG: Record<string, { label: string; cls: string }> = {
   cancelled: { label: 'Cancelled', cls: 'badge-danger' },
 };
 
-const EMPTY_EXAM = { title: '', examType: 'unit_test', academicYear: '', classId: '', startDate: '', endDate: '', gradingType: 'marks' };
+const EMPTY_EXAM  = { title: '', examType: 'unit_test', academicYear: '', classId: '', startDate: '', endDate: '', gradingType: 'marks' };
 const EMPTY_ENTRY = { classId: '', subject: '', date: '', startTime: '', endTime: '', maxMarks: '100', venue: '' };
+
+function className(c: any) {
+  if (!c) return '';
+  return c.name?.trim() ? c.name : `${c.grade} - Section ${c.section}`;
+}
 
 export default function ExamPage() {
   const [exams,       setExams]       = useState<any[]>([]);
@@ -26,6 +31,7 @@ export default function ExamPage() {
   const [showForm,    setShowForm]    = useState(false);
   const [showEntry,   setShowEntry]   = useState(false);
   const [showResult,  setShowResult]  = useState(false);
+  const [showBulk,    setShowBulk]    = useState(false);
   const [activeSlot,  setActiveSlot]  = useState<any | null>(null);
   const [form,        setForm]        = useState(EMPTY_EXAM);
   const [entryForm,   setEntryForm]   = useState(EMPTY_ENTRY);
@@ -35,12 +41,18 @@ export default function ExamPage() {
   const [role,        setRole]        = useState('');
   const [tab,         setTab]         = useState<'timetable' | 'results'>('timetable');
 
+  // Bulk upload state
+  const [bulkClassId,  setBulkClassId]  = useState('');
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkResult,   setBulkResult]   = useState('');
+  const bulkFileRef = useRef<HTMLInputElement>(null);
+
   const fc = useFormConfig('create_exam_form');
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+  const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-  const { data: classData }   = useApi<{ classes:   any[] }>('/api/classes');
-  const { data: studentData } = useApi<{ students:  any[] }>(activeExam ? `/api/students?classId=${activeExam.classId || ''}` : null);
+  const { data: classData }   = useApi<{ classes: any[] }>('/api/classes');
+  const { data: studentData } = useApi<{ students: any[] }>(activeExam ? `/api/students?classId=${activeExam.classId || ''}` : null);
   const classes  = classData?.classes  || [];
   const students = studentData?.students || [];
 
@@ -129,6 +141,81 @@ export default function ExamPage() {
     fetchExams();
   };
 
+  // Download a pre-filled CSV template
+  function downloadTemplate() {
+    const rows = [
+      'subject,date,start_time,end_time,max_marks,venue',
+      'Mathematics,2025-06-01,09:00,11:00,100,Hall A',
+      'English,2025-06-02,09:00,11:00,80,Hall B',
+      'Science,2025-06-03,09:00,11:00,100,Hall A',
+      'Social Studies,2025-06-04,09:00,11:00,80,Hall C',
+      'Hindi,2025-06-05,09:00,11:00,80,Hall B',
+    ];
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'exam-schedule-template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Bulk upload handler — parses CSV and posts each row as a timetable entry
+  const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeExam) return;
+    setBulkUploading(true); setBulkResult('');
+    try {
+      const text  = await file.text();
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) { setBulkResult('File has no data rows.'); return; }
+
+      const headerLine = lines[0].toLowerCase();
+      const isExam     = headerLine.includes('subject');
+      let saved = 0; const errors: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+        // Expected columns: subject, date, start_time, end_time, max_marks, venue
+        const [subject, date, startTime, endTime, maxMarks, venue] = cols;
+        if (!subject || !date) { errors.push(`Row ${i + 1}: subject and date required`); continue; }
+        const classId = bulkClassId || activeExam.classId || '';
+        if (!classId) { errors.push(`Row ${i + 1}: no class selected`); continue; }
+
+        const res = await fetch('/api/exam', {
+          method: 'POST', headers,
+          body: JSON.stringify({
+            action: 'add_timetable_entry',
+            examId:    activeExam.id,
+            classId,
+            subject,
+            date,
+            startTime: startTime || '',
+            endTime:   endTime   || '',
+            maxMarks:  maxMarks  ? Number(maxMarks) : 100,
+            venue:     venue     || '',
+          }),
+        });
+        if (res.ok) saved++;
+        else {
+          const d = await res.json();
+          errors.push(`Row ${i + 1} (${subject}): ${d.error || 'failed'}`);
+        }
+      }
+
+      setBulkResult(
+        `${saved} subject(s) uploaded.` +
+        (errors.length ? ` ${errors.length} error(s): ${errors.join('; ')}` : '')
+      );
+      if (saved > 0) openExam(activeExam.id);
+    } catch (err: any) {
+      setBulkResult(`Error: ${err.message}`);
+    } finally {
+      setBulkUploading(false);
+      e.target.value = '';
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -211,7 +298,9 @@ export default function ExamPage() {
                   <div className="flex items-center gap-4 text-xs text-surface-400 dark:text-gray-500 flex-wrap">
                     <span className="capitalize">{activeExam.examType?.replace('_', ' ')}</span>
                     {activeExam.startDate && <span>📅 {new Date(activeExam.startDate).toLocaleDateString('en-IN')}</span>}
-                    {activeExam.classId && <span>Class: {classes.find(c => c.id === activeExam.classId)?.name || activeExam.classId}</span>}
+                    {activeExam.classId && (
+                      <span>Class: {className(classes.find(c => c.id === activeExam.classId)) || activeExam.classId}</span>
+                    )}
                     <span>Grading: {activeExam.gradingType}</span>
                   </div>
                 </div>
@@ -244,20 +333,45 @@ export default function ExamPage() {
               {/* Timetable tab */}
               {tab === 'timetable' && (
                 <div>
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
                     <h3 className="font-semibold text-sm">Exam Schedule ({activeExam.entries?.length ?? 0} subjects)</h3>
                     {isAdmin && (
-                      <button onClick={() => setShowEntry(true)} className="btn-secondary text-xs py-1 px-3">+ Add Subject</button>
+                      <div className="flex items-center gap-2">
+                        {/* Bulk upload */}
+                        <input
+                          ref={bulkFileRef}
+                          type="file"
+                          accept=".csv"
+                          className="hidden"
+                          onChange={handleBulkUpload}
+                        />
+                        <button
+                          onClick={() => { setBulkResult(''); setShowBulk(true); }}
+                          className="btn-secondary text-xs py-1 px-3 flex items-center gap-1.5"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/><rect x="3" y="17" width="18" height="4" rx="1"/></svg>
+                          Bulk Upload
+                        </button>
+                        <button onClick={() => { setEntryForm({ ...EMPTY_ENTRY, classId: activeExam.classId || '' }); setShowEntry(true); }} className="btn-secondary text-xs py-1 px-3">
+                          + Add Subject
+                        </button>
+                      </div>
                     )}
                   </div>
                   {activeExam.entries?.length === 0 ? (
-                    <p className="text-xs text-surface-400 dark:text-gray-500 text-center py-6">No subjects scheduled yet.</p>
+                    <div className="text-center py-8 text-surface-400 dark:text-gray-500">
+                      <p className="text-xs mb-2">No subjects scheduled yet.</p>
+                      {isAdmin && (
+                        <p className="text-xs">Use <strong>+ Add Subject</strong> or <strong>Bulk Upload</strong> (CSV) to add the exam schedule.</p>
+                      )}
+                    </div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="text-surface-400 dark:text-gray-500 text-left border-b border-surface-100 dark:border-gray-700">
                             <th className="pb-2 font-medium">Subject</th>
+                            <th className="pb-2 font-medium">Class</th>
                             <th className="pb-2 font-medium">Date</th>
                             <th className="pb-2 font-medium">Time</th>
                             <th className="pb-2 font-medium">Marks</th>
@@ -268,6 +382,7 @@ export default function ExamPage() {
                           {activeExam.entries?.map((e: any) => (
                             <tr key={e.id}>
                               <td className="py-2 font-medium">{e.subject}</td>
+                              <td className="py-2">{className(classes.find((c: any) => c.id === e.classId)) || '—'}</td>
                               <td className="py-2">{e.date ? new Date(e.date).toLocaleDateString('en-IN') : '—'}</td>
                               <td className="py-2">{e.startTime} {e.endTime ? `– ${e.endTime}` : ''}</td>
                               <td className="py-2">{e.maxMarks}</td>
@@ -337,20 +452,22 @@ export default function ExamPage() {
         </div>
       </div>
 
-      {/* Create Exam Modal */}
+      {/* ── Create Exam Modal ──────────────────────────────────────────────────── */}
       <Modal open={showForm} onClose={() => setShowForm(false)} title="Create New Exam">
         <form onSubmit={handleCreateExam} className="space-y-4">
           {fc.visible('name') && (
             <div>
               <label className="label">{fc.label('name')} *</label>
-              <input className="input-field" required readOnly={!fc.editable('name')} value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))} placeholder="e.g. Mid-Term Examination 2025" />
+              <input className="input-field" required readOnly={!fc.editable('name')} value={form.title}
+                onChange={e => setForm(f => ({...f, title: e.target.value}))} placeholder="e.g. Mid-Term Examination 2025" />
             </div>
           )}
           <div className="grid grid-cols-2 gap-4">
             {fc.visible('examType') && (
               <div>
                 <label className="label">{fc.label('examType')} *</label>
-                <select className="input-field" disabled={!fc.editable('examType')} value={form.examType} onChange={e => setForm(f => ({...f, examType: e.target.value}))}>
+                <select className="input-field" disabled={!fc.editable('examType')} value={form.examType}
+                  onChange={e => setForm(f => ({...f, examType: e.target.value}))}>
                   {EXAM_TYPES.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
                 </select>
               </div>
@@ -366,27 +483,41 @@ export default function ExamPage() {
             {fc.visible('classId') && (
               <div>
                 <label className="label">{fc.label('classId')}{fc.required('classId') ? ' *' : ' (optional)'}</label>
-                <select className="input-field" disabled={!fc.editable('classId')} value={form.classId} onChange={e => setForm(f => ({...f, classId: e.target.value}))}>
+                <select className="input-field" disabled={!fc.editable('classId')} value={form.classId}
+                  onChange={e => setForm(f => ({...f, classId: e.target.value}))}>
                   <option value="">All classes</option>
-                  {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {classes.map((c: any) => (
+                    <option key={c.id} value={c.id}>{className(c)}</option>
+                  ))}
                 </select>
+                {form.classId && (() => {
+                  const sel = classes.find((c: any) => c.id === form.classId);
+                  return sel ? (
+                    <p className="text-xs text-surface-400 mt-1">
+                      Grade <strong>{sel.grade}</strong> — Section <strong>{sel.section}</strong>
+                    </p>
+                  ) : null;
+                })()}
               </div>
             )}
             <div>
               <label className="label">Academic Year</label>
-              <input className="input-field" value={form.academicYear} onChange={e => setForm(f => ({...f, academicYear: e.target.value}))} placeholder="2025-2026" />
+              <input className="input-field" value={form.academicYear}
+                onChange={e => setForm(f => ({...f, academicYear: e.target.value}))} placeholder="2025-2026" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             {fc.visible('examDate') && (
               <div>
                 <label className="label">{fc.label('examDate')}{fc.required('examDate') && <span className="text-red-500 ml-0.5">*</span>}</label>
-                <input type="date" className="input-field" readOnly={!fc.editable('examDate')} value={form.startDate} onChange={e => setForm(f => ({...f, startDate: e.target.value}))} />
+                <input type="date" className="input-field" readOnly={!fc.editable('examDate')} value={form.startDate}
+                  onChange={e => setForm(f => ({...f, startDate: e.target.value}))} />
               </div>
             )}
             <div>
               <label className="label">End Date</label>
-              <input type="date" className="input-field" value={form.endDate} onChange={e => setForm(f => ({...f, endDate: e.target.value}))} />
+              <input type="date" className="input-field" value={form.endDate}
+                onChange={e => setForm(f => ({...f, endDate: e.target.value}))} />
             </div>
           </div>
           <div className="flex gap-3 pt-1">
@@ -396,44 +527,61 @@ export default function ExamPage() {
         </form>
       </Modal>
 
-      {/* Add Timetable Entry Modal */}
+      {/* ── Add Subject to Schedule Modal ─────────────────────────────────────── */}
       <Modal open={showEntry} onClose={() => setShowEntry(false)} title="Add Subject to Schedule">
         <form onSubmit={handleAddEntry} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Class *</label>
-              <select className="input-field" required value={entryForm.classId} onChange={e => setEntryForm(f => ({...f, classId: e.target.value}))}>
+              <select className="input-field" required value={entryForm.classId}
+                onChange={e => setEntryForm(f => ({...f, classId: e.target.value}))}>
                 <option value="">Select class</option>
-                {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {classes.map((c: any) => (
+                  <option key={c.id} value={c.id}>{className(c)}</option>
+                ))}
               </select>
+              {entryForm.classId && (() => {
+                const sel = classes.find((c: any) => c.id === entryForm.classId);
+                return sel ? (
+                  <p className="text-xs text-surface-400 mt-1">
+                    Grade <strong>{sel.grade}</strong> — Section <strong>{sel.section}</strong>
+                  </p>
+                ) : null;
+              })()}
             </div>
             <div>
               <label className="label">Subject *</label>
-              <input className="input-field" required value={entryForm.subject} onChange={e => setEntryForm(f => ({...f, subject: e.target.value}))} placeholder="e.g. Mathematics" />
+              <input className="input-field" required value={entryForm.subject}
+                onChange={e => setEntryForm(f => ({...f, subject: e.target.value}))} placeholder="e.g. Mathematics" />
             </div>
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="label">Date *</label>
-              <input type="date" className="input-field" required value={entryForm.date} onChange={e => setEntryForm(f => ({...f, date: e.target.value}))} />
+              <input type="date" className="input-field" required value={entryForm.date}
+                onChange={e => setEntryForm(f => ({...f, date: e.target.value}))} />
             </div>
             <div>
               <label className="label">Start Time</label>
-              <input type="time" className="input-field" value={entryForm.startTime} onChange={e => setEntryForm(f => ({...f, startTime: e.target.value}))} />
+              <input type="time" className="input-field" value={entryForm.startTime}
+                onChange={e => setEntryForm(f => ({...f, startTime: e.target.value}))} />
             </div>
             <div>
               <label className="label">End Time</label>
-              <input type="time" className="input-field" value={entryForm.endTime} onChange={e => setEntryForm(f => ({...f, endTime: e.target.value}))} />
+              <input type="time" className="input-field" value={entryForm.endTime}
+                onChange={e => setEntryForm(f => ({...f, endTime: e.target.value}))} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Max Marks</label>
-              <input type="number" className="input-field" value={entryForm.maxMarks} onChange={e => setEntryForm(f => ({...f, maxMarks: e.target.value}))} min="1" />
+              <input type="number" className="input-field" value={entryForm.maxMarks}
+                onChange={e => setEntryForm(f => ({...f, maxMarks: e.target.value}))} min="1" />
             </div>
             <div>
               <label className="label">Venue</label>
-              <input className="input-field" value={entryForm.venue} onChange={e => setEntryForm(f => ({...f, venue: e.target.value}))} placeholder="e.g. Hall A" />
+              <input className="input-field" value={entryForm.venue}
+                onChange={e => setEntryForm(f => ({...f, venue: e.target.value}))} placeholder="e.g. Hall A" />
             </div>
           </div>
           <div className="flex gap-3 pt-1">
@@ -443,32 +591,134 @@ export default function ExamPage() {
         </form>
       </Modal>
 
-      {/* Enter Result Modal */}
+      {/* ── Bulk Upload Modal ──────────────────────────────────────────────────── */}
+      <Modal open={showBulk} onClose={() => setShowBulk(false)} title="Bulk Upload Exam Schedule">
+        <div className="space-y-4">
+          <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-400 space-y-1">
+            <p className="font-semibold">CSV format (header row required):</p>
+            <p className="font-mono">subject, date (YYYY-MM-DD), start_time (HH:MM), end_time (HH:MM), max_marks, venue</p>
+            <p className="mt-1 text-blue-600 dark:text-blue-300">Example:</p>
+            <p className="font-mono">Mathematics,2025-04-15,09:00,11:00,100,Hall A</p>
+            <p className="font-mono">English,2025-04-16,09:00,11:00,80,Hall B</p>
+          </div>
+
+          <button
+            type="button"
+            onClick={downloadTemplate}
+            className="btn-secondary w-full flex items-center justify-center gap-2 text-sm"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7,10 12,15 17,10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download Template (.csv)
+          </button>
+
+          {/* Class selector — only show if exam is for all classes */}
+          {!activeExam?.classId && (
+            <div>
+              <label className="label">Class *</label>
+              <select className="input-field" value={bulkClassId} onChange={e => setBulkClassId(e.target.value)}>
+                <option value="">Select class</option>
+                {classes.map((c: any) => (
+                  <option key={c.id} value={c.id}>{className(c)}</option>
+                ))}
+              </select>
+              {bulkClassId && (() => {
+                const sel = classes.find((c: any) => c.id === bulkClassId);
+                return sel ? (
+                  <p className="text-xs text-surface-400 mt-1">
+                    Grade <strong>{sel.grade}</strong> — Section <strong>{sel.section}</strong>
+                  </p>
+                ) : null;
+              })()}
+            </div>
+          )}
+          {activeExam?.classId && (
+            <p className="text-xs text-surface-400">
+              Class: <strong className="text-gray-700 dark:text-gray-300">
+                {className(classes.find((c: any) => c.id === activeExam.classId)) || activeExam.classId}
+              </strong>
+            </p>
+          )}
+
+          <input
+            ref={bulkFileRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={handleBulkUpload}
+          />
+          <button
+            onClick={() => bulkFileRef.current?.click()}
+            disabled={bulkUploading || (!activeExam?.classId && !bulkClassId)}
+            className="btn-primary w-full flex items-center justify-center gap-2"
+          >
+            {bulkUploading ? (
+              <>
+                <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                Uploading…
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Select CSV File & Upload
+              </>
+            )}
+          </button>
+
+          {bulkResult && (
+            <div className={`px-3 py-2 rounded-xl text-xs font-medium ${bulkResult.includes('error') ? 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'}`}>
+              {bulkResult}
+            </div>
+          )}
+
+          <button type="button" onClick={() => setShowBulk(false)} className="btn-secondary w-full">Close</button>
+        </div>
+      </Modal>
+
+      {/* ── Enter Result Modal ─────────────────────────────────────────────────── */}
       <Modal open={showResult} onClose={() => setShowResult(false)} title="Enter Exam Result">
         <form onSubmit={handleEnterResult} className="space-y-4">
           <div>
             <label className="label">Student *</label>
-            <select className="input-field" required value={resultForm.studentId} onChange={e => setResultForm(f => ({...f, studentId: e.target.value}))}>
+            <select className="input-field" required value={resultForm.studentId}
+              onChange={e => setResultForm(f => ({...f, studentId: e.target.value}))}>
               <option value="">Select student</option>
               {students.map((s: any) => <option key={s.id} value={s.id}>{s.firstName} {s.lastName} ({s.admissionNo})</option>)}
             </select>
           </div>
           <div>
             <label className="label">Subject *</label>
-            <input className="input-field" required value={resultForm.subject} onChange={e => setResultForm(f => ({...f, subject: e.target.value}))} placeholder="e.g. Mathematics" />
+            {activeExam?.entries?.length > 0 ? (
+              <select className="input-field" required value={resultForm.subject}
+                onChange={e => setResultForm(f => ({...f, subject: e.target.value}))}>
+                <option value="">Select subject</option>
+                {[...new Set<string>(activeExam.entries.map((e: any) => e.subject))].map((s: string) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            ) : (
+              <input className="input-field" required value={resultForm.subject}
+                onChange={e => setResultForm(f => ({...f, subject: e.target.value}))} placeholder="e.g. Mathematics" />
+            )}
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="label">Marks *</label>
-              <input type="number" step="0.01" className="input-field" required value={resultForm.marksObtained} onChange={e => setResultForm(f => ({...f, marksObtained: e.target.value}))} placeholder="0" />
+              <input type="number" step="0.01" className="input-field" required value={resultForm.marksObtained}
+                onChange={e => setResultForm(f => ({...f, marksObtained: e.target.value}))} placeholder="0" />
             </div>
             <div>
               <label className="label">Max Marks</label>
-              <input type="number" className="input-field" value={resultForm.maxMarks} onChange={e => setResultForm(f => ({...f, maxMarks: e.target.value}))} />
+              <input type="number" className="input-field" value={resultForm.maxMarks}
+                onChange={e => setResultForm(f => ({...f, maxMarks: e.target.value}))} />
             </div>
             <div>
               <label className="label">Grade</label>
-              <input className="input-field" value={resultForm.grade} onChange={e => setResultForm(f => ({...f, grade: e.target.value}))} placeholder="A+" />
+              <input className="input-field" value={resultForm.grade}
+                onChange={e => setResultForm(f => ({...f, grade: e.target.value}))} placeholder="A+" />
             </div>
           </div>
           <div className="flex gap-3 pt-1">
