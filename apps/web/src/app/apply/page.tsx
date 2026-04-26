@@ -136,10 +136,12 @@ export default function ApplyPage() {
   const goToChildren = () => {
     setError('');
     if (isRequired(fieldRules, 'parentName') && !parentName.trim()) return err('Full name is required');
-    if (isRequired(fieldRules, 'parentPhone') && (!phone.trim() || !/^\d{10}$/.test(phone.replace(/\s/g, ''))))
-      return err('Enter a valid 10-digit phone number');
-    if (!phone.trim() && isVisible(fieldRules, 'parentPhone') && !/^\d{10}$/.test(phone.replace(/\s/g, '')) && phone.trim())
-      return err('Enter a valid 10-digit phone number');
+    if (isVisible(fieldRules, 'parentPhone')) {
+      if (isRequired(fieldRules, 'parentPhone') && !phone) return err('Phone number is required');
+      if (phone && !/^\d{10}$/.test(phone)) return err('Phone number must be exactly 10 digits (numbers only)');
+    }
+    if (isVisible(fieldRules, 'parentEmail') && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+      return err('Enter a valid email address');
     setStep(1);
   };
 
@@ -225,8 +227,21 @@ export default function ApplyPage() {
           {isVisible(fieldRules, 'parentPhone') && (
             <div>
               <Label rules={fieldRules} id="parentPhone">Phone Number</Label>
-              <input className="input-field" placeholder="10-digit mobile number"
-                value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, ''))} maxLength={10}/>
+              <input
+                className={`input-field ${phone.length > 0 && phone.length !== 10 ? 'border-amber-400 focus:ring-amber-400' : ''}`}
+                type="tel"
+                inputMode="numeric"
+                placeholder="10-digit mobile number"
+                value={phone}
+                maxLength={10}
+                onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              />
+              {phone.length > 0 && phone.length < 10 && (
+                <p className="text-xs text-amber-600 mt-1">{10 - phone.length} more digit{10 - phone.length !== 1 ? 's' : ''} needed</p>
+              )}
+              {phone.length === 10 && (
+                <p className="text-xs text-emerald-600 mt-1">✓ Valid phone number</p>
+              )}
             </div>
           )}
 

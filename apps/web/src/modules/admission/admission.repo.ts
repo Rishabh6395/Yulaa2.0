@@ -76,6 +76,20 @@ export async function createAction(applicationId: string, actorUserId: string | 
   });
 }
 
+export async function findApplicationByPhone(schoolId: string, phone: string) {
+  return prisma.admissionApplication.findFirst({
+    where: { schoolId, parentPhone: phone, status: { not: 'rejected' } },
+    select: { id: true },
+  });
+}
+
+export async function findApplicationByEmail(schoolId: string, email: string) {
+  return prisma.admissionApplication.findFirst({
+    where: { schoolId, parentEmail: { equals: email, mode: 'insensitive' }, status: { not: 'rejected' } },
+    select: { id: true },
+  });
+}
+
 export async function findActiveWorkflow(schoolId: string) {
   return prisma.admissionWorkflow.findFirst({
     where:   { schoolId, isActive: true },

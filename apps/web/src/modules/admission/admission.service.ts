@@ -10,6 +10,20 @@ import type { ApplicationActionInput, CreateApplicationInput, CreateWorkflowInpu
 export async function submitApplication(data: CreateApplicationInput) {
   if (!data.children || data.children.length === 0) throw new AppError('At least one child is required');
 
+  // Phone format validation
+  const phone = data.parentPhone?.replace(/\s/g, '') ?? '';
+  if (!/^\d{10}$/.test(phone)) throw new AppError('Phone number must be exactly 10 digits', 400);
+
+  // Duplicate phone check
+  const phoneExists = await repo.findApplicationByPhone(data.schoolId, phone);
+  if (phoneExists) throw new AppError('An application with this phone number already exists for this school', 409);
+
+  // Duplicate email check (only when email provided)
+  if (data.parentEmail?.trim()) {
+    const emailExists = await repo.findApplicationByEmail(data.schoolId, data.parentEmail.trim());
+    if (emailExists) throw new AppError('An application with this email address already exists for this school', 409);
+  }
+
   // AI validation
   const { flags, riskScore } = await runValidation(data.children, data.schoolId);
 
