@@ -181,11 +181,8 @@ async function seed() {
       { name: 'Arts', sortOrder: 3 },
     ];
     for (const stream of streams) {
-      await prisma.streamMaster.upsert({
-        where: { schoolId_name: { schoolId, name: stream.name } },
-        update: {},
-        create: { schoolId, ...stream },
-      });
+      const exists = await prisma.streamMaster.findFirst({ where: { schoolId, name: stream.name, classId: null } });
+      if (!exists) await prisma.streamMaster.create({ data: { schoolId, ...stream } });
     }
 
     // Event Type Master
