@@ -1,9 +1,9 @@
+import { PRINCIPAL_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import bcrypt from 'bcryptjs';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 
-const ADMIN_ROLES = ['super_admin', 'school_admin', 'principal'];
 
 // POST: admin resets a user's password
 export async function POST(request: Request) {
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       if (!belongs) throw new ForbiddenError();
     }
 
-    const hash = await bcrypt.hash(new_password, 10);
+    const hash = await bcrypt.hash(new_password, 12);
     await prisma.user.update({
       where: { id: user_id },
       data:  { passwordHash: hash, mustResetPassword: true },

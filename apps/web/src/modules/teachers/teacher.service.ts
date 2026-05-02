@@ -35,7 +35,7 @@ export async function createTeacher(schoolId: string, body: Record<string, any>)
   const teacherRole = await repo.findTeacherRole();
   if (!teacherRole) throw new NotFoundError('Teacher role');
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await bcrypt.hash(password, 12);
 
   const newUser = await repo.createTeacherWithUser({
     schoolId,
@@ -78,7 +78,7 @@ export async function bulkUploadTeachers(schoolId: string, rows: Record<string, 
     }
 
     try {
-      const passwordHash = await bcrypt.hash(password, 10);
+      const passwordHash = await bcrypt.hash(password, 12);
       await repo.createTeacherWithUser({
         schoolId,
         email,

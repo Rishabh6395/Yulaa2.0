@@ -1,9 +1,9 @@
+import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { getGradeMasters, addGradeMaster, patchGradeMaster } from '@/modules/masters/masters.service';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 
-const ADMIN_ROLES = ['super_admin', 'school_admin'];
 
 // Default grades seeded automatically the first time a school views the Grades master page
 const DEFAULT_GRADES = [

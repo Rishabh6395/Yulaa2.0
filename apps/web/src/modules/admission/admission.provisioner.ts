@@ -34,7 +34,7 @@ export async function provisionApprovedApplication(applicationId: string) {
     }
 
     if (!user) {
-      const hash = await bcrypt.hash(app.parentPhone, 10);
+      const hash = await bcrypt.hash(app.parentPhone, 12);
       const [firstName, ...rest] = app.parentName.trim().split(' ');
       user = await tx.user.create({
         data: {
@@ -100,7 +100,7 @@ export async function provisionApprovedApplication(applicationId: string) {
         const studentUserEmail = `${student.admissionNo.toLowerCase()}@yulaa.student`;
         let sUser = await tx.user.findUnique({ where: { email: studentUserEmail } });
         if (!sUser) {
-          const hash = await bcrypt.hash(student.admissionNo, 10);
+          const hash = await bcrypt.hash(student.admissionNo, 12);
           sUser = await tx.user.create({
             data: {
               email:             studentUserEmail,

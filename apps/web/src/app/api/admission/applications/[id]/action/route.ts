@@ -1,9 +1,9 @@
+import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { processAction } from '@/modules/admission/admission.service';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 
-const ADMIN_ROLES = ['super_admin', 'school_admin'];
 
 /** POST /api/admission/applications/[id]/action — admin */
 export async function POST(request: Request, { params }: { params: { id: string } }) {

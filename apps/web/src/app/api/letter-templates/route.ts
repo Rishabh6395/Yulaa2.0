@@ -1,3 +1,4 @@
+import { PRINCIPAL_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
@@ -5,7 +6,6 @@ import { DEFAULT_FEE_INVOICE_TEMPLATE } from '@/services/default-templates';
 import { validateTemplate } from '@/services/template.service';
 import { z } from 'zod';
 
-const ADMIN_ROLES = ['super_admin', 'school_admin', 'principal'];
 
 const CreateSchema = z.object({
   name:         z.string().min(1).max(200),

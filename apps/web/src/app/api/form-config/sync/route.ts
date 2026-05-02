@@ -1,8 +1,8 @@
+import { PRINCIPAL_ADMIN_ROLES as ALLOWED_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { syncFormConfigToSchool } from '@/modules/super-admin/super-admin.service';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 
-const ALLOWED_ROLES = ['super_admin', 'school_admin', 'principal'];
 
 /**
  * POST /api/form-config/sync

@@ -10,11 +10,11 @@
  *   body for generic   : { type: 'attendance'|'fee'|'query_parents'|'query_school_admin', stages: [...] }
  */
 
+import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 
-const ADMIN_ROLES = ['super_admin', 'school_admin'];
 const GENERIC_TYPES = ['attendance', 'fee', 'query_parents', 'query_school_admin'];
 
 function assertAdmin(user: any) {

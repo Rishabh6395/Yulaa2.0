@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     });
     if (!user) throw new AppError('User not found', 404);
 
-    const hash = await bcrypt.hash(newPassword, 10);
+    const hash = await bcrypt.hash(newPassword, 12);
 
     await Promise.all([
       prisma.user.update({

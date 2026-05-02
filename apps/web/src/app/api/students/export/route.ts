@@ -1,8 +1,8 @@
+import { PRINCIPAL_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import prisma from '@/lib/prisma';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 
-const ADMIN_ROLES = ['super_admin', 'school_admin', 'principal'];
 
 export async function GET(request: Request) {
   try {

@@ -1,8 +1,8 @@
+import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { getEventTypeMasters, addEventTypeMaster, patchEventTypeMaster } from '@/modules/masters/masters.service';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 
-const ADMIN_ROLES = ['super_admin', 'school_admin'];
 
 const DEFAULT_EVENT_TYPES = [
   { name: 'Academic',   code: 'academic' },

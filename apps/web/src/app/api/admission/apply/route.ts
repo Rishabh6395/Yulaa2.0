@@ -1,3 +1,4 @@
+import { REVIEWER_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { submitApplication } from '@/modules/admission/admission.service';
 import { handleError, AppError } from '@/utils/errors';
@@ -31,7 +32,6 @@ export async function POST(request: Request) {
 
     // Only link the authenticated user as parent if they are actually a parent/guardian,
     // not an admin submitting on someone else's behalf.
-    const ADMIN_ROLES = ['super_admin', 'school_admin', 'principal', 'teacher'];
     const isAdmin = authUser?.roles?.some((r: any) => ADMIN_ROLES.includes(r.role_code));
 
     const result = await submitApplication({

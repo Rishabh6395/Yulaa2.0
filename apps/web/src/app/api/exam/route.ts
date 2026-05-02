@@ -1,8 +1,8 @@
+import { PRINCIPAL_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 
-const ADMIN_ROLES = ['super_admin', 'school_admin', 'principal'];
 
 function getSchoolId(user: any, override?: string): string {
   const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];

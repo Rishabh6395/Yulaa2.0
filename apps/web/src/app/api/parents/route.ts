@@ -1,9 +1,9 @@
+import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import bcrypt from 'bcryptjs';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 
-const ADMIN_ROLES = ['super_admin', 'school_admin'];
 
 function assertAdmin(user: any) {
   if (!user) throw new UnauthorizedError();
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
     // find-or-create User
     let userRec = await prisma.user.findUnique({ where: { email: resolvedEmail } });
     if (!userRec) {
-      const hash = await bcrypt.hash(resolvedPass, 10);
+      const hash = await bcrypt.hash(resolvedPass, 12);
       userRec = await prisma.user.create({
         data: {
           firstName:         first_name.trim(),

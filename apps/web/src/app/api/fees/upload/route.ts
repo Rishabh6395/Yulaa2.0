@@ -1,10 +1,10 @@
+import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import ExcelJS from 'exceljs';
 import prisma from '@/lib/prisma';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import { parseCSV } from '@/services/upload.service';
 
-const ADMIN_ROLES = ['super_admin', 'school_admin'];
 
 async function parseXlsx(buffer: ArrayBuffer): Promise<Record<string, string>[]> {
   const wb = new ExcelJS.Workbook();

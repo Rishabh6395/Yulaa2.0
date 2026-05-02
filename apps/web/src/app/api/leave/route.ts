@@ -1,10 +1,9 @@
+import { MANAGEMENT_ROLES as ADMIN_ROLES, REVIEWER_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { listLeaveRequests, submitLeaveRequest, reviewLeaveStep, withdrawLeave } from '@/modules/leave/leave.service';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 
-const ADMIN_ROLES    = ['super_admin', 'school_admin', 'principal', 'hod'];
-const REVIEWER_ROLES = [...ADMIN_ROLES, 'teacher'];
 
 // For self-service (submitting leave), use the employee role if the user has it.
 // This lets teachers/principals/school_admins operate under a unified employee identity.

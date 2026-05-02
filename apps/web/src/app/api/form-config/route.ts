@@ -1,8 +1,8 @@
+import { PRINCIPAL_ADMIN_ROLES as WRITE_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 
-const WRITE_ROLES = ['super_admin', 'school_admin', 'principal'];
 
 /**
  * GET /api/form-config?schoolId=xxx&formId=admission_form

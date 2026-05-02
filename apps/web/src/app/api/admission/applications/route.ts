@@ -1,9 +1,9 @@
+import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { listApplications } from '@/modules/admission/admission.service';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 
-const ADMIN_ROLES = ['super_admin', 'school_admin'];
 
 /** GET /api/admission/applications */
 export async function GET(request: Request) {

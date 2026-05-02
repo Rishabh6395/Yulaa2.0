@@ -1,8 +1,8 @@
+import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { listClasses, createClass, updateClass } from '@/modules/classes/class.service';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 
-const ADMIN_ROLES = ['super_admin', 'school_admin'];
 
 export async function GET(request: Request) {
   try {

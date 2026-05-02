@@ -77,7 +77,7 @@ export async function POST(request: Request) {
         let userRec = await prisma.user.findUnique({ where: { email } });
         let isNew   = false;
         if (!userRec) {
-          const hash = await bcrypt.hash(phone, 10);
+          const hash = await bcrypt.hash(phone, 12);
           userRec = await prisma.user.create({
             data: {
               firstName, lastName, email, phone,

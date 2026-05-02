@@ -1,20 +1,19 @@
 import { redis } from '@/lib/redis';
+import { getUserFromRequest } from '@/lib/auth';
 
 /**
  * GET /api/debug/redis-keys
- * Returns all Redis keys with their TTL and value preview.
- * Protected: only works in development OR when ?secret= matches DEBUG_SECRET env var.
+ * Returns all Redis keys with TTL values.
+ * Restricted to super_admin users only.
  */
 export async function GET(request: Request) {
-  const isDev   = process.env.NODE_ENV === 'development';
-  const secret  = process.env.DEBUG_SECRET;
-  const { searchParams } = new URL(request.url);
-
-  // Block in production unless correct secret is provided
-  if (!isDev) {
-    if (!secret || searchParams.get('secret') !== secret) {
-      return Response.json({ error: 'Forbidden' }, { status: 403 });
-    }
+  const user = await getUserFromRequest(request);
+  if (!user) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const isSuperAdmin = user.roles.some(r => r.role_code === 'super_admin');
+  if (!isSuperAdmin) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   if (!redis) {
@@ -29,7 +28,6 @@ export async function GET(request: Request) {
       return Response.json({ count: 0, keys: [] });
     }
 
-    // Fetch TTL for every key in one pipeline
     const pipeline = redis.pipeline();
     for (const key of keys) {
       pipeline.ttl(key);
@@ -38,11 +36,11 @@ export async function GET(request: Request) {
 
     const result = keys.map((key, i) => ({
       key,
-      ttl: ttlResults?.[i]?.[1] as number ?? -1,   // seconds remaining, -1 = no expiry, -2 = gone
+      ttl: ttlResults?.[i]?.[1] as number ?? -1,
     }));
 
     return Response.json({ count: keys.length, keys: result });
-  } catch (err: any) {
-    return Response.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return Response.json({ error: err instanceof Error ? err.message : 'Failed' }, { status: 500 });
   }
 }

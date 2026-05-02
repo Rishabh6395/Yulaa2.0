@@ -1,9 +1,9 @@
+import { TIMETABLE_ROLES as ALLOWED_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 import { sendNotification } from '@/services/notification.service';
 
-const ALLOWED_ROLES = ['teacher', 'school_admin', 'principal', 'hod'];
 
 /**
  * GET /api/timetable/reassign

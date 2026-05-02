@@ -1,3 +1,4 @@
+import { CORE_ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import {
   getComplianceItems,
@@ -7,7 +8,6 @@ import {
 } from '@/modules/compliance/compliance.service';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 
-const ALLOWED_ROLES = new Set(['super_admin', 'school_admin']);
 
 function getSchoolId(user: any): string {
   const role = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    if (!user.roles.some((r: any) => ALLOWED_ROLES.has(r.role_code))) throw new ForbiddenError();
+    if (!user.roles.some((r: any) => CORE_ADMIN_ROLES.includes(r.role_code))) throw new ForbiddenError();
 
     const { searchParams } = new URL(request.url);
     const category  = searchParams.get('category') ?? undefined;
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    if (!user.roles.some((r: any) => ALLOWED_ROLES.has(r.role_code))) throw new ForbiddenError();
+    if (!user.roles.some((r: any) => CORE_ADMIN_ROLES.includes(r.role_code))) throw new ForbiddenError();
 
     const schoolId = getSchoolId(user);
     const body     = await request.json();

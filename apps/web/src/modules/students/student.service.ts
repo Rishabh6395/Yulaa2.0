@@ -91,7 +91,7 @@ export async function createAndLinkParent(
 
   let user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
-    const hash = await bcrypt.hash(parent.phone, 10);
+    const hash = await bcrypt.hash(parent.phone, 12);
     user = await prisma.user.create({
       data: {
         email,

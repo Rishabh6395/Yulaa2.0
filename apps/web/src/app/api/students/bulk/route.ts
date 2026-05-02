@@ -1,10 +1,10 @@
+import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import ExcelJS from 'exceljs';
 import { getUserFromRequest } from '@/lib/auth';
 import { bulkUploadStudents, parseStudentCSV } from '@/modules/students/student.service';
 import { listClasses } from '@/modules/classes/class.service';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 
-const ADMIN_ROLES = ['super_admin', 'school_admin'];
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

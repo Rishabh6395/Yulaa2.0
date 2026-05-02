@@ -1,8 +1,8 @@
+import { PRINCIPAL_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { getApplicationDetail } from '@/modules/admission/admission.service';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 
-const ADMIN_ROLES = ['super_admin', 'school_admin', 'principal'];
 
 /** GET /api/admission/applications/[id] — admin */
 export async function GET(_request: Request, { params }: { params: { id: string } }) {

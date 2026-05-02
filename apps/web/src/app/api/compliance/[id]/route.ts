@@ -1,8 +1,8 @@
+import { CORE_ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { updateComplianceItem, deleteComplianceItem } from '@/modules/compliance/compliance.service';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 
-const ALLOWED_ROLES = new Set(['super_admin', 'school_admin']);
 
 function getSchoolId(user: any): string {
   const role = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
@@ -13,7 +13,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    if (!user.roles.some((r: any) => ALLOWED_ROLES.has(r.role_code))) throw new ForbiddenError();
+    if (!user.roles.some((r: any) => CORE_ADMIN_ROLES.includes(r.role_code))) throw new ForbiddenError();
 
     const { id } = await params;
     const schoolId = getSchoolId(user);
@@ -27,7 +27,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    if (!user.roles.some((r: any) => ALLOWED_ROLES.has(r.role_code))) throw new ForbiddenError();
+    if (!user.roles.some((r: any) => CORE_ADMIN_ROLES.includes(r.role_code))) throw new ForbiddenError();
 
     const { id } = await params;
     const schoolId = getSchoolId(user);
