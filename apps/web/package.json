@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "db:push": "prisma db push",
+    "db:migrate": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "db:seed": "ts-node --project scripts/tsconfig.seed.json scripts/seed-db.ts",
     "db:studio": "prisma studio",
