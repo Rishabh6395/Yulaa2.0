@@ -668,7 +668,7 @@ export default function TimetablePage({ params }: { params: { id: string } }) {
             </h2>
             <p className="text-xs text-surface-400">
               Acting as proxy for: <strong className="text-gray-700 dark:text-gray-300">
-                {teachers.find(t => t.id === proxyTeacher)?.user?.firstName} {teachers.find(t => t.id === proxyTeacher)?.user?.lastName}
+                {teachers.find(t => t.id === proxyTeacher)?.first_name} {teachers.find(t => t.id === proxyTeacher)?.last_name}
               </strong>
             </p>
             <form onSubmit={submitReassign} className="space-y-3">
@@ -677,8 +677,8 @@ export default function TimetablePage({ params }: { params: { id: string } }) {
                 <select className="input-field" required value={reassignForm.substituteTeacherId}
                   onChange={e => setReassignForm(f => ({...f, substituteTeacherId: e.target.value}))}>
                   <option value="">— Select —</option>
-                  {teachers.filter(t => t.user && t.id !== proxyTeacher).map(t => (
-                    <option key={t.id} value={t.id}>{t.user?.firstName} {t.user?.lastName}</option>
+                  {teachers.filter(t => t.id !== proxyTeacher).map(t => (
+                    <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>
                   ))}
                 </select>
               </div>
