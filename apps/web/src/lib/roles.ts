@@ -3,22 +3,22 @@
 //   import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 
 /** Platform-level + school admin only — master data, bulk imports, core config */
-export const CORE_ADMIN_ROLES = ['super_admin', 'school_admin'] as const;
+export const CORE_ADMIN_ROLES: readonly string[] = ['super_admin', 'school_admin'];
 
 /** Admin + principal — oversight, exports, events, school config */
-export const PRINCIPAL_ADMIN_ROLES = ['super_admin', 'school_admin', 'principal'] as const;
+export const PRINCIPAL_ADMIN_ROLES: readonly string[] = ['super_admin', 'school_admin', 'principal'];
 
 /** Full management chain — leave admin, syllabus, announcements, timetable */
-export const MANAGEMENT_ROLES = ['super_admin', 'school_admin', 'principal', 'hod'] as const;
+export const MANAGEMENT_ROLES: readonly string[] = ['super_admin', 'school_admin', 'principal', 'hod'];
 
 /** Can review / approve workflow items (management + teachers) */
-export const REVIEWER_ROLES = ['super_admin', 'school_admin', 'principal', 'hod', 'teacher'] as const;
+export const REVIEWER_ROLES: readonly string[] = ['super_admin', 'school_admin', 'principal', 'hod', 'teacher'];
 
 /** Staff who hold leave balances and can submit leave */
-export const EMPLOYEE_ROLES = ['teacher', 'school_admin', 'principal', 'hod', 'employee'] as const;
+export const EMPLOYEE_ROLES: readonly string[] = ['teacher', 'school_admin', 'principal', 'hod', 'employee'];
 
 /** Roles that can view or manage timetable reassignments */
-export const TIMETABLE_ROLES = ['teacher', 'school_admin', 'principal', 'hod'] as const;
+export const TIMETABLE_ROLES: readonly string[] = ['teacher', 'school_admin', 'principal', 'hod'];
 
 export type RoleCode =
   | 'super_admin'
