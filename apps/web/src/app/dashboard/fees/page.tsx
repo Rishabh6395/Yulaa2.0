@@ -145,9 +145,10 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={map[status] || 'badge-neutral'}>{status}</span>;
 }
 
-function FeesTable({ invoices, loading, summary, filter, setFilter, title, subtitle, isParent, role, token, onRefresh }: {
+function FeesTable({ invoices, loading, fetchError, summary, filter, setFilter, title, subtitle, isParent, role, token, onRefresh }: {
   invoices: any[];
   loading: boolean;
+  fetchError: string | null;
   summary: any;
   filter: string;
   setFilter: (f: string) => void;
@@ -349,7 +350,7 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
             </thead>
             <tbody>
               {fetchError ? (
-                <tr><td colSpan={isParent ? 7 : 8}><PageError message={fetchError} onRetry={loadFees} /></td></tr>
+                <tr><td colSpan={isParent ? 7 : 8}><PageError message={fetchError} onRetry={onRefresh} /></td></tr>
               ) : loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
@@ -512,6 +513,7 @@ export default function FeesPage() {
       invoices={invoices}
       summary={summary}
       loading={loading}
+      fetchError={fetchError}
       filter={filter}
       setFilter={setFilter}
       isParent={isParent}
@@ -519,7 +521,7 @@ export default function FeesPage() {
       token={token || ''}
       title={isParent ? `${childName}'s Fees` : 'Fee Management'}
       subtitle={isParent ? `Fee invoices for ${childName}` : 'Track invoices and payments'}
-      onRefresh={() => setRefreshKey(k => k + 1)}
+      onRefresh={loadFees}
     />
   );
 }
