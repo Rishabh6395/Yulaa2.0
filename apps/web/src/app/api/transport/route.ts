@@ -3,7 +3,6 @@ import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 
-const ALLOWED_ROLES = ['school_admin', 'principal', 'super_admin'];
 
 function requireAdmin(roleCode: string) {
   if (!ALLOWED_ROLES.includes(roleCode)) throw new ForbiddenError();
