@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Modal from '@/components/ui/Modal';
+import PageError from '@/components/ui/PageError';
 import { useApi } from '@/hooks/useApi';
 
 // ─── Leave type icon mapping (extended, fallback to 📋) ──────────────────────
@@ -162,7 +163,7 @@ export default function LeavePage() {
         const rules = d?.configs?.leave_request?.[configRole];
         if (rules) setLeaveFieldRules(rules);
       })
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[leave-form-config]', err); });
   }, []);
 
   // Effective days preview — called when dates are set in the apply modal
@@ -177,12 +178,12 @@ export default function LeavePage() {
     })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setEffectiveDays(d); })
-      .catch(() => {})
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[effective-days]', err); })
       .finally(() => setEffectiveLoading(false));
   }, [form.start_date, form.end_date]);
 
   // Leave data
-  const { data, isLoading, mutate } = useApi<{ leaves: any[]; workflows: any }>('/api/leave');
+  const { data, isLoading, error, mutate } = useApi<{ leaves: any[]; workflows: any }>('/api/leave');
   const allLeaves = data?.leaves ?? [];
   const workflows = data?.workflows ?? {};
 
@@ -398,7 +399,9 @@ export default function LeavePage() {
 
       {/* Leave list */}
       <div className="space-y-3">
-        {isLoading ? (
+        {error ? (
+          <PageError message="Failed to load leave requests — please try again." onRetry={() => mutate()} />
+        ) : isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="card p-4 animate-pulse h-20 bg-surface-50 dark:bg-gray-700/40" />
           ))

@@ -108,7 +108,7 @@ export default function SchedulingPage() {
     ]).then(([cd, td]) => {
       setClasses(cd.classes   || []);
       setTeachers(td.teachers || []);
-    }).catch(() => {});
+    }).catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[classes/teachers]', err); });
   }, []);
 
   // Load timetable when class/year changes
@@ -144,7 +144,7 @@ export default function SchedulingPage() {
     fetch('/api/timetable/reassign', { headers: headers(false) })
       .then(r => r.json())
       .then(d => setReassignments(d.reassignments || []))
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[reassignments]', err); });
   };
 
   useEffect(() => {
@@ -169,7 +169,7 @@ export default function SchedulingPage() {
         }
         setProxySlots(slots.sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.periodNo - b.periodNo));
       })
-      .catch(() => {})
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[proxy-slots]', err); })
       .finally(() => setProxyLoading(false));
   }, [proxyTeacher, view, schoolId]);
 

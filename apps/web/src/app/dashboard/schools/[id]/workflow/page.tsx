@@ -404,7 +404,7 @@ export default function WorkflowPage({ params }: { params: { id: string } }) {
     fetch(`/api/super-admin/schools/${schoolId}/users`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => setUsers(d.users || []))
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[school-users]', err); });
   }, [schoolId]);
 
   const cacheKey = useCallback((type: WorkflowType, leaveRole?: string) =>

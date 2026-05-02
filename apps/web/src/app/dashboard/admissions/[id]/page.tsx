@@ -76,7 +76,7 @@ export default function ApplicationDetailPage({ params }: { params: { id: string
         }
         setClassGrades(grades);
       })
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[classes]', err); });
   }, [token]);
 
   const handleAction = async (action: 'approve' | 'reject') => {

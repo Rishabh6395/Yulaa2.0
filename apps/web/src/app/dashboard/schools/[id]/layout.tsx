@@ -23,7 +23,7 @@ export default function SchoolLayout({ children, params }: { children: React.Rea
     fetch(`/api/super-admin/schools?id=${id}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => setSchool(d.school || null))
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[school-info]', err); });
   }, [id]);
 
   // Determine current module from pathname

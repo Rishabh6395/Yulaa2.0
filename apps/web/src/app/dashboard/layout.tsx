@@ -48,7 +48,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               window.dispatchEvent(new CustomEvent('activeChildChanged', { detail: selectedChild }));
             }
           })
-          .catch(() => {});
+          .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[children-fetch]', err); });
       }
     } catch {
       router.push('/login');

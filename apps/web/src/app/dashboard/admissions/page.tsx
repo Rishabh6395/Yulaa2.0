@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useApi } from '@/hooks/useApi';
 import { validatePhone } from '@/utils/phone';
 import Modal from '@/components/ui/Modal';
+import PageError from '@/components/ui/PageError';
 
 const STATUS_COLORS: Record<string, string> = {
   submitted:    'badge-warning',
@@ -453,7 +454,7 @@ export default function AdmissionsPage() {
   if (search && !isParentView)       params.set('search', search);
   if (statusFilter && !isParentView) params.set('status', statusFilter);
 
-  const { data, isLoading, mutate } = useApi<{ applications: any[]; total: number; totalPages: number }>(
+  const { data, isLoading, error, mutate } = useApi<{ applications: any[]; total: number; totalPages: number }>(
     `/api/admission/applications?${params}`
   );
   const applications = data?.applications ?? [];
@@ -537,7 +538,9 @@ export default function AdmissionsPage() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {error ? (
+                <tr><td colSpan={isParentView ? 6 : 7}><PageError message="Failed to load applications — please try again." onRetry={() => mutate()} /></td></tr>
+              ) : isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
                     {Array.from({ length: isParentView ? 6 : 7 }).map((_, j) => (

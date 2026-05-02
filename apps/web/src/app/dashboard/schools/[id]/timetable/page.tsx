@@ -90,7 +90,7 @@ export default function TimetablePage({ params }: { params: { id: string } }) {
     ]).then(([cd, td]) => {
       setClasses(cd.classes   || []);
       setTeachers(td.teachers || []);
-    }).catch(() => {});
+    }).catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[classes/teachers]', err); });
   }, [schoolId]);
 
   // Fetch subjects from stream master for this school's class when class changes
@@ -136,7 +136,7 @@ export default function TimetablePage({ params }: { params: { id: string } }) {
     fetch('/api/timetable/reassign', { headers: headers(false) })
       .then(r => r.json())
       .then(d => setReassignments(d.reassignments || []))
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[reassignments]', err); });
   };
 
   // Load proxy teacher's slots when a teacher is selected in proxy mode
@@ -163,7 +163,7 @@ export default function TimetablePage({ params }: { params: { id: string } }) {
         }
         setProxySlots(slots.sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.periodNo - b.periodNo));
       })
-      .catch(() => {})
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[proxy-slots]', err); })
       .finally(() => setProxyLoading(false));
   }, [proxyTeacher, view]);
 

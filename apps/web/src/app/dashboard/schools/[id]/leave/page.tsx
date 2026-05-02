@@ -101,7 +101,7 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
         setPolicies(d.policies || []);
         setHolidays(d.holidays || []);
       })
-      .catch(() => {})
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[leave-config]', err); })
       .finally(() => setLtLoading(false));
   }, [schoolId]);
 
@@ -110,7 +110,7 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
     fetch(`/api/super-admin/schools/${schoolId}/leave-config?resource=policies`, { headers: headers() })
       .then(r => r.json())
       .then(d => { if (d.leaveCarryForwardDate) setCarryForwardDate(d.leaveCarryForwardDate); })
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[leave-policies]', err); });
   }, [schoolId]);
 
   // Fetch holidays when year changes
@@ -118,7 +118,7 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
     fetch(`/api/super-admin/schools/${schoolId}/leave-config?resource=holidays&year=${academicYear}`, { headers: headers() })
       .then(r => r.json())
       .then(d => setHolidays(d.holidays || []))
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[holidays]', err); });
   }, [academicYear, schoolId]);
 
   // Fetch weekoff days
@@ -126,7 +126,7 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
     fetch(`/api/super-admin/schools/${schoolId}/leave-config?resource=weekoffs`, { headers: headers() })
       .then(r => r.json())
       .then(d => { if (Array.isArray(d.weekoffDays)) setWeekoffDays(d.weekoffDays); })
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[weekoffs]', err); });
   }, [schoolId]);
 
   // Fetch roles + users for workflow
@@ -134,7 +134,7 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
     fetch(`/api/super-admin/schools/${schoolId}/users`, { headers: headers() })
       .then(r => r.json())
       .then(d => { setRoles(d.roles || []); setUsers(d.users || []); })
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[school-users]', err); });
   }, [schoolId]);
 
   // ── Leave type helpers ───────────────────────────────────────────────────

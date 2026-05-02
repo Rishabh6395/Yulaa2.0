@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Modal from '@/components/ui/Modal';
 import StarsCard from '@/components/ui/StarsCard';
+import PageError from '@/components/ui/PageError';
 import { useApi } from '@/hooks/useApi';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -54,7 +55,7 @@ export default function AnnouncementsPage() {
     ? `/api/announcements?schoolId=${selectedSchoolId}`
     : '/api/announcements';
 
-  const { data, isLoading, mutate } = useApi<{ announcements: any[] }>(listUrl);
+  const { data, isLoading, error, mutate } = useApi<{ announcements: any[] }>(listUrl);
   // Filter out announcements older than 20 days (client-side expiry)
   const announcements = (data?.announcements ?? []).filter(a => {
     const ageDays = Math.floor((Date.now() - new Date(a.published_at).getTime()) / 86400000);
@@ -117,7 +118,9 @@ export default function AnnouncementsPage() {
       )}
 
       {/* List */}
-      {isLoading ? (
+      {error ? (
+        <PageError message="Failed to load announcements — please try again." onRetry={() => mutate()} />
+      ) : isLoading ? (
         <div className="space-y-3">
           {[1,2,3].map(i => (
             <div key={i} className="rounded-2xl border border-surface-100 dark:border-gray-700/50 p-5 h-24 animate-pulse bg-surface-50 dark:bg-gray-800/40" />
@@ -126,7 +129,7 @@ export default function AnnouncementsPage() {
       ) : announcements.length === 0 ? (
         <StarsCard className="p-12 text-center" glowColor="rgba(99,102,241,0.12)">
           <div className="text-4xl mb-3">📢</div>
-          <p className="text-surface-400 dark:text-gray-500 text-sm">No announcements yet.</p>
+          <p className="text-surface-400 dark:text-gray-500 text-sm">No announcements yet. Publish one above.</p>
         </StarsCard>
       ) : (
         <div className="space-y-3">

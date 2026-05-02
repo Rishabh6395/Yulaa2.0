@@ -84,7 +84,7 @@ export default function TimetablePage() {
     fetch('/api/teachers', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => setTeachers(d.teachers || []))
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[teachers]', err); });
   }, []);
 
   useEffect(() => { fetchSlots(date); }, [date, fetchSlots]);

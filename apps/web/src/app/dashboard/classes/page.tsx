@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
+import PageError from '@/components/ui/PageError';
 import { useApi } from '@/hooks/useApi';
 import { useFormConfig } from '@/hooks/useFormConfig';
 
@@ -16,7 +17,7 @@ export default function ClassesPage() {
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-  const { data,         isLoading, mutate } = useApi<{ classes: any[] }>('/api/classes');
+  const { data, isLoading, error, mutate } = useApi<{ classes: any[] }>('/api/classes');
   const { data: tData }                     = useApi<{ teachers: any[] }>('/api/teachers');
   const classes  = data?.classes  ?? [];
   const teachers = tData?.teachers ?? [];
@@ -87,7 +88,9 @@ export default function ClassesPage() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {error ? (
+                <tr><td colSpan={6}><PageError message="Failed to load classes — please try again." onRetry={() => mutate()} /></td></tr>
+              ) : isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>{Array.from({ length: 6 }).map((_, j) => (
                     <td key={j}><div className="h-4 bg-surface-100 rounded animate-pulse w-20"/></td>

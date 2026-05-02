@@ -97,7 +97,7 @@ export default function MastersPage() {
     fetch(`/api/masters/custom${qs}`, { headers: { Authorization: `Bearer ${getToken()}` } })
       .then(r => r.json())
       .then(d => setCustomTypes(d.masterTypes ?? []))
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[custom-types]', err); });
   };
 
   useEffect(() => { loadCustomTypes(); }, [schoolId]);

@@ -101,7 +101,7 @@ export default function FormConfigPage({ params }: { params: { id: string } }) {
           }));
       }
       setDynFields(byForm);
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[form-config]', err); }).finally(() => setLoading(false));
   }, [schoolId]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────

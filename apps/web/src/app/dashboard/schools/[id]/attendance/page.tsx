@@ -118,7 +118,7 @@ export default function AttendanceConfigPage({ params }: { params: { id: string 
         if (cfg.faceApiUrl)   setFaceApiUrl(cfg.faceApiUrl);
         if (cfg.faceApiKey)   setFaceApiKey(cfg.faceApiKey);
       })
-      .catch(() => {})
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[attendance-config]', err); })
       .finally(() => setLoading(false));
   }, [params.id]);
 

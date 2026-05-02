@@ -1,12 +1,16 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Modal from '@/components/ui/Modal';
+import PageError from '@/components/ui/PageError';
+import PageLoader from '@/components/ui/PageLoader';
+import EmptyState from '@/components/ui/EmptyState';
 import { useFormConfig } from '@/hooks/useFormConfig';
 
 export default function TeachersPage() {
   const [teachers, setTeachers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading,  setLoading]  = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -26,13 +30,22 @@ export default function TeachersPage() {
   const isAdmin = ['school_admin', 'super_admin'].includes(user.primaryRole);
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-  const fetchTeachers = () => {
-    fetch('/api/teachers', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(d => { setTeachers(d.teachers || []); setLoading(false); });
-  };
+  const fetchTeachers = useCallback(async () => {
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const res = await fetch('/api/teachers', { headers: { Authorization: `Bearer ${token}` } });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Failed to load teachers');
+      setTeachers(d.teachers || []);
+    } catch (e: any) {
+      setFetchError(e.message || 'Failed to load teachers — please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
 
-  useEffect(() => { fetchTeachers(); }, [token]);
+  useEffect(() => { fetchTeachers(); }, [fetchTeachers]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,12 +128,12 @@ export default function TeachersPage() {
         )}
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1,2,3].map(i => <div key={i} className="card p-5 h-36 animate-pulse bg-surface-100"/>)}
-        </div>
+      {fetchError ? (
+        <PageError message={fetchError} onRetry={fetchTeachers} />
+      ) : loading ? (
+        <PageLoader rows={3} cols={3} />
       ) : teachers.length === 0 ? (
-        <div className="card p-12 text-center"><p className="text-surface-400">No teachers found.</p></div>
+        <EmptyState title="No teachers yet" description="Add your first teacher or import via CSV." />
       ) : (
         <div className="space-y-6">
           {/* Active Teachers */}

@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Modal from '@/components/ui/Modal';
+import PageError from '@/components/ui/PageError';
+import PageLoader from '@/components/ui/PageLoader';
+import EmptyState from '@/components/ui/EmptyState';
 import { useApi } from '@/hooks/useApi';
 
 const EMPTY_FORM = { class_id: '', subject: '', title: '', description: '', due_date: '', attachments: [] as string[] };
@@ -49,7 +52,7 @@ export default function HomeworkPage() {
 
   // Include student_id when parent has active child so we get per-student status
   const hwUrl = isParent && activeChild ? `/api/homework?student_id=${activeChild.id}` : '/api/homework';
-  const { data, isLoading, mutate } = useApi<{ homework: any[] }>(hwUrl);
+  const { data, isLoading, error, mutate } = useApi<{ homework: any[] }>(hwUrl);
   const { data: clsData }           = useApi<{ classes: any[] }>('/api/classes');
   const homework = data?.homework ?? [];
   const classes  = clsData?.classes ?? [];
@@ -168,14 +171,14 @@ export default function HomeworkPage() {
         )}
       </div>
 
-      {isLoading ? (
+      {error ? (
+        <PageError message="Failed to load homework — please try again." onRetry={() => mutate()} />
+      ) : isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1,2,3].map(i => <div key={i} className="card p-5 h-44 animate-pulse bg-surface-100"/>)}
         </div>
       ) : homework.length === 0 ? (
-        <div className="card p-12 text-center">
-          <p className="text-surface-400">No homework assigned yet.</p>
-        </div>
+        <EmptyState title="No homework yet" description="Homework assigned by teachers will appear here." />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {homework.map((hw) => {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
+import PageError from '@/components/ui/PageError';
 import { useApi } from '@/hooks/useApi';
 import { useFormConfig } from '@/hooks/useFormConfig';
 
@@ -87,7 +88,7 @@ export default function QueriesPage() {
   const canRaise       = isParent || isSchoolAdmin;   // both can raise queries
   const canReply       = isSchoolAdmin || isSuperAdmin; // admins reply
 
-  const { data, isLoading, mutate } = useApi<{ queries: any[] }>('/api/queries');
+  const { data, isLoading, error, mutate } = useApi<{ queries: any[] }>('/api/queries');
   const queries = data?.queries ?? [];
   const fc = useFormConfig('query_form');
 
@@ -179,7 +180,9 @@ export default function QueriesPage() {
       </div>
 
       {/* Query list */}
-      {isLoading ? (
+      {error ? (
+        <PageError message="Failed to load queries — please try again." onRetry={() => mutate()} />
+      ) : isLoading ? (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="card p-5 h-20 animate-pulse bg-surface-100 dark:bg-gray-700/40"/>)}</div>
       ) : queries.length === 0 ? (
         <div className="card p-12 text-center space-y-3">

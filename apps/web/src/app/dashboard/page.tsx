@@ -47,7 +47,7 @@ function PunchCard({ userId }: { userId: string }) {
     })
       .then(r => r.json())
       .then(d => setTodayRec(d.today || null))
-      .catch(() => {})
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[attendance-today]', err); })
       .finally(() => setLoading(false));
   }, [userId, token, today]);
 
@@ -568,7 +568,7 @@ function StudentsOnLeaveCard() {
     fetch('/api/leave/today', { headers: { Authorization: `Bearer ${t}` } })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setLeaveData(d); })
-      .catch(() => {})
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[leave-today]', err); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -884,7 +884,7 @@ export default function DashboardPage() {
     fetch('/api/menu-permissions', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => { if (Array.isArray(d.menuKeys)) setAllowed(new Set(d.menuKeys)); })
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[menu-permissions]', err); });
   }, []);
 
   // Fetch pending workflow items (admissions + leaves needing this user's action)
@@ -897,7 +897,7 @@ export default function DashboardPage() {
     fetch('/api/workflow/pending', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => { if (d.admissions || d.leaves) setPending(d); })
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[workflow-pending]', err); });
   }, []);
 
   const fetchDashboard = useCallback((child: any) => {

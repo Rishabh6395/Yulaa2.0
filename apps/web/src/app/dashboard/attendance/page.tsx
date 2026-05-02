@@ -56,7 +56,7 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
         if (mode === 'daily') setView('daily');
         else setView('classwise');
       })
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[attendance-config]', err); });
   }, []);
 
   // Load holidays whenever the month changes
@@ -80,7 +80,7 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
         });
         setHolidayMap(map);
       })
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[holidays]', err); });
   }, [month, studentId]);
 
   const fetchAttendance = useCallback(async () => {
@@ -468,7 +468,7 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
         });
         setHolidayMap(map);
       })
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[holidays]', err); });
   }, [token, month]);
 
   const handlePunch = async (action: 'punch_in' | 'punch_out') => {
@@ -694,7 +694,7 @@ function EmployeeAttendanceAdmin() {
     fetch(`/api/holidays?year=${academicYear}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => setWeekoffDays(d.weekoffDays ?? [0, 6]))
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[weekoffs]', err); });
   }, [token, month]);
 
   const fetchDaily = useCallback(async () => {
@@ -958,7 +958,7 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
     fetch(`/api/holidays?year=${academicYear}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => setWeekoffDays(d.weekoffDays ?? [0, 6]))
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[weekoffs]', err); });
   }, [token, date.substring(0, 4)]);
 
   useEffect(() => {
@@ -1306,7 +1306,7 @@ export default function AttendancePage() {
     fetch('/api/attendance-config', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => { if (d.attendanceMode) setAttendanceMode(d.attendanceMode); })
-      .catch(() => {});
+      .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[attendance-config]', err); });
   }, []);
 
   useEffect(() => {

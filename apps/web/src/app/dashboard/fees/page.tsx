@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Modal from '@/components/ui/Modal';
+import PageError from '@/components/ui/PageError';
 
 // ─── Push Notification Modal ──────────────────────────────────────────────────
 
@@ -347,7 +348,9 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {fetchError ? (
+                <tr><td colSpan={isParent ? 7 : 8}><PageError message={fetchError} onRetry={loadFees} /></td></tr>
+              ) : loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
                     {Array.from({ length: isParent ? 7 : 8 }).map((_, j) => (
@@ -356,7 +359,7 @@ function FeesTable({ invoices, loading, summary, filter, setFilter, title, subti
                   </tr>
                 ))
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={isParent ? 7 : 8} className="text-center py-8 text-surface-400">No invoices found</td></tr>
+                <tr><td colSpan={isParent ? 7 : 8} className="text-center py-8 text-surface-400">No invoices found.</td></tr>
               ) : filtered.map(inv => (
                 <tr key={inv.id}>
                   <td><span className="font-mono text-xs bg-surface-50 px-2 py-1 rounded">{inv.invoice_no}</span></td>
@@ -441,6 +444,7 @@ export default function FeesPage() {
   const [invoices,    setInvoices]    = useState<any[]>([]);
   const [summary,     setSummary]     = useState<any>(null);
   const [loading,     setLoading]     = useState(true);
+  const [fetchError,  setFetchError]  = useState<string | null>(null);
   const [filter,      setFilter]      = useState('');
   const [role,        setRole]        = useState<string | null>(null);
   const [activeChild, setActiveChild] = useState<any>(null);
@@ -468,23 +472,28 @@ export default function FeesPage() {
     return () => window.removeEventListener('activeChildChanged', handler);
   }, []);
 
-  useEffect(() => {
+  const loadFees = useCallback(async () => {
     if (role === null) return;
     if (role === 'parent' && !activeChild) return;
-
     setLoading(true);
-    const params = new URLSearchParams();
-    if (filter) params.set('status', filter);
-    if (role === 'parent' && activeChild) params.set('student_id', activeChild.id);
+    setFetchError(null);
+    try {
+      const params = new URLSearchParams();
+      if (filter) params.set('status', filter);
+      if (role === 'parent' && activeChild) params.set('student_id', activeChild.id);
+      const res = await fetch(`/api/fees?${params}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Failed to load fee invoices');
+      setInvoices(d.invoices || []);
+      setSummary(d.summary);
+    } catch (e: any) {
+      setFetchError(e.message || 'Failed to load fee invoices — please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [filter, token, role, activeChild]);
 
-    fetch(`/api/fees?${params}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
-      .then(r => r.json())
-      .then(d => {
-        setInvoices(d.invoices || []);
-        setSummary(d.summary);
-        setLoading(false);
-      });
-  }, [filter, token, role, activeChild, refreshKey]);
+  useEffect(() => { loadFees(); }, [loadFees, refreshKey]);
 
   if (role === 'parent' && !activeChild) {
     return (

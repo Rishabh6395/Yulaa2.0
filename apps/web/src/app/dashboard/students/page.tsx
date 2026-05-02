@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import Modal from '@/components/ui/Modal';
+import PageError from '@/components/ui/PageError';
 import { useApi } from '@/hooks/useApi';
 import { useFormConfig } from '@/hooks/useFormConfig';
 
@@ -45,28 +46,39 @@ export default function StudentsPage() {
   if (statusFilter) params.set('status',   statusFilter);
   if (classFilter)  params.set('class_id', classFilter);
 
-  const { data,         isLoading, mutate } = useApi<{ students: any[]; total: number }>(`/api/students?${params}`);
+  const { data, isLoading, error, mutate } = useApi<{ students: any[]; total: number }>(`/api/students?${params}`);
   const { data: clsData }                   = useApi<{ classes:  any[] }>('/api/classes');
 
   const students = data?.students ?? [];
   const total    = data?.total    ?? 0;
   const classes  = clsData?.classes ?? [];
 
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [saveError,   setSaveError]   = useState<string | null>(null);
+
   const handleApproval = async (id: string, status: string) => {
-    await fetch('/api/students', { method: 'PATCH', headers, body: JSON.stringify({ id, admission_status: status }) });
+    setActionError(null);
+    const res = await fetch('/api/students', { method: 'PATCH', headers, body: JSON.stringify({ id, admission_status: status }) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setActionError(d.error || 'Failed to update student status — please try again.');
+    }
     mutate();
   };
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
-    const res = await fetch('/api/students', { method: 'POST', headers, body: JSON.stringify(form) });
-    if (res.ok) {
+    setSaveError(null);
+    try {
+      const res = await fetch('/api/students', { method: 'POST', headers, body: JSON.stringify(form) });
+      const d = await res.json();
+      if (!res.ok) { setSaveError(d.error || 'Failed to add student — please try again.'); return; }
       setShowAddModal(false);
       setForm({ admission_no: '', first_name: '', last_name: '', dob: '', gender: '', class_id: '', address: '', parent_name: '', parent_phone: '', parent_email: '' });
       mutate();
-    }
-    setSaving(false);
+    } catch { setSaveError('Network error — please check your connection and try again.'); }
+    finally { setSaving(false); }
   };
 
   const handleAddParent = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -187,14 +199,16 @@ export default function StudentsPage() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {error ? (
+                <tr><td colSpan={7}><PageError message="Failed to load students — please try again." onRetry={() => mutate()} /></td></tr>
+              ) : isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>{Array.from({ length: 7 }).map((_, j) => (
                     <td key={j}><div className="h-4 bg-surface-100 rounded animate-pulse w-20"/></td>
                   ))}</tr>
                 ))
               ) : students.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-8 text-surface-400">No students found</td></tr>
+                <tr><td colSpan={7} className="text-center py-8 text-surface-400">No students found. Add your first student or import a CSV.</td></tr>
               ) : students.map((s) => (
                 <tr key={s.id}>
                   <td>

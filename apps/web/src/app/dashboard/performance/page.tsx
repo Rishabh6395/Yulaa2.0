@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useApi } from '@/hooks/useApi';
+import PageError from '@/components/ui/PageError';
 
 const SUBJECTS = ['English', 'Hindi', 'Science', 'Social Studies', 'Mathematics', 'Sanskrit', 'Drawing', 'IT'];
 const TERMS    = ['Term 1', 'Term 2', 'Final Exam'];
@@ -89,8 +90,8 @@ function TeacherView({ userId }: { userId: string }) {
   const [students,  setStudents]  = useState<any[]>([]);
   const [loadingStu, setLoadingStu] = useState(false);
 
-  const { data: classData }    = useApi<{ classes: any[] }>('/api/classes');
-  const { data: subjectsData } = useApi<{ subjects: string[] }>('/api/teacher/subjects');
+  const { data: classData,    error: classError,    mutate: mutateClasses }   = useApi<{ classes: any[] }>('/api/classes');
+  const { data: subjectsData, error: subjectsError, mutate: mutateSubjects }  = useApi<{ subjects: string[] }>('/api/teacher/subjects');
   const classes = classData?.classes || [];
 
   // Subjects from teacher's timetable; fall back to full list if none assigned
@@ -138,6 +139,8 @@ function TeacherView({ userId }: { userId: string }) {
       </div>
     );
   }
+
+  if (classError) return <PageError message="Failed to load class data — please try again." onRetry={() => { mutateClasses(); mutateSubjects(); }} />;
 
   return (
     <div className="space-y-6">
