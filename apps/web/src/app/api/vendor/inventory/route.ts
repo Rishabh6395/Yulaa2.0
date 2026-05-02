@@ -1,4 +1,5 @@
 import { getUserFromRequest } from '@/lib/auth';
+import { handleError, UnauthorizedError, ForbiddenError, NotFoundError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 import { withCache, cacheInvalidate, CacheTTL } from '@/services/cache.service';
 
@@ -9,22 +10,19 @@ async function getVendor(userId: string) {
 const VALID_CATEGORIES = ['books', 'uniform', 'lanyard', 'stationery', 'sports', 'other'];
 
 export async function GET(request: Request) {
-  const user = await getUserFromRequest(request);
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const { searchParams } = new URL(request.url);
-  const category = searchParams.get('category') ?? '';
-  const status   = searchParams.get('status') ?? '';
-
-  const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
-  const isVendor    = primaryRole.role_code === 'vendor';
-  const isAdmin     = ['super_admin', 'school_admin'].includes(primaryRole.role_code);
-
-  if (!isVendor && !isAdmin) {
-    return Response.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) throw new UnauthorizedError();
+
+    const { searchParams } = new URL(request.url);
+    const category = searchParams.get('category') ?? '';
+    const status   = searchParams.get('status') ?? '';
+
+    const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
+    const isVendor    = primaryRole.role_code === 'vendor';
+    const isAdmin     = ['super_admin', 'school_admin'].includes(primaryRole.role_code);
+
+    if (!isVendor && !isAdmin) throw new ForbiddenError();
     const key = isVendor
       ? `inventory:vendor:${user.id}:${category}:${status}`
       : `inventory:school:${primaryRole.school_id}:${category}:${status}`;
@@ -87,30 +85,27 @@ export async function GET(request: Request) {
       return { items: rows, summary };
     });
 
-    if (result === null) return Response.json({ error: 'Vendor profile not found' }, { status: 404 });
+    if (result === null) throw new NotFoundError('Vendor profile');
     return Response.json(result);
-  } catch (err) {
-    console.error('Inventory GET error:', err);
-    return Response.json({ error: 'Internal server error' }, { status: 500 });
-  }
+  } catch (err) { return handleError(err); }
 }
 
 export async function POST(request: Request) {
-  const user = await getUserFromRequest(request);
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
-  if (primaryRole.role_code !== 'vendor') return Response.json({ error: 'Only vendors can add inventory items' }, { status: 403 });
-
-  const vendor = await getVendor(user.id);
-  if (!vendor) return Response.json({ error: 'Vendor profile not found' }, { status: 404 });
-
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) throw new UnauthorizedError();
+
+    const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
+    if (primaryRole.role_code !== 'vendor') throw new ForbiddenError('Only vendors can add inventory items');
+
+    const vendor = await getVendor(user.id);
+    if (!vendor) throw new NotFoundError('Vendor profile');
+
     const body = await request.json();
     const { name, category, description, price, quantity, unit, school_id, image_url } = body;
 
-    if (!name || !category || !price) return Response.json({ error: 'name, category, and price are required' }, { status: 400 });
-    if (!VALID_CATEGORIES.includes(category)) return Response.json({ error: `category must be one of: ${VALID_CATEGORIES.join(', ')}` }, { status: 400 });
+    if (!name || !category || !price) throw new AppError('name, category, and price are required');
+    if (!VALID_CATEGORIES.includes(category)) throw new AppError(`category must be one of: ${VALID_CATEGORIES.join(', ')}`);
 
     const item = await prisma.vendorInventory.create({
       data: {
@@ -127,30 +122,27 @@ export async function POST(request: Request) {
 
     await cacheInvalidate(`inventory:vendor:${user.id}:`);
     return Response.json({ item }, { status: 201 });
-  } catch (err) {
-    console.error('Inventory POST error:', err);
-    return Response.json({ error: 'Internal server error' }, { status: 500 });
-  }
+  } catch (err) { return handleError(err); }
 }
 
 export async function PATCH(request: Request) {
-  const user = await getUserFromRequest(request);
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
-  if (primaryRole.role_code !== 'vendor') return Response.json({ error: 'Only vendors can update inventory items' }, { status: 403 });
-
-  const vendor = await getVendor(user.id);
-  if (!vendor) return Response.json({ error: 'Vendor profile not found' }, { status: 404 });
-
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) throw new UnauthorizedError();
+
+    const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
+    if (primaryRole.role_code !== 'vendor') throw new ForbiddenError('Only vendors can update inventory items');
+
+    const vendor = await getVendor(user.id);
+    if (!vendor) throw new NotFoundError('Vendor profile');
+
     const body = await request.json();
     const { id, name, category, description, price, quantity, unit, status, image_url } = body;
 
-    if (!id) return Response.json({ error: 'Item id is required' }, { status: 400 });
+    if (!id) throw new AppError('Item id is required');
 
     const existing = await prisma.vendorInventory.findFirst({ where: { id, vendorId: vendor.id } });
-    if (!existing) return Response.json({ error: 'Item not found or access denied' }, { status: 404 });
+    if (!existing) throw new NotFoundError('Item');
 
     const item = await prisma.vendorInventory.update({
       where: { id },
@@ -168,35 +160,29 @@ export async function PATCH(request: Request) {
 
     await cacheInvalidate(`inventory:vendor:${user.id}:`);
     return Response.json({ item });
-  } catch (err) {
-    console.error('Inventory PATCH error:', err);
-    return Response.json({ error: 'Internal server error' }, { status: 500 });
-  }
+  } catch (err) { return handleError(err); }
 }
 
 export async function DELETE(request: Request) {
-  const user = await getUserFromRequest(request);
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
-  if (primaryRole.role_code !== 'vendor') return Response.json({ error: 'Only vendors can delete inventory items' }, { status: 403 });
-
-  const vendor = await getVendor(user.id);
-  if (!vendor) return Response.json({ error: 'Vendor profile not found' }, { status: 404 });
-
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get('id');
-  if (!id) return Response.json({ error: 'id is required' }, { status: 400 });
-
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) throw new UnauthorizedError();
+
+    const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
+    if (primaryRole.role_code !== 'vendor') throw new ForbiddenError('Only vendors can delete inventory items');
+
+    const vendor = await getVendor(user.id);
+    if (!vendor) throw new NotFoundError('Vendor profile');
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) throw new AppError('id is required');
+
     const existing = await prisma.vendorInventory.findFirst({ where: { id, vendorId: vendor.id } });
-    if (!existing) return Response.json({ error: 'Item not found or access denied' }, { status: 404 });
+    if (!existing) throw new NotFoundError('Item');
 
     await prisma.vendorInventory.delete({ where: { id } });
     await cacheInvalidate(`inventory:vendor:${user.id}:`);
     return Response.json({ message: 'Item deleted' });
-  } catch (err) {
-    console.error('Inventory DELETE error:', err);
-    return Response.json({ error: 'Internal server error' }, { status: 500 });
-  }
+  } catch (err) { return handleError(err); }
 }

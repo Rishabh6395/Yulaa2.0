@@ -28,14 +28,14 @@ async function readOrCompute<T>(
   // 1. Redis hit (precomputed by cron)
   const cached = await cacheGet<T>(key);
   if (cached !== null) {
-    console.log(`[dashboard] ${label} — cache hit (${Date.now() - t0}ms)`);
+    if (process.env.NODE_ENV === 'development') console.log(`[dashboard] ${label} — cache hit (${Date.now() - t0}ms)`);
     return cached;
   }
 
   // 2. Miss — compute with stampede protection
-  console.log(`[dashboard] ${label} — cache miss, computing…`);
+  if (process.env.NODE_ENV === 'development') console.log(`[dashboard] ${label} — cache miss, computing…`);
   const result = await withCacheLock(key, ttl, fn);
-  console.log(`[dashboard] ${label} — computed + stored (${Date.now() - t0}ms)`);
+  if (process.env.NODE_ENV === 'development') console.log(`[dashboard] ${label} — computed + stored (${Date.now() - t0}ms)`);
   return result;
 }
 
@@ -77,13 +77,13 @@ export async function getParentDashboard(userId: string, studentId: string) {
 
   const cached = await cacheGet(key);
   if (cached !== null) {
-    console.log(`[dashboard] ${label} — cache hit (${Date.now() - t0}ms)`);
+    if (process.env.NODE_ENV === 'development') console.log(`[dashboard] ${label} — cache hit (${Date.now() - t0}ms)`);
     return cached;
   }
 
-  console.log(`[dashboard] ${label} — cache miss, computing…`);
+  if (process.env.NODE_ENV === 'development') console.log(`[dashboard] ${label} — cache miss, computing…`);
   const result = await withCacheLock(key, CacheTTL.dashboardParent, () => computeParentDashboard(userId, studentId));
-  console.log(`[dashboard] ${label} — computed + stored (${Date.now() - t0}ms)`);
+  if (process.env.NODE_ENV === 'development') console.log(`[dashboard] ${label} — computed + stored (${Date.now() - t0}ms)`);
   return result;
 }
 

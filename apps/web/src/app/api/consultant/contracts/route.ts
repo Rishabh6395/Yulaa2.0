@@ -1,19 +1,17 @@
 import { getUserFromRequest } from '@/lib/auth';
+import { handleError, UnauthorizedError, ForbiddenError, NotFoundError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 
 export async function GET(request: Request) {
-  const user = await getUserFromRequest(request);
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const primaryRole  = user.roles.find((r) => r.is_primary) ?? user.roles[0];
-  const isConsultant = primaryRole.role_code === 'consultant';
-  const isAdmin      = ['super_admin', 'school_admin'].includes(primaryRole.role_code);
-
-  if (!isConsultant && !isAdmin) {
-    return Response.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) throw new UnauthorizedError();
+
+    const primaryRole  = user.roles.find((r) => r.is_primary) ?? user.roles[0];
+    const isConsultant = primaryRole.role_code === 'consultant';
+    const isAdmin      = ['super_admin', 'school_admin'].includes(primaryRole.role_code);
+
+    if (!isConsultant && !isAdmin) throw new ForbiddenError();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -21,7 +19,7 @@ export async function GET(request: Request) {
 
     if (isConsultant) {
       const consultant = await prisma.consultant.findUnique({ where: { userId: user.id } });
-      if (!consultant) return Response.json({ error: 'Consultant profile not found' }, { status: 404 });
+      if (!consultant) throw new NotFoundError('Consultant profile');
 
       const rows = await prisma.consultantContract.findMany({
         where: { consultantId: consultant.id },
@@ -68,8 +66,5 @@ export async function GET(request: Request) {
     }
 
     return Response.json({ contracts });
-  } catch (err) {
-    console.error('Contracts GET error:', err);
-    return Response.json({ error: 'Internal server error' }, { status: 500 });
-  }
+  } catch (err) { return handleError(err); }
 }

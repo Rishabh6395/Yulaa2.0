@@ -1,3 +1,6 @@
+/** True only during local development — use to gate debug logs */
+export const isDev = process.env.NODE_ENV === 'development';
+
 export class AppError extends Error {
   constructor(
     message: string,

@@ -140,8 +140,7 @@ export async function provisionApprovedApplication(applicationId: string) {
     // ── 5. Update application with parentUserId ────────────────────────────
     await tx.admissionApplication.update({ where: { id: applicationId }, data: { parentUserId: user.id } });
 
-    // Stub notifications
-    console.log(`[NOTIFY] Application ${applicationId} approved — parent userId=${user.id}`);
+    if (process.env.NODE_ENV === 'development') console.log(`[NOTIFY] Application ${applicationId} approved — parent userId=${user.id}`);
 
     return { userId: user.id, parentId: parent.id };
   }, { timeout: 30000 });

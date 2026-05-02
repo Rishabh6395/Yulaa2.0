@@ -40,7 +40,7 @@ export async function submitApplication(data: CreateApplicationInput) {
 
   const app = await repo.createApplication({ ...data, parentPhone: phone }, flags, riskScore, workflow?.id ?? null);
 
-  console.log(`[NOTIFY] New application ${app.id} submitted for school ${data.schoolId}`);
+  if (process.env.NODE_ENV === 'development') console.log(`[NOTIFY] New application ${app.id} submitted for school ${data.schoolId}`);
   return { applicationId: app.id, riskScore, flags };
 }
 
@@ -88,7 +88,7 @@ export async function processAction(input: ApplicationActionInput) {
   if (input.action === 'reject') {
     await repo.updateApplicationStatus(input.applicationId, 'rejected', app.currentStep);
     await repo.createAction(input.applicationId, input.actorUserId, app.currentStep, 'reject', input.comment);
-    console.log(`[NOTIFY] Application ${input.applicationId} rejected`);
+    if (process.env.NODE_ENV === 'development') console.log(`[NOTIFY] Application ${input.applicationId} rejected`);
     return { status: 'rejected' };
   }
 
