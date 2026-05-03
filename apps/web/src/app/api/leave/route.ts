@@ -2,11 +2,10 @@ import { MANAGEMENT_ROLES as ADMIN_ROLES, REVIEWER_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { listLeaveRequests, submitLeaveRequest, reviewLeaveStep, withdrawLeave, deleteLeave } from '@/modules/leave/leave.service';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
-import prisma from '@/lib/prisma';
+import { assertParentOwnsStudent, getStudentSchoolId } from '@/lib/school-utils';
 
-
-// For self-service (submitting leave), use the employee role if the user has it.
-// This lets teachers/principals/school_admins operate under a unified employee identity.
+// For self-service (submitting leave), prefer the employee role if the user has one
+// in the same school — lets teachers/principals operate under a unified employee identity.
 function resolveLeaveRole(user: any) {
   const primary      = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
   const employeeRole = user.roles.find((r: any) => r.role_code === 'employee' && r.school_id === primary.school_id);
@@ -22,15 +21,15 @@ export async function GET(request: Request) {
     const role      = resolveLeaveRole(user);
     const { searchParams } = new URL(request.url);
 
-    // Parents have no school_id — derive it from the requested child (student)
     let schoolId: string | null = role.school_id ?? null;
     let studentId: string | null = null;
+
     if (!schoolId) {
+      // Parent role — must supply a child_id; ownership is verified before use
       studentId = searchParams.get('child_id');
       if (!studentId) return Response.json({ leaves: [], workflows: {} });
-      const student = await prisma.student.findUnique({ where: { id: studentId }, select: { schoolId: true } });
-      if (!student) return Response.json({ leaves: [], workflows: {} });
-      schoolId = student.schoolId;
+      await assertParentOwnsStudent(user.id, studentId);
+      schoolId = await getStudentSchoolId(studentId);
     }
 
     return Response.json(
@@ -46,16 +45,16 @@ export async function POST(request: Request) {
     const role = resolveLeaveRole(user);
     const body = await request.json();
 
-    // When a parent applies leave for a child, use the child's school — not the parent's role
     let schoolId: string | null = role.school_id ?? null;
+
     if (body.student_id) {
-      const student = await prisma.student.findUnique({
-        where:  { id: body.student_id },
-        select: { schoolId: true },
-      });
-      if (!student) throw new AppError('Student not found', 404);
-      schoolId = student.schoolId;
+      // Verify parent actually owns the child they are applying for
+      if (role.role_code === 'parent') {
+        await assertParentOwnsStudent(user.id, body.student_id);
+      }
+      schoolId = await getStudentSchoolId(body.student_id);
     }
+
     if (!schoolId) throw new AppError('Cannot determine school — please select a child or contact support', 400);
 
     const leave = await submitLeaveRequest(schoolId, user.id, role.role_code, body);
@@ -68,11 +67,11 @@ export async function DELETE(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    // Only admins/principals may hard-delete leave records
     if (!ADMIN_ROLES.includes(primary.role_code)) throw new ForbiddenError('Only admins can delete leave records');
+    if (!primary.school_id) throw new ForbiddenError('No school associated with your account');
     const { id } = await request.json();
     if (!id) throw new AppError('id is required');
-    return Response.json(await deleteLeave(primary.school_id!, id));
+    return Response.json(await deleteLeave(primary.school_id, id));
   } catch (err) { return handleError(err); }
 }
 
@@ -83,14 +82,13 @@ export async function PATCH(request: Request) {
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
     const body    = await request.json();
 
-    // Withdraw: allowed for any authenticated user on their own pending leave
     if (body.action === 'withdraw') {
       return Response.json(await withdrawLeave(user.id, body.id));
     }
 
-    // Review uses primary role (admin/teacher capacity, not employee capacity)
     if (!REVIEWER_ROLES.includes(primary.role_code)) throw new ForbiddenError('Not authorised to review leaves');
-    const leave = await reviewLeaveStep(user.id, primary.school_id!, primary.role_code, body);
+    if (!primary.school_id) throw new ForbiddenError('No school associated with your account');
+    const leave = await reviewLeaveStep(user.id, primary.school_id, primary.role_code, body);
     return Response.json({ leave });
   } catch (err) { return handleError(err); }
 }

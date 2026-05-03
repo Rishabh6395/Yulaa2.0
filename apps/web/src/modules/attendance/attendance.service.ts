@@ -84,10 +84,25 @@ export async function bulkUploadAttendance(
   });
 
   if (valid.length > 0) {
-    await repo.bulkUpsertAttendance(schoolId, classId, markedBy, valid);
+    // Verify every student_id belongs to this class in this school (prevent cross-school writes)
+    const requestedIds = [...new Set(valid.map(r => r.student_id))];
+    const authorised = await prisma.student.findMany({
+      where: { id: { in: requestedIds }, classId, schoolId },
+      select: { id: true },
+    });
+    const authorisedSet = new Set(authorised.map(s => s.id));
+    const rejected = requestedIds.filter(id => !authorisedSet.has(id));
+    if (rejected.length > 0) {
+      errors.push(`Rejected: student IDs not in this class — ${rejected.join(', ')}`);
+    }
+    const safeRows = valid.filter(r => authorisedSet.has(r.student_id));
+    if (safeRows.length > 0) {
+      await repo.bulkUpsertAttendance(schoolId, classId, markedBy, safeRows);
+    }
+    return { saved: safeRows.length, skipped: errors.length, errors };
   }
 
-  return { saved: valid.length, skipped: errors.length, errors };
+  return { saved: 0, skipped: errors.length, errors };
 }
 
 export async function getAttendance(schoolId: string, searchParams: URLSearchParams) {

@@ -1,8 +1,9 @@
-import { AppError } from '@/utils/errors';
+import { AppError, ForbiddenError } from '@/utils/errors';
 import { EMPLOYEE_ROLES } from '@/lib/roles';
 import * as repo from './leave.repo';
 import type { LeaveRow, LeaveBalanceRow } from './leave.types';
 import prisma from '@/lib/prisma';
+import { WEEKOFF_EPOCH_DATES, getAcademicYearsForRange, currentAcademicYearLabel } from '@/lib/school-utils';
 
 // ── Academic year helper (April–March, India) ─────────────────────────────────
 
@@ -14,7 +15,7 @@ function currentAcademicYear(): { yearStart: Date; yearEnd: Date; label: string 
   const marchEnd = new Date(aprilStart.getFullYear() + 1, 2, 31);
   const y1 = aprilStart.getFullYear();
   const y2 = marchEnd.getFullYear();
-  return { yearStart: aprilStart, yearEnd: marchEnd, label: `${y1}-${String(y2).slice(2)}` };
+  return { yearStart: aprilStart, yearEnd: marchEnd, label: currentAcademicYearLabel() };
 }
 
 // Fallback leave types shown only when school hasn't configured any yet.
@@ -36,21 +37,15 @@ function daysBetween(start: Date, end: Date) {
 
 // ── Weekoff/Holiday helpers ───────────────────────────────────────────────────
 
-// Canonical epoch dates for weekday encoding (Sun=0 … Sat=6)
-const WEEKOFF_DATES = [
-  '1970-01-04','1970-01-05','1970-01-06','1970-01-07',
-  '1970-01-08','1970-01-09','1970-01-10',
-];
-
 /** Load the school's weekoff day numbers from Leave Configuration DB entries. */
 async function getSchoolWeekoffs(schoolId: string): Promise<number[]> {
   const entries = await prisma.holidayCalendar.findMany({
     where:  { schoolId, academicYear: '_weekoff_' },
     select: { date: true },
   });
-  if (entries.length === 0) return [0, 6]; // Default Sun/Sat if not configured
+  if (entries.length === 0) return [0, 6];
   return entries
-    .map(w => { const d = new Date(w.date).toISOString().split('T')[0]; return WEEKOFF_DATES.indexOf(d); })
+    .map(w => WEEKOFF_EPOCH_DATES.indexOf(new Date(w.date).toISOString().split('T')[0]))
     .filter(d => d >= 0);
 }
 
@@ -74,11 +69,7 @@ async function getStudentWeekoffs(schoolId: string, studentId: string): Promise<
 
 /** Load holidays that fall within a specific date range. */
 async function getHolidayDatesInRange(schoolId: string, start: Date, end: Date): Promise<Set<string>> {
-  const startY = start.getUTCMonth() >= 3 ? start.getUTCFullYear() : start.getUTCFullYear() - 1;
-  const endY   = end.getUTCMonth()   >= 3 ? end.getUTCFullYear()   : end.getUTCFullYear()   - 1;
-  const academicYears: string[] = [];
-  for (let y = startY; y <= endY; y++) academicYears.push(`${y}-${y + 1}`);
-
+  const academicYears = getAcademicYearsForRange(start, end);
   const holidays = await prisma.holidayCalendar.findMany({
     where: { schoolId, academicYear: { in: academicYears }, date: { gte: start, lte: end } },
     select: { date: true },
@@ -224,8 +215,21 @@ export async function deleteLeave(schoolId: string, id: string) {
 
 export async function withdrawLeave(userId: string, id: string) {
   if (!id) throw new AppError('id is required');
+  // Load the leave before withdrawing so we can rollback attendance if it was approved
+  const leave = await prisma.leaveRequest.findFirst({
+    where: { id, userId },
+    select: { status: true, studentId: true, startDate: true, endDate: true },
+  });
+  if (!leave) throw new AppError('Leave not found or cannot be withdrawn (must be pending or approved)');
+
   const result = await repo.withdrawLeaveRequest(id, userId);
   if (result.count === 0) throw new AppError('Leave not found or cannot be withdrawn (must be pending or approved)');
+
+  // If this leave was approved and had auto-synced attendance, roll it back
+  if (leave.status === 'approved' && leave.studentId) {
+    await repo.rollbackLeaveAttendance(leave.studentId, leave.startDate, leave.endDate);
+  }
+
   return { ok: true };
 }
 
@@ -236,13 +240,28 @@ export async function reviewLeaveStep(
   if (!id || !action) throw new AppError('id and action are required');
   if (!['approved', 'rejected'].includes(action)) throw new AppError('action must be approved or rejected');
 
-  // Load leave + workflow to know total steps
-  const leaves = await repo.findLeaveRequests(schoolId, undefined);
-  const leave  = leaves.find(l => l.id === id);
+  // Load leave directly (efficient single-row lookup)
+  const leave = await repo.findLeaveById(id, schoolId);
   if (!leave) throw new AppError('Leave request not found');
+  if (leave.status !== 'pending') throw new AppError(`Leave is already ${leave.status}`);
 
+  // Load workflow and validate reviewer is authorised for the current step
   const wf = await repo.findLeaveWorkflow(schoolId, leave.roleCode);
   const totalSteps = wf?.steps.length ?? 1;
+
+  if (wf && wf.steps.length > 0) {
+    const step = wf.steps[leave.currentStep];
+    if (step) {
+      const roleMatch   = !step.approverRole   || step.approverRole   === roleCode;
+      const userMatch   = !step.approverUserId || step.approverUserId === reviewerId;
+      // Step requires EITHER a matching role OR a specific user; both must be satisfied if both are set
+      const stepRoleOk  = step.approverRole   ? step.approverRole   === roleCode   : true;
+      const stepUserOk  = step.approverUserId ? step.approverUserId === reviewerId : true;
+      if (!stepRoleOk || !stepUserOk) {
+        throw new ForbiddenError('You are not authorised to review this step');
+      }
+    }
+  }
 
   const result = await repo.advanceLeaveStep(id, action as 'approved' | 'rejected', reviewerId, leave.currentStep, totalSteps, comment);
 

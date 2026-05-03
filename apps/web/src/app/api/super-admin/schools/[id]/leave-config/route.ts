@@ -2,17 +2,8 @@ import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 import { upsertLeaveWorkflow } from '@/modules/leave/leave.repo';
+import { WEEKOFF_EPOCH_DATES } from '@/lib/school-utils';
 
-// Canonical epoch dates for each weekday (Sun=0 … Sat=6)
-const WEEKOFF_DATES = [
-  '1970-01-04', // 0 Sunday
-  '1970-01-05', // 1 Monday
-  '1970-01-06', // 2 Tuesday
-  '1970-01-07', // 3 Wednesday
-  '1970-01-08', // 4 Thursday
-  '1970-01-09', // 5 Friday
-  '1970-01-10', // 6 Saturday
-];
 const WEEKOFF_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const WEEKOFF_YEAR  = '_weekoff_';
 
@@ -78,7 +69,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       });
       const weekoffDays = entries.map(w => {
         const d = new Date(w.date).toISOString().split('T')[0];
-        return WEEKOFF_DATES.indexOf(d);
+        return WEEKOFF_EPOCH_DATES.indexOf(d);
       }).filter(d => d >= 0);
       return Response.json({ weekoffDays });
     }
@@ -127,11 +118,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
       assertHolidayAccess(user);
       const { date, name, type, academicYear } = body;
       if (!date || !name) return Response.json({ error: 'date and name required' }, { status: 400 });
-      const holiday = await prisma.holidayCalendar.create({
-        data: {
-          schoolId, date: new Date(date), name: name.trim(),
-          type: type || 'mandatory', academicYear: academicYear || '2025-2026',
-        },
+      const d = new Date(date);
+      const yr = academicYear || '2025-2026';
+      const holiday = await prisma.holidayCalendar.upsert({
+        where: { schoolId_date: { schoolId, date: d } },
+        create: { schoolId, date: d, name: name.trim(), type: type || 'mandatory', academicYear: yr },
+        update: { name: name.trim(), type: type || 'mandatory', academicYear: yr },
       });
       return Response.json({ holiday }, { status: 201 });
     }
@@ -181,7 +173,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
           await prisma.holidayCalendar.upsert({
             where: { schoolId_date: { schoolId, date: d } },
             create: { schoolId, date: d, name: row.name, type: row.type, academicYear: academicYear || '2025-2026' },
-            update: { name: row.name, type: row.type },
+            update: { name: row.name, type: row.type, academicYear: academicYear || '2025-2026' },
           });
           added++;
         } catch { /* skip duplicates / invalid rows */ }
@@ -201,8 +193,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
       for (const day of days) {
         if (day < 0 || day > 6) continue;
         await prisma.holidayCalendar.upsert({
-          where: { schoolId_date: { schoolId, date: new Date(WEEKOFF_DATES[day]) } },
-          create: { schoolId, date: new Date(WEEKOFF_DATES[day]), name: WEEKOFF_NAMES[day], type: 'weekoff', academicYear: WEEKOFF_YEAR },
+          where: { schoolId_date: { schoolId, date: new Date(WEEKOFF_EPOCH_DATES[day]) } },
+          create: { schoolId, date: new Date(WEEKOFF_EPOCH_DATES[day]), name: WEEKOFF_NAMES[day], type: 'weekoff', academicYear: WEEKOFF_YEAR },
           update: { name: WEEKOFF_NAMES[day], type: 'weekoff', academicYear: WEEKOFF_YEAR },
         });
       }

@@ -1,5 +1,16 @@
 import prisma from '@/lib/prisma';
 
+export async function findLeaveById(id: string, schoolId: string) {
+  return prisma.leaveRequest.findFirst({
+    where: { id, schoolId },
+    select: {
+      id: true, schoolId: true, userId: true, roleCode: true,
+      studentId: true, leaveType: true, startDate: true, endDate: true,
+      status: true, currentStep: true,
+    },
+  });
+}
+
 export async function findLeaveRequests(
   schoolId: string | null,
   userId?: string,
@@ -66,6 +77,19 @@ export async function withdrawLeaveRequest(id: string, userId: string) {
   return prisma.leaveRequest.updateMany({
     where: { id, userId, status: { in: ['pending', 'approved'] } },
     data:  { status: 'withdrawn', currentStep: 0 },
+  });
+}
+
+/** Removes attendance records that were auto-synced from an approved student leave. */
+export async function rollbackLeaveAttendance(
+  studentId: string, startDate: Date, endDate: Date,
+) {
+  return prisma.attendance.deleteMany({
+    where: {
+      studentId,
+      remarks: '__leave__',
+      date: { gte: startDate, lte: endDate },
+    },
   });
 }
 
@@ -164,37 +188,27 @@ export async function upsertLeaveWorkflow(
 // ── Leave Type Master ─────────────────────────────────────────────────────────
 
 export async function findLeaveTypesByRole(schoolId: string, roleCode: string) {
-  // 'employee' role matches leave types tagged with 'employee'.
-  // Specific roles (teacher/principal/school_admin) also match 'employee'-tagged types
-  // since those users now carry the employee role for self-service.
   const EMPLOYEE_ROLE_CODES = ['teacher', 'principal', 'school_admin', 'hod', 'employee'];
   const lookupCodes = EMPLOYEE_ROLE_CODES.includes(roleCode)
     ? [roleCode, 'employee']
     : [roleCode];
 
-  // Fetch leave types that either:
-  // 1. Have the role in their applicableTo array, OR
-  // 2. Have an empty applicableTo (meaning they apply to ALL roles)
-  const [roleSpecific, universal] = await Promise.all([
-    // Types specifically tagged for these roles
-    Promise.all(
-      lookupCodes.map(code =>
-        prisma.leaveTypeMaster.findMany({
-          where: { schoolId, isActive: true, applicableTo: { has: code } },
-          orderBy: { name: 'asc' },
-        })
-      )
-    ),
-    // Types with empty applicableTo — applicable to everyone
-    prisma.leaveTypeMaster.findMany({
-      where: { schoolId, isActive: true, applicableTo: { equals: [] } },
-      orderBy: { name: 'asc' },
-    }),
-  ]);
+  // Single query: types tagged for any of the lookup codes OR with empty applicableTo (universal)
+  const all = await prisma.leaveTypeMaster.findMany({
+    where: {
+      schoolId,
+      isActive: true,
+      OR: [
+        ...lookupCodes.map(code => ({ applicableTo: { has: code } })),
+        { applicableTo: { equals: [] } },
+      ],
+    },
+    orderBy: { name: 'asc' },
+  });
 
-  // Deduplicate by id
+  // Deduplicate by id (a type could match multiple OR branches)
   const seen = new Set<string>();
-  return [...roleSpecific.flat(), ...universal].filter(lt => seen.has(lt.id) ? false : (seen.add(lt.id), true));
+  return all.filter(lt => seen.has(lt.id) ? false : (seen.add(lt.id), true));
 }
 
 export async function findLeaveBalancePoliciesByRole(schoolId: string, roleCode: string) {

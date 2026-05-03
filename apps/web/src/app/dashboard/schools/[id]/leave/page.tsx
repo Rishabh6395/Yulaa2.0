@@ -37,7 +37,13 @@ const DEFAULT_WORKFLOWS: Record<string, WorkflowStep[]> = {
   ],
 };
 
-const ACADEMIC_YEARS = ['2024-2025', '2025-2026', '2026-2027'];
+const ACADEMIC_YEARS = ['2024-2025', '2025-2026', '2026-2027', '2027-2028'];
+
+function currentAcademicYear(): string {
+  const now = new Date();
+  const y   = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return `${y}-${y + 1}`;
+}
 
 const WEEKDAYS = [
   { num: 0, short: 'Sun', full: 'Sunday' },
@@ -67,7 +73,7 @@ export default function LeaveConfigPage({ params }: { params: { id: string } }) 
   const [cfResult, setCfResult] = useState('');
 
   // Holidays
-  const [academicYear, setAcademicYear] = useState('2025-2026');
+  const [academicYear, setAcademicYear] = useState(currentAcademicYear);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [newHoliday, setNewHoliday] = useState({ date: '', name: '', type: 'mandatory' as 'mandatory' | 'optional' });
   const fileRef = useRef<HTMLInputElement>(null);

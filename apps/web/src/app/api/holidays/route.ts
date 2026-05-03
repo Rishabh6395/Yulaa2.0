@@ -1,17 +1,7 @@
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
-
-// Canonical epoch dates for weekday encoding (Sun=0 … Sat=6)
-const WEEKOFF_DATES = [
-  '1970-01-04', // 0 Sunday
-  '1970-01-05', // 1 Monday
-  '1970-01-06', // 2 Tuesday
-  '1970-01-07', // 3 Wednesday
-  '1970-01-08', // 4 Thursday
-  '1970-01-09', // 5 Friday
-  '1970-01-10', // 6 Saturday
-];
+import { WEEKOFF_EPOCH_DATES } from '@/lib/school-utils';
 
 /**
  * GET /api/holidays?year=2025-2026[&studentId=xxx]
@@ -86,10 +76,7 @@ export async function GET(request: Request) {
     ]);
 
     const weekoffDays = weekoffEntries
-      .map(w => {
-        const d = new Date(w.date).toISOString().split('T')[0];
-        return WEEKOFF_DATES.indexOf(d);
-      })
+      .map(w => WEEKOFF_EPOCH_DATES.indexOf(new Date(w.date).toISOString().split('T')[0]))
       .filter(d => d >= 0);
 
     return Response.json({ holidays, weekoffDays, source: 'leave_config' });

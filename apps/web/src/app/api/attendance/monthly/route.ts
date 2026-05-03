@@ -1,6 +1,7 @@
 import { getUserFromRequest } from '@/lib/auth';
-import { handleError, UnauthorizedError } from '@/utils/errors';
+import { handleError, UnauthorizedError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
+import { WEEKOFF_EPOCH_DATES } from '@/lib/school-utils';
 
 function formatTime(d: Date | null | undefined): string | null {
   if (!d) return null;
@@ -28,7 +29,8 @@ export async function GET(request: Request) {
     lastDay.setUTCHours(23, 59, 59, 999);
 
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    const schoolId = primary.school_id!;
+    const schoolId = primary.school_id as string | undefined;
+    if (!schoolId) throw new AppError('No school associated with your account', 400);
 
     // Resolve teacher record for the target user
     const teacher = await prisma.teacher.findFirst({
@@ -58,9 +60,8 @@ export async function GET(request: Request) {
       }),
     ]);
 
-    const WEEKOFF_EPOCH = ['1970-01-04','1970-01-05','1970-01-06','1970-01-07','1970-01-08','1970-01-09','1970-01-10'];
     const weekoffDays = weekoffEntries
-      .map(w => WEEKOFF_EPOCH.indexOf(new Date(w.date).toISOString().split('T')[0]))
+      .map(w => WEEKOFF_EPOCH_DATES.indexOf(new Date(w.date).toISOString().split('T')[0]))
       .filter(d => d >= 0);
     const effectiveWeekoffs = weekoffDays.length ? weekoffDays : [0, 6];
 
