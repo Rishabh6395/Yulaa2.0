@@ -1,10 +1,19 @@
 import prisma from '@/lib/prisma';
 
-export async function findLeaveRequests(schoolId: string | null, userId?: string) {
-  // Require at least one filter — prevents returning the entire table on bad calls
+export async function findLeaveRequests(
+  schoolId: string | null,
+  userId?: string,
+  includeParentLeaves = false,
+) {
   if (!schoolId && !userId) return [];
+
+  // Teachers: own leaves + all parent/student leaves (for review) — no other teachers' data
+  const where = includeParentLeaves && schoolId && userId
+    ? { schoolId, OR: [{ userId }, { roleCode: 'parent' }] }
+    : { ...(schoolId ? { schoolId } : {}), ...(userId ? { userId } : {}) };
+
   return prisma.leaveRequest.findMany({
-    where: { ...(schoolId ? { schoolId } : {}), ...(userId ? { userId } : {}) },
+    where,
     include: {
       user:           { select: { firstName: true, lastName: true } },
       student:        { select: { firstName: true, lastName: true } },
@@ -15,7 +24,7 @@ export async function findLeaveRequests(schoolId: string | null, userId?: string
       },
     },
     orderBy: { createdAt: 'desc' },
-    take: 100,
+    take: 200,
   });
 }
 

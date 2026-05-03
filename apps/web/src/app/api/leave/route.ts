@@ -18,7 +18,8 @@ export async function GET(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primary   = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    const canSeeAll = REVIEWER_ROLES.includes(primary.role_code);
+    // Admins/principals/hod see all school leaves; teachers only see their own + student leaves
+    const canSeeAll = ADMIN_ROLES.includes(primary.role_code) || primary.role_code === 'hod';
     const role      = resolveLeaveRole(user);
     // Parents have no school_id in their role — query by userId across all schools
     const schoolId  = role.school_id ?? null;

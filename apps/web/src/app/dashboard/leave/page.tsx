@@ -404,139 +404,166 @@ export default function LeavePage() {
         </>
       )}
 
-      {/* Leave list */}
-      <div className="space-y-3">
-        {error ? (
-          <PageError message="Failed to load leave requests — please try again." onRetry={() => mutate()} />
-        ) : isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="card p-4 animate-pulse h-20 bg-surface-50 dark:bg-gray-700/40" />
-          ))
-        ) : leaves.length === 0 ? (
-          <div className="card p-12 text-center">
-            <div className="text-4xl mb-3">🗓️</div>
-            <p className="text-surface-400 text-sm">No leave requests found.</p>
-          </div>
-        ) : leaves.map((l: any) => {
-          const steps    = getWorkflowSteps(l);
-          const reviewable = canReview(l);
-          return (
-            <div key={l.id} className="card p-4 space-y-2">
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl mt-0.5">{leaveIcon(l.leave_type ?? 'other')}</span>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-gray-900 dark:text-gray-100 capitalize">{l.leave_type} Leave</span>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-md capitalize ${STATUS_BADGE[l.status] || STATUS_BADGE.pending}`}>
-                        {l.status}
-                      </span>
-                      {isAdmin && l.role_code && (
-                        <span className="text-xs bg-surface-100 dark:bg-gray-700 text-surface-400 px-2 py-0.5 rounded-md capitalize">{l.role_code}</span>
-                      )}
-                    </div>
-                    <div className="text-xs text-surface-400 mt-0.5">
-                      <span className="font-medium text-gray-700 dark:text-gray-300">{l.requester_name}</span>
-                      {l.student_name && <span> → {l.student_name}</span>}
-                      {l.student_class && <span className="ml-1 px-1.5 py-0.5 bg-sky-100 dark:bg-sky-950/30 text-sky-700 dark:text-sky-400 rounded text-[11px] font-medium">{l.student_class}</span>}
-                      <span className="mx-1">·</span>
-                      {formatDate(l.start_date)} – {formatDate(l.end_date)}
-                      <span className="mx-1">·</span>
-                      {dayCount(l.start_date, l.end_date)}
-                    </div>
-                    {l.reason && <p className="text-xs text-surface-400 mt-0.5 line-clamp-1">{l.reason}</p>}
-                    <WorkflowProgress steps={steps} currentStep={l.current_step} status={l.status} actions={l.actions} />
-                    {/* Inline student balance indicator — teacher student tab */}
-                    {isTeacher && teacherTab === 'student' && l.student_id && studentBalances[l.student_id] && (() => {
-                      const b = studentBalances[l.student_id];
-                      return (
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-surface-400 shrink-0"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
-                          <span className="text-[11px] text-surface-400">Leave balance: </span>
-                          <span className={`text-[11px] font-semibold ${b.remaining > 5 ? 'text-emerald-600 dark:text-emerald-400' : b.remaining > 0 ? 'text-amber-500' : 'text-red-500'}`}>
-                            {b.remaining}/{b.total_days} days left
-                          </span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                {/* Action buttons group */}
-                <div className="flex flex-wrap gap-2 shrink-0">
-                  {/* Review (admin/teacher reviewers) */}
-                  {reviewable && (
-                    <button onClick={() => { setReviewModal(l); setReviewComment(''); }}
-                      className="btn btn-secondary text-sm">
-                      Review
-                    </button>
-                  )}
-                  {isAdmin && l.status === 'pending' && !reviewable && steps.length > 0 && (
-                    <span className="text-xs text-surface-400 self-center">Awaiting step {l.current_step + 1}</span>
-                  )}
-
-                  {/* Leave Assign Back — parent only */}
-                  {isParent && l.status === 'pending' && (
-                    <button
-                      onClick={() => handleWithdraw(l.id)}
-                      disabled={withdrawing === l.id}
-                      className="text-xs bg-red-50 dark:bg-red-950/30 text-red-600 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-lg hover:bg-red-100 font-medium transition-colors disabled:opacity-60"
-                    >
-                      {withdrawing === l.id ? 'Assigning back…' : 'Leave Assign Back'}
-                    </button>
-                  )}
-                  {/* Withdraw — teacher's own pending leaves only */}
-                  {isTeacher && l.status === 'pending' && l.user_id === userId && (
-                    <button
-                      onClick={() => handleWithdraw(l.id)}
-                      disabled={withdrawing === l.id}
-                      className="text-xs bg-red-50 dark:bg-red-950/30 text-red-600 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-lg hover:bg-red-100 font-medium transition-colors disabled:opacity-60"
-                    >
-                      {withdrawing === l.id ? 'Withdrawing…' : 'Withdraw'}
-                    </button>
-                  )}
-
-                  {/* Resubmit (submitter's own rejected/withdrawn leaves only) */}
-                  {(isParent || (isTeacher && l.user_id === userId)) && ['rejected', 'withdrawn'].includes(l.status) && (
-                    <button
-                      onClick={() => handleResubmit(l)}
-                      className="text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-600 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-lg hover:bg-amber-100 font-medium transition-colors"
-                    >
-                      Resubmit
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Action history — show approver comments clearly */}
-              {l.actions?.length > 0 && (
-                <div className="border-t border-surface-100 dark:border-gray-700 pt-2 space-y-1">
-                  {l.actions.map((a: any, i: number) => (
-                    <div key={i} className={`flex items-start gap-2 text-xs rounded-lg px-2.5 py-1.5 ${
-                      a.action === 'approved'
-                        ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400'
-                        : 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400'
-                    }`}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0">
-                        {a.action === 'approved'
-                          ? <polyline points="20,6 9,17 4,12"/>
-                          : <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>}
-                      </svg>
-                      <span>
-                        <span className="font-semibold">{a.actor_name || 'Admin'}</span>
-                        {' '}{a.action} at Step {a.step_order + 1}
-                        {a.comment && (
-                          <span className="ml-1 opacity-80">· &ldquo;{a.comment}&rdquo;</span>
-                        )}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
+      {/* Leave grid */}
+      {error ? (
+        <PageError message="Failed to load leave requests — please try again." onRetry={() => mutate()} />
+      ) : isLoading ? (
+        <div className="card overflow-hidden">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-surface-100 dark:border-gray-800 animate-pulse">
+              <div className="h-4 w-24 bg-surface-100 dark:bg-gray-700 rounded" />
+              <div className="h-4 w-32 bg-surface-100 dark:bg-gray-700 rounded" />
+              <div className="h-4 w-20 bg-surface-100 dark:bg-gray-700 rounded ml-auto" />
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      ) : leaves.length === 0 ? (
+        <div className="card p-12 text-center">
+          <div className="text-4xl mb-3">🗓️</div>
+          <p className="text-surface-400 text-sm">No leave requests found.</p>
+        </div>
+      ) : (
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-surface-100 dark:border-gray-800 bg-surface-50 dark:bg-gray-800/60">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wide whitespace-nowrap">Type</th>
+                  {(isAdmin || (isTeacher && teacherTab === 'student')) && (
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wide whitespace-nowrap">Applicant</th>
+                  )}
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wide whitespace-nowrap">Dates</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wide whitespace-nowrap hidden sm:table-cell">Duration</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wide whitespace-nowrap">Status</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-surface-400 uppercase tracking-wide whitespace-nowrap hidden md:table-cell">Pending With</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-100 dark:divide-gray-800">
+                {leaves.map((l: any) => {
+                  const steps      = getWorkflowSteps(l);
+                  const reviewable = canReview(l);
+                  const currentStep = steps[l.current_step];
+                  const pendingWith = l.status === 'pending' && currentStep
+                    ? currentStep.label || currentStep.approver_role || `Step ${l.current_step + 1}`
+                    : null;
+
+                  return (
+                    <tr key={l.id} className="hover:bg-surface-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                      {/* Type */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg leading-none">{leaveIcon(l.leave_type ?? 'other')}</span>
+                          <span className="font-medium text-gray-800 dark:text-gray-200 capitalize">{l.leave_type}</span>
+                          {isAdmin && l.role_code && (
+                            <span className="text-[11px] bg-surface-100 dark:bg-gray-700 text-surface-400 px-1.5 py-0.5 rounded capitalize hidden lg:inline">{l.role_code}</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Applicant — admin and teacher-student-tab only */}
+                      {(isAdmin || (isTeacher && teacherTab === 'student')) && (
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-gray-800 dark:text-gray-200 text-sm">{l.requester_name}</div>
+                          {l.student_name && (
+                            <div className="text-xs text-surface-400 mt-0.5 flex items-center gap-1">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                              {l.student_name}
+                              {isTeacher && l.student_id && studentBalances[l.student_id] && (() => {
+                                const b = studentBalances[l.student_id];
+                                return (
+                                  <span className={`ml-1 font-semibold ${b.remaining > 5 ? 'text-emerald-600 dark:text-emerald-400' : b.remaining > 0 ? 'text-amber-500' : 'text-red-500'}`}>
+                                    ({b.remaining}/{b.total_days}d left)
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                          )}
+                        </td>
+                      )}
+
+                      {/* Dates */}
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                        {formatDate(l.start_date)} – {formatDate(l.end_date)}
+                      </td>
+
+                      {/* Duration */}
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-surface-400 hidden sm:table-cell">
+                        {dayCount(l.start_date, l.end_date)}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-md capitalize ${STATUS_BADGE[l.status] || STATUS_BADGE.pending}`}>
+                          {l.status}
+                        </span>
+                      </td>
+
+                      {/* Pending With — current actor */}
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        {pendingWith ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 animate-pulse" />
+                            <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">{pendingWith}</span>
+                          </div>
+                        ) : l.status === 'approved' ? (
+                          <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+                            {l.approved_by_name || 'Approved'}
+                          </div>
+                        ) : l.status === 'rejected' ? (
+                          <span className="text-xs text-red-500">{l.approved_by_name || '—'}</span>
+                        ) : (
+                          <span className="text-xs text-surface-300">—</span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2">
+                          {reviewable && (
+                            <button onClick={() => { setReviewModal(l); setReviewComment(''); }}
+                              className="text-xs bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800 px-3 py-1.5 rounded-lg hover:bg-brand-100 font-medium transition-colors">
+                              Review
+                            </button>
+                          )}
+                          {isParent && l.status === 'pending' && (
+                            <button onClick={() => handleWithdraw(l.id)} disabled={withdrawing === l.id}
+                              className="text-xs bg-red-50 dark:bg-red-950/30 text-red-600 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-lg hover:bg-red-100 font-medium transition-colors disabled:opacity-60">
+                              {withdrawing === l.id ? 'Withdrawing…' : 'Withdraw'}
+                            </button>
+                          )}
+                          {isTeacher && l.status === 'pending' && l.user_id === userId && (
+                            <button onClick={() => handleWithdraw(l.id)} disabled={withdrawing === l.id}
+                              className="text-xs bg-red-50 dark:bg-red-950/30 text-red-600 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-lg hover:bg-red-100 font-medium transition-colors disabled:opacity-60">
+                              {withdrawing === l.id ? 'Withdrawing…' : 'Withdraw'}
+                            </button>
+                          )}
+                          {(isParent || (isTeacher && l.user_id === userId)) && ['rejected', 'withdrawn'].includes(l.status) && (
+                            <button onClick={() => handleResubmit(l)}
+                              className="text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-600 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-lg hover:bg-amber-100 font-medium transition-colors">
+                              Resubmit
+                            </button>
+                          )}
+                          {/* Workflow progress tooltip trigger — expand row on click */}
+                          {steps.length > 0 && (
+                            <button
+                              onClick={() => setReviewModal({ ...l, _viewOnly: true })}
+                              className="text-xs text-surface-400 hover:text-gray-700 dark:hover:text-gray-300 px-1.5 py-1 rounded transition-colors"
+                              title="View workflow">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Apply Leave Modal */}
       <Modal open={showAddModal} onClose={() => setShowAddModal(false)}
@@ -695,63 +722,127 @@ export default function LeavePage() {
         </form>
       </Modal>
 
-      {/* Review Modal */}
-      {reviewModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Review Leave Request</h2>
-              <p className="text-sm text-surface-400 mt-0.5">
-                {reviewModal.requester_name} · <span className="capitalize">{reviewModal.leave_type}</span> Leave · {dayCount(reviewModal.start_date, reviewModal.end_date)}
-              </p>
-            </div>
+      {/* Review / View Modal */}
+      {reviewModal && (() => {
+        const steps     = getWorkflowSteps(reviewModal);
+        const viewOnly  = !!reviewModal._viewOnly;
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  {viewOnly ? 'Leave Details' : 'Review Leave Request'}
+                </h2>
+                <p className="text-sm text-surface-400 mt-0.5">
+                  {reviewModal.requester_name} · <span className="capitalize">{reviewModal.leave_type}</span> Leave · {dayCount(reviewModal.start_date, reviewModal.end_date)}
+                </p>
+              </div>
 
-            {/* Workflow step indicator */}
-            {(() => {
-              const steps = getWorkflowSteps(reviewModal);
-              const step  = steps[reviewModal.current_step];
-              return step ? (
-                <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-950/30 border border-brand-100 dark:border-brand-800">
-                  <p className="text-xs text-brand-600 dark:text-brand-400 font-medium">
-                    Step {reviewModal.current_step + 1} of {steps.length}: <span className="font-bold">{step.label}</span>
-                  </p>
+              {/* Leave info card */}
+              <div className="p-3 bg-surface-50 dark:bg-gray-700/40 rounded-xl text-sm space-y-1">
+                <div className="font-medium text-gray-800 dark:text-gray-200">{reviewModal.requester_name}</div>
+                {reviewModal.student_name && (
+                  <div className="text-surface-400 text-xs flex items-center gap-1.5">
+                    For: {reviewModal.student_name}
+                    {reviewModal.student_class && (
+                      <span className="px-1.5 py-0.5 bg-sky-100 dark:bg-sky-950/30 text-sky-700 dark:text-sky-400 rounded text-[10px] font-medium">{reviewModal.student_class}</span>
+                    )}
+                  </div>
+                )}
+                <div className="text-surface-400 text-xs">{formatDate(reviewModal.start_date)} – {formatDate(reviewModal.end_date)} · {dayCount(reviewModal.start_date, reviewModal.end_date)}</div>
+                {reviewModal.reason && <div className="text-surface-400 text-xs mt-1 italic">"{reviewModal.reason}"</div>}
+                <div className="pt-1">
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-md capitalize ${STATUS_BADGE[reviewModal.status] || STATUS_BADGE.pending}`}>
+                    {reviewModal.status}
+                  </span>
                 </div>
-              ) : null;
-            })()}
+              </div>
 
-            <div className="p-3 bg-surface-50 dark:bg-gray-700/40 rounded-xl text-sm space-y-1">
-              <div className="font-medium text-gray-800 dark:text-gray-200">{reviewModal.requester_name}</div>
-              {reviewModal.student_name && (
-                <div className="text-surface-400 text-xs flex items-center gap-1.5">
-                  For: {reviewModal.student_name}
-                  {reviewModal.student_class && (
-                    <span className="px-1.5 py-0.5 bg-sky-100 dark:bg-sky-950/30 text-sky-700 dark:text-sky-400 rounded text-[10px] font-medium">{reviewModal.student_class}</span>
-                  )}
+              {/* Workflow progress (always shown) */}
+              {steps.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2">Workflow Progress</p>
+                  <WorkflowProgress
+                    steps={steps}
+                    currentStep={reviewModal.current_step}
+                    status={reviewModal.status}
+                    actions={reviewModal.actions ?? []}
+                  />
                 </div>
               )}
-              <div className="text-surface-400 text-xs">{formatDate(reviewModal.start_date)} – {formatDate(reviewModal.end_date)} · {dayCount(reviewModal.start_date, reviewModal.end_date)}</div>
-              {reviewModal.reason && <div className="text-surface-400 text-xs mt-1">{reviewModal.reason}</div>}
-            </div>
 
-            <div>
-              <label className="label">Comment (optional)</label>
-              <textarea className="input-field" rows={2} placeholder="Add a comment..." value={reviewComment} onChange={e => setReviewComment(e.target.value)} />
-            </div>
+              {/* Action history */}
+              {reviewModal.actions?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2">History</p>
+                  <div className="space-y-2">
+                    {reviewModal.actions.map((a: any, i: number) => (
+                      <div key={i} className="flex items-start gap-2.5 text-xs">
+                        <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                          a.action === 'approved' ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400'
+                        }`}>
+                          {a.action === 'approved'
+                            ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+                            : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">{a.actor_name || 'Unknown'}</span>
+                          <span className="text-surface-400"> {a.action} </span>
+                          {steps[a.step_order] && (
+                            <span className="text-surface-400">at step <em>{steps[a.step_order].label}</em></span>
+                          )}
+                          {a.comment && <p className="text-surface-400 mt-0.5 italic">"{a.comment}"</p>}
+                          <p className="text-surface-300 dark:text-gray-600 mt-0.5">
+                            {new Date(a.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-            <div className="flex gap-3">
-              <button onClick={() => setReviewModal(null)} className="btn-secondary flex-1">Cancel</button>
-              <button onClick={() => handleReview('rejected')} disabled={saving}
-                className="flex-1 py-2 px-4 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50 font-medium text-sm transition-colors">
-                Reject
-              </button>
-              <button onClick={() => handleReview('approved')} disabled={saving}
-                className="flex-1 py-2 px-4 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/50 font-medium text-sm transition-colors">
-                {saving ? '...' : 'Approve'}
-              </button>
+              {/* Current step indicator (review mode only) */}
+              {!viewOnly && (() => {
+                const step = steps[reviewModal.current_step];
+                return step ? (
+                  <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-950/30 border border-brand-100 dark:border-brand-800">
+                    <p className="text-xs text-brand-600 dark:text-brand-400 font-medium">
+                      Step {reviewModal.current_step + 1} of {steps.length}: <span className="font-bold">{step.label}</span>
+                    </p>
+                  </div>
+                ) : null;
+              })()}
+
+              {/* Comment box — review mode only */}
+              {!viewOnly && (
+                <div>
+                  <label className="label">Comment (optional)</label>
+                  <textarea className="input-field" rows={2} placeholder="Add a comment..." value={reviewComment} onChange={e => setReviewComment(e.target.value)} />
+                </div>
+              )}
+
+              {/* Action buttons */}
+              {viewOnly ? (
+                <button onClick={() => setReviewModal(null)} className="btn-secondary w-full">Close</button>
+              ) : (
+                <div className="flex gap-3">
+                  <button onClick={() => setReviewModal(null)} className="btn-secondary flex-1">Cancel</button>
+                  <button onClick={() => handleReview('rejected')} disabled={saving}
+                    className="flex-1 py-2 px-4 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50 font-medium text-sm transition-colors">
+                    Reject
+                  </button>
+                  <button onClick={() => handleReview('approved')} disabled={saving}
+                    className="flex-1 py-2 px-4 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/50 font-medium text-sm transition-colors">
+                    {saving ? '...' : 'Approve'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
