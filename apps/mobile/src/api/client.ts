@@ -91,6 +91,27 @@ export const getAttendance  = (params: string) => apiFetch<any>(`/api/attendance
 export const markAttendance = (body: any) =>
   apiFetch<any>('/api/attendance', { method: 'POST', body: JSON.stringify(body) });
 
+/** Consolidated monthly view: records + holidays + leaves + summary */
+export const getAttendanceMonthly = (month: string, userId?: string) => {
+  const qs = new URLSearchParams({ month });
+  if (userId) qs.set('user_id', userId);
+  return apiFetch<any>(`/api/attendance/monthly?${qs}`);
+};
+
+/** Daily attendance detail for a specific date */
+export const getAttendanceDaily = (date: string, userId?: string) => {
+  const qs = new URLSearchParams();
+  if (userId) qs.set('user_id', userId);
+  const query = qs.toString() ? `?${qs}` : '';
+  return apiFetch<any>(`/api/attendance/daily/${date}${query}`);
+};
+
+/** Employee check-in (punch in) */
+export const checkIn  = () => apiFetch<any>('/api/attendance/checkin',  { method: 'POST' });
+
+/** Employee check-out (punch out) */
+export const checkOut = () => apiFetch<any>('/api/attendance/checkout', { method: 'POST' });
+
 // ─── Events ───────────────────────────────────────────────────────────────────
 export const getEvents   = () => apiFetch<any>('/api/events');
 export const createEvent = (body: any) =>
