@@ -46,6 +46,15 @@ export async function findOverlappingLeave(
   });
 }
 
+export async function deleteLeaveRequest(id: string, schoolId: string) {
+  // Hard-delete: cascades to LeaveAction children via DB relation
+  // schoolId is mandatory so admins can only delete records from their own school
+  const result = await prisma.leaveRequest.deleteMany({
+    where: { id, schoolId },
+  });
+  return result;
+}
+
 export async function withdrawLeaveRequest(id: string, userId: string) {
   return prisma.leaveRequest.updateMany({
     where: { id, userId, status: { in: ['pending', 'approved'] } },

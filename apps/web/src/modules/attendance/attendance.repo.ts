@@ -1,21 +1,21 @@
 import prisma from '@/lib/prisma';
 import type { MarkAttendanceInput } from './attendance.types';
 
-export async function findMonthlyAttendance(studentId: string, firstDay: Date, lastDay: Date) {
+export async function findMonthlyAttendance(schoolId: string, studentId: string, firstDay: Date, lastDay: Date) {
   return prisma.attendance.findMany({
-    where: { studentId, date: { gte: firstDay, lte: lastDay } },
+    where: { schoolId, studentId, date: { gte: firstDay, lte: lastDay } },
     select: { date: true, status: true, subjectAttendance: true, remarks: true },
     orderBy: { date: 'asc' },
   });
 }
 
-export async function findClassAttendanceForDate(classId: string, date: Date) {
+export async function findClassAttendanceForDate(schoolId: string, classId: string, date: Date) {
   return prisma.student.findMany({
-    where: { classId, status: 'active' },
+    where: { schoolId, classId, status: 'active' },
     select: {
       id: true, firstName: true, lastName: true, admissionNo: true,
       attendance: {
-        where: { date },
+        where: { schoolId, date },
         select: { id: true, status: true, remarks: true, subjectAttendance: true },
       },
     },

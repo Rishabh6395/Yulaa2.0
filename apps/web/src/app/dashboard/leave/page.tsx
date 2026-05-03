@@ -120,6 +120,8 @@ export default function LeavePage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
+  const [deleting,    setDeleting]    = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'withdrawn'>('all');
   const [effectiveDays, setEffectiveDays] = useState<{ effective: number; total: number; excluded: number; breakdown?: { date: string; reason: string; name: string }[] } | null>(null);
   const [effectiveLoading, setEffectiveLoading] = useState(false);
   const [activeChild, setActiveChild] = useState<any>(null);
@@ -204,9 +206,9 @@ export default function LeavePage() {
   const { data: typesData } = useApi<{ types: { code: string; name: string }[] }>('/api/leave/types');
   const leaveTypes = (typesData?.types ?? []).map(t => ({ value: t.code, label: t.name, icon: leaveIcon(t.code) }));
 
-  // Filter leaves by tab / role
+  // Filter leaves by tab / role, then by status filter
   const EMPLOYEE_ROLES = ['teacher', 'school_admin', 'principal', 'hod', 'employee'];
-  const leaves = isAdmin
+  const tabLeaves = isAdmin
     ? activeTab === 'student'  ? allLeaves.filter((l: any) => l.role_code === 'parent')
     : activeTab === 'employee' ? allLeaves.filter((l: any) => EMPLOYEE_ROLES.includes(l.role_code))
     : allLeaves
@@ -215,6 +217,19 @@ export default function LeavePage() {
       ? allLeaves.filter((l: any) => l.user_id === userId)
       : allLeaves.filter((l: any) => l.role_code === 'parent')
     : allLeaves;
+
+  const leaves = statusFilter === 'all'
+    ? tabLeaves
+    : tabLeaves.filter((l: any) => l.status === statusFilter);
+
+  // Count by status for filter badges
+  const statusCounts = {
+    all:       tabLeaves.length,
+    pending:   tabLeaves.filter((l: any) => l.status === 'pending').length,
+    approved:  tabLeaves.filter((l: any) => l.status === 'approved').length,
+    rejected:  tabLeaves.filter((l: any) => l.status === 'rejected').length,
+    withdrawn: tabLeaves.filter((l: any) => l.status === 'withdrawn').length,
+  };
 
   // Fetch student leave balances when teacher is on student tab
   useEffect(() => {
@@ -272,6 +287,18 @@ export default function LeavePage() {
       mutate();
     } catch { setSaveError('Network error. Please try again.'); }
     setSaving(false);
+  };
+
+  // Hard-delete a leave record (admin only, own school)
+  const handleDelete = async (id: string) => {
+    if (!confirm('Permanently delete this leave record? This cannot be undone.')) return;
+    setDeleting(id);
+    await fetch('/api/leave', {
+      method: 'DELETE', headers,
+      body: JSON.stringify({ id }),
+    });
+    setDeleting(null);
+    mutate();
   };
 
   // Withdraw a pending leave (submitter only)
@@ -344,7 +371,7 @@ export default function LeavePage() {
       {isAdmin && (
         <div className="flex gap-1 p-1 bg-surface-100 dark:bg-gray-800 rounded-xl w-fit">
           {([['employee', 'Employee Leave'], ['student', 'Student Leave']] as const).map(([t, label]) => (
-            <button key={t} onClick={() => setActiveTab(t)}
+            <button key={t} onClick={() => { setActiveTab(t); setStatusFilter('all'); }}
               className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === t ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-surface-400 hover:text-gray-700'}`}>
               {label}
             </button>
@@ -356,7 +383,7 @@ export default function LeavePage() {
       {isTeacher && (
         <div className="flex gap-1 p-1 bg-surface-100 dark:bg-gray-800 rounded-xl w-fit">
           {([['employee', 'My Leave'], ['student', 'Student Leave']] as const).map(([t, label]) => (
-            <button key={t} onClick={() => setTeacherTab(t)}
+            <button key={t} onClick={() => { setTeacherTab(t); setStatusFilter('all'); }}
               className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${teacherTab === t ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-surface-400 hover:text-gray-700'}`}>
               {label}
             </button>
@@ -404,6 +431,48 @@ export default function LeavePage() {
         </>
       )}
 
+      {/* Status filter bar */}
+      {!isLoading && !error && tabLeaves.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {([
+            ['all',       'All'],
+            ['pending',   'Pending'],
+            ['approved',  'Approved'],
+            ['rejected',  'Rejected'],
+            ['withdrawn', 'Withdrawn'],
+          ] as const).map(([val, label]) => {
+            const count = statusCounts[val];
+            const isActive = statusFilter === val;
+            const accentClass =
+              val === 'pending'   ? 'bg-yellow-500' :
+              val === 'approved'  ? 'bg-emerald-500' :
+              val === 'rejected'  ? 'bg-red-500' :
+              val === 'withdrawn' ? 'bg-gray-400' :
+              'bg-brand-500';
+            return (
+              <button
+                key={val}
+                onClick={() => setStatusFilter(val)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                  isActive
+                    ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-transparent shadow-sm'
+                    : 'bg-white dark:bg-gray-800 text-surface-500 dark:text-gray-400 border-surface-200 dark:border-gray-700 hover:border-surface-300 dark:hover:border-gray-600'
+                }`}
+              >
+                {label}
+                {count > 0 && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ${
+                    isActive ? 'bg-white/20 text-white dark:bg-black/20 dark:text-gray-900' : `${accentClass} text-white`
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Leave grid */}
       {error ? (
         <PageError message="Failed to load leave requests — please try again." onRetry={() => mutate()} />
@@ -420,7 +489,16 @@ export default function LeavePage() {
       ) : leaves.length === 0 ? (
         <div className="card p-12 text-center">
           <div className="text-4xl mb-3">🗓️</div>
-          <p className="text-surface-400 text-sm">No leave requests found.</p>
+          <p className="text-surface-400 text-sm">
+            {statusFilter !== 'all'
+              ? `No ${statusFilter} leave requests.`
+              : 'No leave requests found.'}
+          </p>
+          {statusFilter !== 'all' && (
+            <button onClick={() => setStatusFilter('all')} className="mt-2 text-xs text-brand-600 dark:text-brand-400 hover:underline">
+              Show all
+            </button>
+          )}
         </div>
       ) : (
         <div className="card overflow-hidden">
@@ -552,6 +630,20 @@ export default function LeavePage() {
                               className="text-xs text-surface-400 hover:text-gray-700 dark:hover:text-gray-300 px-1.5 py-1 rounded transition-colors"
                               title="View workflow">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            </button>
+                          )}
+                          {/* Admin hard-delete */}
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleDelete(l.id)}
+                              disabled={deleting === l.id}
+                              title="Delete record"
+                              className="text-xs text-surface-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 px-1.5 py-1 rounded transition-colors disabled:opacity-40"
+                            >
+                              {deleting === l.id
+                                ? <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                                : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                              }
                             </button>
                           )}
                         </div>

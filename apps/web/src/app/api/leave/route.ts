@@ -1,6 +1,6 @@
 import { MANAGEMENT_ROLES as ADMIN_ROLES, REVIEWER_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
-import { listLeaveRequests, submitLeaveRequest, reviewLeaveStep, withdrawLeave } from '@/modules/leave/leave.service';
+import { listLeaveRequests, submitLeaveRequest, reviewLeaveStep, withdrawLeave, deleteLeave } from '@/modules/leave/leave.service';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 
@@ -50,6 +50,19 @@ export async function POST(request: Request) {
 
     const leave = await submitLeaveRequest(schoolId, user.id, role.role_code, body);
     return Response.json({ leave }, { status: 201 });
+  } catch (err) { return handleError(err); }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const user = await getUserFromRequest(request);
+    if (!user) throw new UnauthorizedError();
+    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
+    // Only admins/principals may hard-delete leave records
+    if (!ADMIN_ROLES.includes(primary.role_code)) throw new ForbiddenError('Only admins can delete leave records');
+    const { id } = await request.json();
+    if (!id) throw new AppError('id is required');
+    return Response.json(await deleteLeave(primary.school_id!, id));
   } catch (err) { return handleError(err); }
 }
 

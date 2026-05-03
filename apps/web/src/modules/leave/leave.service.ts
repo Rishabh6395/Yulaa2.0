@@ -214,6 +214,13 @@ export async function submitLeaveRequest(
   });
 }
 
+export async function deleteLeave(schoolId: string, id: string) {
+  if (!id) throw new AppError('id is required');
+  const result = await repo.deleteLeaveRequest(id, schoolId);
+  if (result.count === 0) throw new AppError('Leave not found or not in your school', 404);
+  return { ok: true };
+}
+
 export async function withdrawLeave(userId: string, id: string) {
   if (!id) throw new AppError('id is required');
   const result = await repo.withdrawLeaveRequest(id, userId);

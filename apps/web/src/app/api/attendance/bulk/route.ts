@@ -32,7 +32,10 @@ export async function GET(request: Request) {
       return csvDownloadResponse(csv, `attendance-template-${date}.csv`);
     }
 
-    const csv = await exportAttendanceCSV(classId, date);
+    const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
+    const schoolId    = primaryRole.school_id;
+    if (!schoolId) throw new AppError('No school associated with this account');
+    const csv = await exportAttendanceCSV(schoolId, classId, date);
     return csvDownloadResponse(csv, `attendance-${date}.csv`);
   } catch (err) { return handleError(err); }
 }

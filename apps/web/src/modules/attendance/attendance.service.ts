@@ -33,10 +33,10 @@ export async function getAttendanceTemplate(classId: string, date: string): Prom
 
 // ── Export existing attendance data as CSV ────────────────────────────────────
 
-export async function exportAttendanceCSV(classId: string, date: string): Promise<string> {
+export async function exportAttendanceCSV(schoolId: string, classId: string, date: string): Promise<string> {
   const parsedDate = new Date(date);
   parsedDate.setUTCHours(0, 0, 0, 0);
-  const students = await repo.findClassAttendanceForDate(classId, parsedDate);
+  const students = await repo.findClassAttendanceForDate(schoolId, classId, parsedDate);
   const rows = students.map((s) => ({
     student_id:   s.id,
     student_name: `${s.firstName} ${s.lastName}`,
@@ -158,12 +158,12 @@ export async function getAttendance(schoolId: string, searchParams: URLSearchPar
     return { teachers: rows, date: dateStr };
   }
 
-  // Monthly calendar for one student
+  // Monthly calendar for one student — scoped to schoolId to prevent cross-school reads
   if (studentId && month) {
     const [year, monthNum] = month.split('-').map(Number);
     const firstDay = new Date(year, monthNum - 1, 1);
     const lastDay  = new Date(year, monthNum, 0);
-    const rows = await repo.findMonthlyAttendance(studentId, firstDay, lastDay);
+    const rows = await repo.findMonthlyAttendance(schoolId, studentId, firstDay, lastDay);
     const attendance = rows.map(r => ({
       date:               r.date,
       status:             r.status,
@@ -176,9 +176,9 @@ export async function getAttendance(schoolId: string, searchParams: URLSearchPar
   const date = new Date(dateStr);
   date.setUTCHours(0, 0, 0, 0);
 
-  // Per-class attendance sheet
+  // Per-class attendance sheet — scoped to schoolId to prevent cross-school reads
   if (classId) {
-    const students = await repo.findClassAttendanceForDate(classId, date);
+    const students = await repo.findClassAttendanceForDate(schoolId, classId, date);
     const rows = students.map((s) => ({
       student_id:    s.id,
       first_name:    s.firstName,
