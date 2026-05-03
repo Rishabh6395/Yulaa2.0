@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>School Management System — User Guide</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 14px; color: #1a1a2e; background: #f8f9fc; }
+  @media print {
+    body { background: #fff; font-size: 12px; }
+    .no-print { display: none; }
+    section { page-break-inside: avoid; }
+    h1.cover-title { page-break-after: always; }
+  }
+
+  /* Cover */
+  .cover { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%); color: #fff; padding: 80px 60px; min-height: 280px; }
+  .cover h1 { font-size: 36px; font-weight: 700; letter-spacing: -0.5px; }
+  .cover p  { margin-top: 12px; font-size: 16px; opacity: 0.8; }
+  .cover .meta { margin-top: 32px; font-size: 13px; opacity: 0.6; }
+
+  /* TOC */
+  .toc { background: #fff; padding: 40px 60px; border-bottom: 2px solid #e8eaf6; }
+  .toc h2 { font-size: 20px; color: #0f3460; margin-bottom: 20px; }
+  .toc ol { padding-left: 20px; line-height: 2.2; }
+  .toc a { color: #0f3460; text-decoration: none; font-weight: 500; }
+  .toc a:hover { text-decoration: underline; }
+  .toc .sub { font-size: 13px; color: #555; font-weight: 400; margin-left: 8px; }
+
+  /* Layout */
+  .content { max-width: 1100px; margin: 0 auto; padding: 40px 60px; }
+  section { margin-bottom: 60px; }
+  h2.section-title {
+    font-size: 22px; font-weight: 700; color: #0f3460;
+    border-left: 5px solid #e94560; padding-left: 14px;
+    margin-bottom: 24px; padding-top: 4px; padding-bottom: 4px;
+  }
+  h3 { font-size: 16px; font-weight: 600; color: #16213e; margin: 20px 0 10px; }
+  h4 { font-size: 14px; font-weight: 600; color: #444; margin: 14px 0 6px; }
+  p  { line-height: 1.7; margin-bottom: 10px; color: #333; }
+  ul, ol { padding-left: 22px; line-height: 1.9; color: #333; }
+  li { margin-bottom: 2px; }
+
+  /* Role badge */
+  .role-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 12px;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.4px; margin: 2px 4px 2px 0;
+  }
+  .r-super   { background: #fdecea; color: #c62828; }
+  .r-admin   { background: #e8eaf6; color: #283593; }
+  .r-principal { background: #e8f5e9; color: #2e7d32; }
+  .r-hod     { background: #fff3e0; color: #e65100; }
+  .r-teacher { background: #e1f5fe; color: #0277bd; }
+  .r-employee{ background: #f3e5f5; color: #6a1b9a; }
+  .r-parent  { background: #fce4ec; color: #ad1457; }
+  .r-student { background: #e0f2f1; color: #00695c; }
+
+  /* Info boxes */
+  .note    { background: #e3f2fd; border-left: 4px solid #1976d2; padding: 12px 16px; border-radius: 4px; margin: 14px 0; font-size: 13px; }
+  .warning { background: #fff8e1; border-left: 4px solid #f9a825; padding: 12px 16px; border-radius: 4px; margin: 14px 0; font-size: 13px; }
+  .success { background: #e8f5e9; border-left: 4px solid #388e3c; padding: 12px 16px; border-radius: 4px; margin: 14px 0; font-size: 13px; }
+
+  /* Steps */
+  .steps { counter-reset: step; padding-left: 0; list-style: none; }
+  .steps li { counter-increment: step; display: flex; gap: 14px; margin-bottom: 14px; }
+  .steps li::before {
+    content: counter(step);
+    min-width: 28px; height: 28px; background: #0f3460; color: #fff;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #0f3460; color: #fff; padding: 10px 14px; text-align: left; }
+  td { padding: 9px 14px; border-bottom: 1px solid #e8eaf6; }
+  tr:nth-child(even) td { background: #f8f9fc; }
+
+  /* Feature list */
+  .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin: 20px 0; }
+  .feature-card {
+    background: #fff; border: 1px solid #e8eaf6; border-radius: 8px;
+    padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.05);
+  }
+  .feature-card h4 { color: #0f3460; margin: 0 0 8px; font-size: 13px; }
+  .feature-card p  { font-size: 12px; color: #666; margin: 0; }
+
+  /* Divider */
+  hr { border: none; border-top: 1px solid #e8eaf6; margin: 40px 0; }
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ COVER ═══════════════════════ -->
+<div class="cover">
+  <h1>School Management System</h1>
+  <p>Complete User Guide — All Roles</p>
+  <div class="meta">Version 1.0 &nbsp;|&nbsp; Academic Year 2026-2027 &nbsp;|&nbsp; Confidential</div>
+</div>
+
+<!-- ═══════════════════════ TABLE OF CONTENTS ═══════════════════════ -->
+<div class="toc no-print">
+  <h2>Table of Contents</h2>
+  <ol>
+    <li><a href="#overview">System Overview</a></li>
+    <li><a href="#roles">Roles &amp; Permissions</a></li>
+    <li><a href="#super-admin">Super Admin</a> <span class="sub">School setup, global config</span></li>
+    <li><a href="#school-admin">School Admin</a> <span class="sub">Staff, classes, leave policy</span></li>
+    <li><a href="#principal">Principal</a> <span class="sub">Approvals, timetable, holidays</span></li>
+    <li><a href="#hod">Head of Department (HOD)</a> <span class="sub">Department leaves, timetable</span></li>
+    <li><a href="#teacher">Teacher</a> <span class="sub">Attendance, timetable, leave</span></li>
+    <li><a href="#employee">Employee</a> <span class="sub">Leave, own attendance</span></li>
+    <li><a href="#parent">Parent</a> <span class="sub">Child leave, school calendar</span></li>
+    <li><a href="#student">Student</a> <span class="sub">Own attendance, timetable</span></li>
+    <li><a href="#leave">Leave Management — Deep Dive</a></li>
+    <li><a href="#attendance">Attendance — Deep Dive</a></li>
+    <li><a href="#timetable">Timetable &amp; Scheduling — Deep Dive</a></li>
+    <li><a href="#holidays">Holidays &amp; Weekoffs</a></li>
+    <li><a href="#notifications">Notifications</a></li>
+    <li><a href="#faq">FAQ &amp; Troubleshooting</a></li>
+  </ol>
+</div>
+
+<div class="content">
+
+<!-- ═══════════════════════ 1. OVERVIEW ═══════════════════════ -->
+<section id="overview">
+  <h2 class="section-title">1. System Overview</h2>
+  <p>The School Management System is a multi-tenant web application that covers:</p>
+  <div class="feature-grid">
+    <div class="feature-card"><h4>Leave Management</h4><p>Submit, approve, and track all leave types with multi-step workflow.</p></div>
+    <div class="feature-card"><h4>Attendance</h4><p>Daily punch-in/out, subject attendance for students, monthly reports.</p></div>
+    <div class="feature-card"><h4>Timetable</h4><p>Class schedules, period management, substitute teacher assignments.</p></div>
+    <div class="feature-card"><h4>Scheduling</h4><p>Teacher reassignments, conflict detection, automatic notifications.</p></div>
+    <div class="feature-card"><h4>Holiday Calendar</h4><p>School holidays, optional/mandatory types, weekoff configuration.</p></div>
+    <div class="feature-card"><h4>Notifications</h4><p>In-app and push alerts for all key events.</p></div>
+  </div>
+  <div class="note">Every user belongs to exactly one school. Data is strictly isolated — no user can see or modify data from another school.</div>
+</section>
+
+<!-- ═══════════════════════ 2. ROLES ═══════════════════════ -->
+<section id="roles">
+  <h2 class="section-title">2. Roles &amp; Permissions Overview</h2>
+  <table>
+    <tr>
+      <th>Role</th><th>Scope</th><th>Key Permissions</th>
+    </tr>
+    <tr><td><span class="role-badge r-super">Super Admin</span></td><td>All schools</td><td>Create schools, assign principals, global config</td></tr>
+    <tr><td><span class="role-badge r-admin">School Admin</span></td><td>One school</td><td>Staff management, classes, leave policy (no holiday edit)</td></tr>
+    <tr><td><span class="role-badge r-principal">Principal</span></td><td>One school</td><td>Holiday config, final approval, all reports</td></tr>
+    <tr><td><span class="role-badge r-hod">HOD</span></td><td>Department</td><td>Approve dept. leaves, timetable view</td></tr>
+    <tr><td><span class="role-badge r-teacher">Teacher</span></td><td>Assigned classes</td><td>Mark student attendance, submit leave, timetable</td></tr>
+    <tr><td><span class="role-badge r-employee">Employee</span></td><td>Self</td><td>Submit leave, view own attendance</td></tr>
+    <tr><td><span class="role-badge r-parent">Parent</span></td><td>Own children</td><td>Submit child leave, view child attendance &amp; timetable</td></tr>
+    <tr><td><span class="role-badge r-student">Student</span></td><td>Self</td><td>View own attendance, timetable, leave status</td></tr>
+  </table>
+</section>
+
+<!-- ═══════════════════════ 3. SUPER ADMIN ═══════════════════════ -->
+<section id="super-admin" class="page-break">
+  <h2 class="section-title">3. Super Admin</h2>
+  <span class="role-badge r-super">super_admin</span>
+  <p>The Super Admin has system-wide access across all schools. This role is typically held by the platform owner.</p>
+
+  <h3>School Management</h3>
+  <ul class="steps">
+    <li>Navigate to <strong>Dashboard → Schools</strong></li>
+    <li>Click <strong>Add School</strong> and fill in school name, address, contact details</li>
+    <li>After creating the school, assign a <strong>Principal</strong> from the staff list</li>
+    <li>Configure the school's <strong>Leave Policy</strong> under the school settings page</li>
+  </ul>
+
+  <h3>Leave Configuration per School</h3>
+  <p>Go to <strong>Schools → [School Name] → Leave Config</strong>:</p>
+  <ul>
+    <li><strong>Leave Types</strong> — create types (e.g., Sick Leave, Casual Leave) with role applicability</li>
+    <li><strong>Balance Policies</strong> — set days per year, carry-forward rules per role</li>
+    <li><strong>Approval Workflow</strong> — define multi-step approval chains for parent and teacher leaves</li>
+    <li><strong>Weekoffs</strong> — select which days (Sun–Sat) are non-working for this school</li>
+    <li><strong>Holidays</strong> — add individual holidays or bulk upload via Excel/CSV</li>
+  </ul>
+
+  <div class="note">Holiday configuration requires either <strong>Super Admin</strong> or <strong>Principal</strong> role. School Admin cannot edit holidays.</div>
+
+  <h3>Holiday Bulk Upload (Excel/CSV)</h3>
+  <ul class="steps">
+    <li>Download the template: click <strong>Download Template</strong> in the Holiday section</li>
+    <li>Fill in columns: <code>Date (YYYY-MM-DD)</code>, <code>Holiday Name</code>, <code>Type (mandatory/optional)</code></li>
+    <li>Upload the filled file and confirm</li>
+  </ul>
+  <div class="warning">Uploading a file will upsert (add or update) holidays. Existing holidays with the same date will be updated, not duplicated.</div>
+</section>
+
+<!-- ═══════════════════════ 4. SCHOOL ADMIN ═══════════════════════ -->
+<section id="school-admin">
+  <h2 class="section-title">4. School Admin</h2>
+  <span class="role-badge r-admin">school_admin</span>
+  <p>Manages day-to-day school operations within their assigned school.</p>
+
+  <h3>Staff Management</h3>
+  <ul>
+    <li>Add teachers and non-teaching employees via <strong>Staff → Add Member</strong></li>
+    <li>Assign subjects and classes to teachers</li>
+    <li>Deactivate staff accounts when they leave</li>
+  </ul>
+
+  <h3>Class &amp; Section Setup</h3>
+  <ul>
+    <li>Create classes (Grade 1 – Grade 12) with sections (A, B, C…)</li>
+    <li>Enrol students to classes via <strong>Students → Assign Class</strong></li>
+  </ul>
+
+  <h3>Leave Policy Management</h3>
+  <ul>
+    <li>Create leave types for different roles (teacher, employee)</li>
+    <li>Set annual balance and carry-forward rules</li>
+    <li>Define multi-step approval workflows</li>
+  </ul>
+  <div class="warning">School Admins <strong>cannot</strong> add or edit holidays. Only Super Admin and Principal can manage the holiday calendar.</div>
+
+  <h3>Timetable Upload</h3>
+  <ul class="steps">
+    <li>Go to <strong>Schools → [School] → Timetable</strong></li>
+    <li>Download the Excel template</li>
+    <li>Fill in class_id, day_of_week (0=Sun…6=Sat), period_no, start_time, end_time, subject, teacher_id</li>
+    <li>Upload and confirm. Existing slots for the class are replaced.</li>
+  </ul>
+
+  <h3>Leave Approval (proxy)</h3>
+  <p>School Admin can approve leaves on behalf of any step in the workflow and can create teacher reassignments as a proxy.</p>
+</section>
+
+<!-- ═══════════════════════ 5. PRINCIPAL ═══════════════════════ -->
+<section id="principal" class="page-break">
+  <h2 class="section-title">5. Principal</h2>
+  <span class="role-badge r-principal">principal</span>
+
+  <h3>Holiday &amp; Weekoff Configuration</h3>
+  <ul class="steps">
+    <li>Go to <strong>Dashboard → Leave Config → Holidays</strong></li>
+    <li>Click <strong>Add Holiday</strong>, enter date, name, type (mandatory/optional)</li>
+    <li>Or upload an Excel file for bulk import</li>
+    <li>To set weekoffs: click <strong>Weekoffs</strong> tab and select days</li>
+  </ul>
+  <div class="note">Holidays are linked to the current academic year automatically. The system uses the Indian academic year (April to March). May 2026 belongs to academic year 2026-2027.</div>
+
+  <h3>Leave Approvals</h3>
+  <p>The Principal typically acts as the final approver in the leave workflow.</p>
+  <ul>
+    <li>View pending approvals under <strong>Leave → Pending</strong></li>
+    <li>Click a leave request to see details, then <strong>Approve</strong> or <strong>Reject</strong></li>
+    <li>Approved leaves automatically deduct from the employee's leave balance</li>
+  </ul>
+
+  <h3>Reports</h3>
+  <ul>
+    <li>Monthly attendance summary for all staff</li>
+    <li>Leave balance reports per employee</li>
+    <li>Class-wise timetable overview</li>
+  </ul>
+</section>
+
+<!-- ═══════════════════════ 6. HOD ═══════════════════════ -->
+<section id="hod">
+  <h2 class="section-title">6. Head of Department (HOD)</h2>
+  <span class="role-badge r-hod">hod</span>
+
+  <h3>Department Leave Approvals</h3>
+  <p>HODs are typically configured as a mid-step reviewer in the leave approval workflow for their department.</p>
+  <ul>
+    <li>Receives notification when a teacher in their department submits leave</li>
+    <li>Reviews and approves/rejects at their designated step</li>
+    <li>Cannot skip steps or approve on behalf of another step</li>
+  </ul>
+
+  <h3>Timetable View</h3>
+  <ul>
+    <li>View all class timetables under their department</li>
+    <li>See active reassignments for department teachers</li>
+    <li>Cannot modify timetables (read-only unless also Principal/Admin)</li>
+  </ul>
+</section>
+
+<!-- ═══════════════════════ 7. TEACHER ═══════════════════════ -->
+<section id="teacher" class="page-break">
+  <h2 class="section-title">7. Teacher</h2>
+  <span class="role-badge r-teacher">teacher</span>
+
+  <h3>Daily Timetable</h3>
+  <ul>
+    <li>Go to <strong>Dashboard → Timetable</strong> to view today's schedule</li>
+    <li>Slots are colour-coded: <strong>Assigned</strong> (your normal class), <strong>Substitute</strong> (covering for a colleague), <strong>Reassigned Away</strong> (your class is being covered)</li>
+    <li>Use the date picker to view any day's schedule</li>
+  </ul>
+
+  <h3>Marking Student Attendance</h3>
+  <ul class="steps">
+    <li>Go to <strong>Dashboard → Attendance</strong></li>
+    <li>Select the class and date</li>
+    <li>For each student, select: Present / Absent / Late / Half Day / Excused</li>
+    <li>Click <strong>Save</strong>. Attendance can be edited until end of day.</li>
+  </ul>
+
+  <h3>Subject-wise Attendance (for Exam/Report purposes)</h3>
+  <ul>
+    <li>Available for classes where a timetable is configured</li>
+    <li>Each period's attendance is recorded independently per subject</li>
+  </ul>
+
+  <h3>Submitting Leave</h3>
+  <ul class="steps">
+    <li>Go to <strong>Dashboard → Leave → Apply</strong></li>
+    <li>Select leave type, start date, end date, and reason</li>
+    <li>The system shows <strong>Effective Days</strong> (excluding weekoffs and holidays)</li>
+    <li>Submit — the request enters the approval workflow</li>
+  </ul>
+
+  <h3>Teacher Reassignment (substitute request)</h3>
+  <ul class="steps">
+    <li>Go to <strong>Dashboard → Timetable → Reassign</strong></li>
+    <li>Select the slot (period/subject) you want to hand off</li>
+    <li>Choose a substitute teacher from your school</li>
+    <li>Set the date range and add a reason (e.g., "on leave")</li>
+    <li>Submit — the substitute is notified automatically</li>
+  </ul>
+  <div class="warning">You cannot assign a substitute teacher who has approved leave during the selected dates. The system will block the request.</div>
+
+  <h3>Withdrawing Leave</h3>
+  <p>Pending or approved leave can be withdrawn from <strong>Leave → My Requests</strong>. When you withdraw approved leave:</p>
+  <ul>
+    <li>Any timetable reassignments created for the leave period are automatically cancelled</li>
+    <li>The substitute teacher receives a cancellation notification</li>
+  </ul>
+
+  <h3>Own Attendance</h3>
+  <ul>
+    <li>View monthly punch-in/out record under <strong>Attendance → My Attendance</strong></li>
+    <li>See working hours, status (present/late/absent), holiday and leave overlay</li>
+  </ul>
+</section>
+
+<!-- ═══════════════════════ 8. EMPLOYEE ═══════════════════════ -->
+<section id="employee">
+  <h2 class="section-title">8. Employee (Non-Teaching Staff)</h2>
+  <span class="role-badge r-employee">employee</span>
+
+  <h3>Leave Application</h3>
+  <ul class="steps">
+    <li>Go to <strong>Dashboard → Leave → Apply</strong></li>
+    <li>Choose leave type (Sick, Casual, Other — as configured by admin)</li>
+    <li>Pick dates — the system shows effective working days and remaining balance</li>
+    <li>Submit; the request routes through the configured approval workflow</li>
+  </ul>
+
+  <h3>Leave Balance</h3>
+  <ul>
+    <li>View remaining leave balance on the Leave dashboard</li>
+    <li>Balance is deducted automatically when leave is finally approved</li>
+    <li>Carry-forward balance (if enabled) is shown separately</li>
+  </ul>
+
+  <h3>Attendance</h3>
+  <ul>
+    <li>Monthly attendance report available under <strong>Attendance → My Attendance</strong></li>
+    <li>Shows punch-in, punch-out, working hours, and attendance rate</li>
+    <li>Approved leave days are shown as "Leave" (not Absent)</li>
+  </ul>
+</section>
+
+<!-- ═══════════════════════ 9. PARENT ═══════════════════════ -->
+<section id="parent" class="page-break">
+  <h2 class="section-title">9. Parent</h2>
+  <span class="role-badge r-parent">parent</span>
+
+  <h3>Switching Between Children</h3>
+  <p>If you have multiple children enrolled, use the <strong>child selector</strong> at the top of the Leave and Attendance pages to switch context. Data shown always belongs to the currently selected child only.</p>
+
+  <h3>Submitting Leave for Your Child</h3>
+  <ul class="steps">
+    <li>Go to <strong>Dashboard → Leave</strong></li>
+    <li>Select the child from the dropdown</li>
+    <li>Click <strong>Apply Leave</strong>, choose type (Sick, Emergency, Other), dates, and reason</li>
+    <li>Effective days are calculated excluding the child's class weekoffs and school holidays</li>
+    <li>Submit — you will be notified when the leave is approved or rejected</li>
+  </ul>
+  <div class="note">The school may configure a custom approval workflow. Your leave request will show the current step and approver at each stage.</div>
+
+  <h3>Viewing Your Child's Attendance</h3>
+  <ul>
+    <li>Go to <strong>Dashboard → Attendance</strong> and select your child</li>
+    <li>See daily status, subject-wise attendance, and monthly summary</li>
+    <li>Holiday and weekoff days are clearly marked</li>
+  </ul>
+
+  <h3>School Holiday Calendar</h3>
+  <ul>
+    <li>Go to <strong>Dashboard → Calendar</strong></li>
+    <li>Holidays are shown in orange; your child's class weekoff days are grayed out</li>
+    <li>Weekoff days are derived from the class timetable (which days have no classes)</li>
+  </ul>
+
+  <div class="warning">You can only access data for children linked to your account. Attempting to view another student's data is blocked by the system.</div>
+</section>
+
+<!-- ═══════════════════════ 10. STUDENT ═══════════════════════ -->
+<section id="student">
+  <h2 class="section-title">10. Student</h2>
+  <span class="role-badge r-student">student</span>
+
+  <h3>Viewing Attendance</h3>
+  <ul>
+    <li>Go to <strong>Dashboard → Attendance</strong> to see your own monthly record</li>
+    <li>Attendance rate, present/absent/late breakdown, and leave days shown</li>
+  </ul>
+
+  <h3>Timetable</h3>
+  <ul>
+    <li>Go to <strong>Dashboard → Timetable</strong> to see your class schedule</li>
+    <li>Shows all periods, subjects, and teacher names for each day</li>
+    <li>Substitute teachers are shown when a reassignment is active</li>
+  </ul>
+
+  <h3>Leave Status</h3>
+  <ul>
+    <li>View leave applications submitted by your parent/guardian</li>
+    <li>See current status: Pending → Approved / Rejected</li>
+  </ul>
+
+  <h3>Holiday Calendar</h3>
+  <ul>
+    <li>Go to <strong>Dashboard → Calendar</strong> to see upcoming holidays and your class's weekoff days</li>
+  </ul>
+</section>
+
+<!-- ═══════════════════════ 11. LEAVE MANAGEMENT DEEP DIVE ═══════════════════════ -->
+<section id="leave" class="page-break">
+  <h2 class="section-title">11. Leave Management — Deep Dive</h2>
+
+  <h3>Leave Lifecycle</h3>
+  <table>
+    <tr><th>Status</th><th>Meaning</th><th>Next Action</th></tr>
+    <tr><td>Pending</td><td>Submitted, awaiting review</td><td>Reviewer approves/rejects at current step</td></tr>
+    <tr><td>Approved</td><td>All steps passed</td><td>Balance deducted; attendance synced for students</td></tr>
+    <tr><td>Rejected</td><td>Rejected at some step</td><td>Applicant notified; no balance change</td></tr>
+    <tr><td>Withdrawn</td><td>Cancelled by applicant</td><td>Balance restored; reassignments cancelled</td></tr>
+  </table>
+
+  <h3>Effective Day Calculation</h3>
+  <p>When applying for leave, the system calculates <strong>Effective Days</strong> — the actual number of working days, excluding:</p>
+  <ul>
+    <li>School weekoff days (configured per school)</li>
+    <li>Public holidays in the school's holiday calendar</li>
+    <li>For student leaves: class timetable weekoff days (days with no periods)</li>
+  </ul>
+  <div class="note">A leave application entirely on weekoffs/holidays is blocked with an error message.</div>
+
+  <h3>Multi-Step Approval Workflow</h3>
+  <p>School admins can configure up to N steps for parent and teacher leaves. Each step specifies:</p>
+  <ul>
+    <li><strong>Step Order</strong> — sequence number (1, 2, 3…)</li>
+    <li><strong>Approver Role</strong> — the role that can review this step (e.g., hod, principal)</li>
+    <li><strong>Specific Approver</strong> — optionally lock the step to one person</li>
+  </ul>
+  <div class="warning">Only the correct role/user can approve each step. Trying to approve out of order or out of role will be rejected.</div>
+
+  <h3>Leave Balance</h3>
+  <ul>
+    <li>Balances are set per-school per-role per-leave-type</li>
+    <li>Annual reset happens at the start of each academic year (April 1)</li>
+    <li>Carry-forward is optional and capped by <code>maxCarryDays</code></li>
+    <li>Deduction happens only when the leave reaches <strong>fully approved</strong> status</li>
+  </ul>
+
+  <h3>Overlap Protection</h3>
+  <p>You cannot apply for leave on dates that overlap with an existing pending or approved leave for the same person/student.</p>
+
+  <h3>Leave &amp; Attendance Sync (Students)</h3>
+  <p>When a student's leave is approved, the system automatically marks their attendance as "Leave" for each effective day. If the leave is later withdrawn, these attendance records are deleted.</p>
+</section>
+
+<!-- ═══════════════════════ 12. ATTENDANCE DEEP DIVE ═══════════════════════ -->
+<section id="attendance" class="page-break">
+  <h2 class="section-title">12. Attendance — Deep Dive</h2>
+
+  <h3>Teacher/Employee Attendance</h3>
+  <table>
+    <tr><th>Status</th><th>Description</th></tr>
+    <tr><td>Present</td><td>Normal attendance</td></tr>
+    <tr><td>Late</td><td>Arrived after cut-off time</td></tr>
+    <tr><td>Half Day</td><td>Only half-day present</td></tr>
+    <tr><td>Excused</td><td>Absent with prior approval</td></tr>
+    <tr><td>Absent</td><td>Unrecorded working day in the past</td></tr>
+    <tr><td>Leave</td><td>Approved leave on this day</td></tr>
+    <tr><td>Holiday</td><td>School holiday</td></tr>
+    <tr><td>Weekoff</td><td>Configured weekoff day</td></tr>
+  </table>
+
+  <h3>Monthly Attendance Report</h3>
+  <p>Available at <strong>Attendance → Monthly</strong>. The report shows:</p>
+  <ul>
+    <li>Day-by-day status for the selected month</li>
+    <li>Punch-in / Punch-out times and working hours</li>
+    <li>Summary: Present, Absent, Late, Half Day, Leave, Holidays, Weekoffs</li>
+    <li>Attendance Rate = (Present + Late + Half Day + Excused) / Working Days × 100</li>
+  </ul>
+
+  <h3>Bulk Student Attendance Upload</h3>
+  <p>Teachers can upload a CSV for bulk student attendance marking:</p>
+  <ul class="steps">
+    <li>Download the CSV template from the Attendance page</li>
+    <li>Fill in student_id and status for each row</li>
+    <li>Upload — the system validates that every student_id belongs to the selected class and school</li>
+    <li>Invalid rows are skipped with a count reported back</li>
+  </ul>
+  <div class="warning">Students from other classes or schools in the CSV are silently skipped. They cannot be accidentally recorded.</div>
+
+  <h3>Academic Year Handling</h3>
+  <p>The system uses the Indian academic year (April–March). When fetching attendance for January 2026, the academic year is automatically computed as <strong>2025-2026</strong>, and for May 2026 it becomes <strong>2026-2027</strong>. This ensures correct holiday lookup.</p>
+</section>
+
+<!-- ═══════════════════════ 13. TIMETABLE & SCHEDULING ═══════════════════════ -->
+<section id="timetable" class="page-break">
+  <h2 class="section-title">13. Timetable &amp; Scheduling — Deep Dive</h2>
+
+  <h3>Creating a Timetable (Admin)</h3>
+  <ul class="steps">
+    <li>Go to <strong>Schools → [School] → Timetable</strong></li>
+    <li>Select a class and click <strong>Edit Timetable</strong></li>
+    <li>Add periods: day, period number, start/end time, subject, teacher</li>
+    <li>Save — the timetable is stored for the current academic year</li>
+    <li>Alternatively, upload an Excel/CSV in bulk</li>
+  </ul>
+
+  <h3>Teacher Daily View</h3>
+  <p>Each teacher sees three types of slots for a given date:</p>
+  <table>
+    <tr><th>Slot Type</th><th>Colour</th><th>Meaning</th></tr>
+    <tr><td>Assigned</td><td>Blue</td><td>Your regular class for this period</td></tr>
+    <tr><td>Substitute</td><td>Green</td><td>You are covering for a colleague</td></tr>
+    <tr><td>Reassigned Away</td><td>Gray</td><td>Your class is being covered by someone else</td></tr>
+  </table>
+
+  <h3>Teacher Reassignment</h3>
+  <p>A reassignment lets Teacher A hand off a specific period to Teacher B for a date range.</p>
+  <ul>
+    <li><strong>Overlap check</strong> — cannot create a second reassignment for the same slot and overlapping dates</li>
+    <li><strong>Leave conflict check</strong> — substitute must not have approved leave during the dates</li>
+    <li><strong>Auto-notification</strong> — substitute is notified immediately when assigned</li>
+    <li><strong>Cancellation notification</strong> — substitute is notified if the reassignment is cancelled</li>
+  </ul>
+
+  <h3>Leave → Reassignment Cascade</h3>
+  <p>When a teacher withdraws an approved leave, the system:</p>
+  <ol>
+    <li>Marks all related reassignments (created during the leave period) as inactive</li>
+    <li>Notifies each substitute teacher of the cancellation</li>
+  </ol>
+
+  <h3>Student Weekoff via Timetable</h3>
+  <p>A student's weekoff days are derived from their class timetable — any day with <em>no periods</em> is treated as a weekoff. This is used when calculating effective leave days and showing the holiday calendar. If no timetable exists, the school's leave-config weekoff is used as a fallback.</p>
+</section>
+
+<!-- ═══════════════════════ 14. HOLIDAYS & WEEKOFFS ═══════════════════════ -->
+<section id="holidays">
+  <h2 class="section-title">14. Holidays &amp; Weekoffs</h2>
+
+  <h3>How Weekoffs are Stored</h3>
+  <p>Weekoff days are stored as special entries in the Holiday Calendar with <code>academicYear = '_weekoff_'</code>. Each weekday (Sun–Sat) maps to a canonical 1970 epoch date:</p>
+  <table>
+    <tr><th>Day</th><th>Epoch Date</th></tr>
+    <tr><td>Sunday (0)</td><td>1970-01-04</td></tr>
+    <tr><td>Monday (1)</td><td>1970-01-05</td></tr>
+    <tr><td>Tuesday (2)</td><td>1970-01-06</td></tr>
+    <tr><td>Wednesday (3)</td><td>1970-01-07</td></tr>
+    <tr><td>Thursday (4)</td><td>1970-01-08</td></tr>
+    <tr><td>Friday (5)</td><td>1970-01-09</td></tr>
+    <tr><td>Saturday (6)</td><td>1970-01-10</td></tr>
+  </table>
+
+  <h3>Adding Holidays</h3>
+  <ul>
+    <li><strong>Single holiday</strong>: Holiday name, date, type (mandatory/optional)</li>
+    <li><strong>Bulk upload</strong>: Excel/CSV with Date, Name, Type columns</li>
+    <li>Uploading a holiday that already exists on the same date will <strong>update</strong> it (not duplicate)</li>
+  </ul>
+
+  <h3>Academic Year and Holiday Lookup</h3>
+  <p>Holidays are scoped by academic year. The system automatically computes the academic year for any date:</p>
+  <ul>
+    <li>April 2026 – March 2027 → <strong>2026-2027</strong></li>
+    <li>January 2026 – March 2026 → <strong>2025-2026</strong></li>
+  </ul>
+  <div class="success">From version 1.0 onwards, the academic year is computed dynamically. You no longer need to manually set the year — holidays added in May 2026 are automatically stored under 2026-2027.</div>
+</section>
+
+<!-- ═══════════════════════ 15. NOTIFICATIONS ═══════════════════════ -->
+<section id="notifications" class="page-break">
+  <h2 class="section-title">15. Notifications</h2>
+  <p>The system sends in-app and push notifications for the following events:</p>
+  <table>
+    <tr><th>Event</th><th>Who is notified</th></tr>
+    <tr><td>Leave submitted</td><td>First-step reviewer</td></tr>
+    <tr><td>Leave step approved</td><td>Next-step reviewer; applicant when fully approved</td></tr>
+    <tr><td>Leave rejected</td><td>Applicant</td></tr>
+    <tr><td>Leave withdrawn</td><td>Substitute teachers whose assignments are cancelled</td></tr>
+    <tr><td>Timetable reassignment created</td><td>Substitute teacher</td></tr>
+    <tr><td>Timetable reassignment cancelled</td><td>Substitute teacher</td></tr>
+  </table>
+  <div class="note">Push notifications require the user to allow browser notifications. In-app notifications are always delivered.</div>
+</section>
+
+<!-- ═══════════════════════ 16. FAQ ═══════════════════════ -->
+<section id="faq">
+  <h2 class="section-title">16. FAQ &amp; Troubleshooting</h2>
+
+  <h3>Why are my holidays not showing in the calendar?</h3>
+  <p>Holidays are stored per academic year. If you added a holiday in May 2026 but selected academic year 2025-2026 in the admin panel, the holiday was stored under 2026-2027 and the calendar (which fetches the correct year) will show it correctly. Make sure the year selector in the Leave Config panel matches the year you intend to edit.</p>
+
+  <h3>Why is my effective leave count different from the calendar days?</h3>
+  <p>Effective days exclude weekoffs and school holidays. If you select 5 calendar days but 2 of them are weekoffs, you'll see 3 effective days. The leave balance will only be deducted for the effective days.</p>
+
+  <h3>I see leaves from another class/school in the list</h3>
+  <p>This should not happen. All API endpoints scope data to the authenticated user's school. If you see foreign data, please report it immediately to your system administrator.</p>
+
+  <h3>Why can't I approve a leave request?</h3>
+  <p>The approval workflow has steps. You can only approve at the step assigned to your role. If the leave is at step 1 (HOD) and you are the Principal (step 2), you must wait for the HOD to complete their step first.</p>
+
+  <h3>I withdrew my leave but my substitute wasn't notified</h3>
+  <p>Notifications are sent automatically when a leave is withdrawn. If the substitute didn't receive a notification, check that they have enabled browser push notifications and that their account is active.</p>
+
+  <h3>The timetable shows wrong day for a date</h3>
+  <p>The system uses UTC date parsing to avoid timezone drift. All dates are parsed as UTC midnight. If you see a one-day offset, ensure dates are entered in YYYY-MM-DD format without timezone suffixes.</p>
+
+  <h3>How do I add more academic years to the year selector?</h3>
+  <p>Contact your system administrator. Academic years are managed in the code configuration and can be extended. Currently supported: 2024-2025, 2025-2026, 2026-2027, 2027-2028.</p>
+
+  <h3>A substitute teacher was assigned even though they are on leave</h3>
+  <p>From version 1.0 onwards the system blocks reassignment if the substitute has an approved leave during the selected dates. If this happened with an older version, please cancel the reassignment manually.</p>
+</section>
+
+<hr />
+<p style="text-align:center; color:#999; font-size:12px; padding: 20px 0;">
+  School Management System &nbsp;|&nbsp; User Guide v1.0 &nbsp;|&nbsp; Generated 2026-05-03
+</p>
+
+</div><!-- /content -->
+</body>
+</html>

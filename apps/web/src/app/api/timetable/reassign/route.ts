@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     }
 
     const dateFilter = date
-      ? { startDate: { lte: new Date(date + 'T00:00:00') }, endDate: { gte: new Date(date + 'T00:00:00') } }
+      ? { startDate: { lte: new Date(date + 'T00:00:00Z') }, endDate: { gte: new Date(date + 'T00:00:00Z') } }
       : {};
 
     const reassignments = await prisma.timetableReassignment.findMany({
@@ -111,11 +111,8 @@ export async function POST(request: Request) {
     if (!slotId || !substituteTeacherId || !startDate || !endDate)
       throw new AppError('slotId, substituteTeacherId, startDate, endDate are required');
 
-    // Use local midnight (T00:00:00) to match how the timetable teacher route
-    // builds its dateObj — new Date('YYYY-MM-DD') parses as UTC midnight and
-    // would compare incorrectly on IST servers.
-    const start = new Date(startDate + 'T00:00:00');
-    const end   = new Date(endDate   + 'T00:00:00');
+    const start = new Date(startDate + 'T00:00:00Z');
+    const end   = new Date(endDate   + 'T00:00:00Z');
     if (end < start) throw new AppError('endDate must be on or after startDate');
 
     // Validate slot belongs to this school
@@ -138,12 +135,20 @@ export async function POST(request: Request) {
       originalTeacherId = slot.teacherId ?? t.id;
     }
 
-    // Validate substitute teacher belongs to same school
+    // Validate substitute teacher belongs to same school and has no approved leave in range
     const substitute = await prisma.teacher.findFirst({
       where: { id: substituteTeacherId, schoolId },
-      select: { id: true },
+      select: { id: true, userId: true },
     });
     if (!substitute) throw new AppError('Substitute teacher not found in this school');
+
+    if (substitute.userId) {
+      const subLeave = await prisma.leaveRequest.findFirst({
+        where: { schoolId, userId: substitute.userId, status: 'approved', startDate: { lte: end }, endDate: { gte: start } },
+        select: { id: true },
+      });
+      if (subLeave) throw new AppError('Substitute teacher has approved leave during the selected dates');
+    }
 
     // Check for overlapping active reassignment on same slot
     const overlapping = await prisma.timetableReassignment.findFirst({
@@ -213,17 +218,48 @@ export async function DELETE(request: Request) {
 
     const isAdmin = ['school_admin', 'principal', 'super_admin'].includes(primary.role_code);
 
-    // Verify ownership or admin
-    if (!isAdmin) {
+    // Verify ownership and school scope
+    let reassignment: { id: string; substituteTeacherId: string; slotId: string; startDate: Date; endDate: Date } | null = null;
+    if (isAdmin) {
+      reassignment = await prisma.timetableReassignment.findFirst({
+        where: { id, slot: { timetable: { schoolId } } },
+        select: { id: true, substituteTeacherId: true, slotId: true, startDate: true, endDate: true },
+      });
+      if (!reassignment) throw new AppError('Reassignment not found', 404);
+    } else {
       const t = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id }, select: { id: true } });
-      const r = await prisma.timetableReassignment.findFirst({ where: { id } });
-      if (!r || r.originalTeacherId !== t?.id) throw new ForbiddenError();
+      reassignment = await prisma.timetableReassignment.findFirst({
+        where: { id, originalTeacherId: t?.id, slot: { timetable: { schoolId } } },
+        select: { id: true, substituteTeacherId: true, slotId: true, startDate: true, endDate: true },
+      });
+      if (!reassignment) throw new ForbiddenError();
     }
 
-    await prisma.timetableReassignment.update({
-      where: { id },
-      data: { isActive: false },
+    await prisma.timetableReassignment.update({ where: { id }, data: { isActive: false } });
+
+    // Notify substitute that their assignment was cancelled
+    const subTeacher = await prisma.teacher.findUnique({
+      where: { id: reassignment.substituteTeacherId },
+      select: { userId: true },
     });
+    if (subTeacher?.userId) {
+      const slot = await prisma.timetableSlot.findUnique({
+        where: { id: reassignment.slotId },
+        select: { subject: true, periodNo: true },
+      });
+      const start = new Date(reassignment.startDate);
+      const end   = new Date(reassignment.endDate);
+      const dateRange = start.toDateString() === end.toDateString()
+        ? start.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+        : `${start.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – ${end.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}`;
+      await sendNotification({
+        userId:   subTeacher.userId,
+        title:    'Class Assignment Cancelled',
+        body:     `Your substitute assignment for Period ${slot?.periodNo ?? ''} (${slot?.subject ?? ''}) on ${dateRange} has been cancelled.`,
+        channels: ['in_app', 'push'],
+        data: { type: 'timetable_reassignment_cancelled', reassignmentId: reassignment.id },
+      });
+    }
 
     return Response.json({ success: true });
   } catch (err) { return handleError(err); }

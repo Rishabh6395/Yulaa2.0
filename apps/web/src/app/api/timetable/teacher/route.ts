@@ -1,8 +1,7 @@
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
-
-const ACADEMIC_YEAR = '2025-2026';
+import { currentAcademicYearLabel } from '@/lib/school-utils';
 
 /**
  * GET /api/timetable/teacher?date=YYYY-MM-DD
@@ -28,8 +27,8 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const date       = searchParams.get('date') || new Date().toISOString().split('T')[0];
-    const dayOfWeek  = new Date(date + 'T00:00:00').getDay(); // 0=Sun, 1=Mon...
-    const dateObj    = new Date(date + 'T00:00:00');
+    const dayOfWeek  = new Date(date + 'T00:00:00Z').getUTCDay(); // 0=Sun, 1=Mon...
+    const dateObj    = new Date(date + 'T00:00:00Z');
 
     // Resolve teacher record
     const teacher = await prisma.teacher.findFirst({
@@ -43,7 +42,7 @@ export async function GET(request: Request) {
       where: {
         teacherId: teacher.id,
         dayOfWeek,
-        timetable: { schoolId, academicYear: ACADEMIC_YEAR },
+        timetable: { schoolId, academicYear: currentAcademicYearLabel() },
       },
       include: {
         timetable:      { select: { classId: true, class: { select: { name: true, grade: true, section: true } } } },

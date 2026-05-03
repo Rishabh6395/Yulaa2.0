@@ -2,6 +2,7 @@ import { PRINCIPAL_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
+import { currentAcademicYearLabel } from '@/lib/school-utils';
 
 
 function assertAdminAccess(user: any) {
@@ -17,7 +18,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const schoolId = params.id;
     const url = new URL(request.url);
     const classId      = url.searchParams.get('classId');
-    const academicYear = url.searchParams.get('year') || '2025-2026';
+    const academicYear = url.searchParams.get('year') || currentAcademicYearLabel();
     const action       = url.searchParams.get('action');
 
     // ── Template download ────────────────────────────────────────────────────
@@ -85,7 +86,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     // ── Bulk Excel/CSV upload ────────────────────────────────────────────────
     if (action === 'bulk_upload') {
-      const { fileData, fileExt, academicYear = '2025-2026' } = body;
+      const { fileData, fileExt, academicYear = currentAcademicYearLabel() } = body;
       if (!fileData) throw new AppError('fileData (base64) is required');
 
       const buf = Buffer.from(fileData, 'base64');
@@ -179,8 +180,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
       if (!slotId || !substituteTeacherId || !startDate || !endDate)
         throw new AppError('slotId, substituteTeacherId, startDate, endDate required');
 
-      const start = new Date(startDate + 'T00:00:00');
-      const end   = new Date(endDate   + 'T00:00:00');
+      const start = new Date(startDate + 'T00:00:00Z');
+      const end   = new Date(endDate   + 'T00:00:00Z');
       if (end < start) throw new AppError('endDate must be on or after startDate');
 
       const slot = await prisma.timetableSlot.findFirst({
@@ -210,7 +211,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
 
     // ── Save full timetable (upsert slots) ───────────────────────────────────
-    const { classId, academicYear = '2025-2026', slots } = body;
+    const { classId, academicYear = currentAcademicYearLabel(), slots } = body;
     if (!classId) return Response.json({ error: 'classId required' }, { status: 400 });
 
     const timetable = await prisma.timetable.upsert({
@@ -256,7 +257,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     const schoolId = params.id;
     const url = new URL(request.url);
     const classId      = url.searchParams.get('classId');
-    const academicYear = url.searchParams.get('year') || '2025-2026';
+    const academicYear = url.searchParams.get('year') || currentAcademicYearLabel();
     if (!classId) return Response.json({ error: 'classId required' }, { status: 400 });
 
     await prisma.timetable.deleteMany({ where: { schoolId, classId, academicYear } });

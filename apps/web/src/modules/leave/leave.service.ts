@@ -56,7 +56,7 @@ async function getStudentWeekoffs(schoolId: string, studentId: string): Promise<
   });
   if (student?.classId) {
     const tt = await prisma.timetable.findFirst({
-      where: { schoolId, classId: student.classId, isActive: true },
+      where: { schoolId, classId: student.classId, isActive: true, academicYear: currentAcademicYearLabel() },
       include: { slots: { select: { dayOfWeek: true } } },
     });
     if (tt && tt.slots.length > 0) {
@@ -225,9 +225,49 @@ export async function withdrawLeave(userId: string, id: string) {
   const result = await repo.withdrawLeaveRequest(id, userId);
   if (result.count === 0) throw new AppError('Leave not found or cannot be withdrawn (must be pending or approved)');
 
-  // If this leave was approved and had auto-synced attendance, roll it back
-  if (leave.status === 'approved' && leave.studentId) {
-    await repo.rollbackLeaveAttendance(leave.studentId, leave.startDate, leave.endDate);
+  if (leave.status === 'approved') {
+    // Roll back auto-synced student attendance
+    if (leave.studentId) {
+      await repo.rollbackLeaveAttendance(leave.studentId, leave.startDate, leave.endDate);
+    }
+
+    // Cancel timetable reassignments created because of this teacher's leave
+    const teacher = await prisma.teacher.findFirst({ where: { userId }, select: { id: true } });
+    if (teacher) {
+      const affectedReassignments = await prisma.timetableReassignment.findMany({
+        where: {
+          originalTeacherId: teacher.id,
+          isActive: true,
+          startDate: { lte: leave.endDate },
+          endDate:   { gte: leave.startDate },
+        },
+        select: { id: true, substituteTeacherId: true },
+      });
+      if (affectedReassignments.length > 0) {
+        await prisma.timetableReassignment.updateMany({
+          where: { id: { in: affectedReassignments.map(r => r.id) } },
+          data:  { isActive: false },
+        });
+        // Notify substitutes
+        const substituteIds = [...new Set(affectedReassignments.map(r => r.substituteTeacherId))];
+        const substitutes = await prisma.teacher.findMany({
+          where: { id: { in: substituteIds } },
+          select: { userId: true },
+        });
+        for (const sub of substitutes) {
+          if (sub.userId) {
+            const { sendNotification } = await import('@/services/notification.service');
+            await sendNotification({
+              userId:   sub.userId,
+              title:    'Class Assignment Cancelled',
+              body:     'A substitute assignment was cancelled because the original teacher withdrew their leave.',
+              channels: ['in_app', 'push'],
+              data:     { type: 'timetable_reassignment_cancelled' },
+            });
+          }
+        }
+      }
+    }
   }
 
   return { ok: true };
