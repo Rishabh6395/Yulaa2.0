@@ -2,6 +2,7 @@ import { AppError } from '@/utils/errors';
 import { EMPLOYEE_ROLES } from '@/lib/roles';
 import * as repo from './leave.repo';
 import type { LeaveRow, LeaveBalanceRow } from './leave.types';
+import prisma from '@/lib/prisma';
 
 // ── Academic year helper (April–March, India) ─────────────────────────────────
 
@@ -31,6 +32,75 @@ const FALLBACK_TEACHER_TYPES = [
 
 function daysBetween(start: Date, end: Date) {
   return Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
+}
+
+// ── Weekoff/Holiday helpers ───────────────────────────────────────────────────
+
+// Canonical epoch dates for weekday encoding (Sun=0 … Sat=6)
+const WEEKOFF_DATES = [
+  '1970-01-04','1970-01-05','1970-01-06','1970-01-07',
+  '1970-01-08','1970-01-09','1970-01-10',
+];
+
+/** Load the school's weekoff day numbers from Leave Configuration DB entries. */
+async function getSchoolWeekoffs(schoolId: string): Promise<number[]> {
+  const entries = await prisma.holidayCalendar.findMany({
+    where:  { schoolId, academicYear: '_weekoff_' },
+    select: { date: true },
+  });
+  if (entries.length === 0) return [0, 6]; // Default Sun/Sat if not configured
+  return entries
+    .map(w => { const d = new Date(w.date).toISOString().split('T')[0]; return WEEKOFF_DATES.indexOf(d); })
+    .filter(d => d >= 0);
+}
+
+/** Load student weekoff days (from class timetable, fallback to leave-config). */
+async function getStudentWeekoffs(schoolId: string, studentId: string): Promise<number[]> {
+  const student = await prisma.student.findUnique({
+    where: { id: studentId }, select: { classId: true },
+  });
+  if (student?.classId) {
+    const tt = await prisma.timetable.findFirst({
+      where: { schoolId, classId: student.classId, isActive: true },
+      include: { slots: { select: { dayOfWeek: true } } },
+    });
+    if (tt && tt.slots.length > 0) {
+      const scheduled = [...new Set(tt.slots.map(s => s.dayOfWeek))];
+      return [0,1,2,3,4,5,6].filter(d => !scheduled.includes(d));
+    }
+  }
+  return getSchoolWeekoffs(schoolId);
+}
+
+/** Load holidays that fall within a specific date range. */
+async function getHolidayDatesInRange(schoolId: string, start: Date, end: Date): Promise<Set<string>> {
+  const startY = start.getUTCMonth() >= 3 ? start.getUTCFullYear() : start.getUTCFullYear() - 1;
+  const endY   = end.getUTCMonth()   >= 3 ? end.getUTCFullYear()   : end.getUTCFullYear()   - 1;
+  const academicYears: string[] = [];
+  for (let y = startY; y <= endY; y++) academicYears.push(`${y}-${y + 1}`);
+
+  const holidays = await prisma.holidayCalendar.findMany({
+    where: { schoolId, academicYear: { in: academicYears }, date: { gte: start, lte: end } },
+    select: { date: true },
+  });
+  return new Set(holidays.map(h => new Date(h.date).toISOString().split('T')[0]));
+}
+
+/** Count effective leave days (excluding weekoffs + holidays). */
+async function countEffectiveDays(
+  schoolId: string, start: Date, end: Date, weekoffs: number[],
+): Promise<number> {
+  const holidaySet = await getHolidayDatesInRange(schoolId, start, end);
+  let count = 0;
+  const cur = new Date(start); cur.setUTCHours(0,0,0,0);
+  const endD = new Date(end);  endD.setUTCHours(0,0,0,0);
+  while (cur <= endD) {
+    const dow = cur.getUTCDay();
+    const ds  = cur.toISOString().split('T')[0];
+    if (!weekoffs.includes(dow) && !holidaySet.has(ds)) count++;
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return count;
 }
 
 export async function listLeaveRequests(
@@ -108,6 +178,15 @@ export async function submitLeaveRequest(
     throw new AppError(`${who} ${label} leave for these dates. Please choose different dates.`);
   }
 
+  // Reject if every day in the range is a weekoff or holiday
+  const weekoffsForUser = student_id
+    ? await getStudentWeekoffs(schoolId, student_id)
+    : await getSchoolWeekoffs(schoolId);
+  const effectiveDays = await countEffectiveDays(schoolId, sd, ed, weekoffsForUser);
+  if (effectiveDays === 0) {
+    throw new AppError('All selected dates fall on weekoffs or holidays. Please choose working days.');
+  }
+
   // Validate leave type is allowed for this role (check DB first, then fallback)
   const dbTypes = await repo.findLeaveTypesByRole(schoolId, roleCode);
   if (dbTypes.length > 0) {
@@ -156,11 +235,14 @@ export async function reviewLeaveStep(
 
   // Deduct from TeacherLeaveBalance when an employee leave is finally approved
   if (action === 'approved' && result.status === 'approved' && EMPLOYEE_ROLES.includes(leave.roleCode) && !leave.studentId) {
-    const days = daysBetween(leave.startDate, leave.endDate);
-    const teacherId = await repo.findTeacherIdByUserId(schoolId, leave.userId);
-    if (teacherId) {
-      const { label: academicYear } = currentAcademicYear();
-      await repo.incrementUsedDays(schoolId, teacherId, leave.leaveType, academicYear, days);
+    const weekoffs = await getSchoolWeekoffs(schoolId);
+    const days = await countEffectiveDays(schoolId, leave.startDate, leave.endDate, weekoffs);
+    if (days > 0) {
+      const teacherId = await repo.findTeacherIdByUserId(schoolId, leave.userId);
+      if (teacherId) {
+        const { label: academicYear } = currentAcademicYear();
+        await repo.incrementUsedDays(schoolId, teacherId, leave.leaveType, academicYear, days);
+      }
     }
   }
 
@@ -168,7 +250,8 @@ export async function reviewLeaveStep(
   if (action === 'approved' && result.status === 'approved' && leave.studentId) {
     const classId = await repo.findStudentClassId(leave.studentId);
     if (classId) {
-      const dates = getWeekdayDatesInRange(leave.startDate, leave.endDate);
+      const weekoffs = await getStudentWeekoffs(schoolId, leave.studentId);
+      const dates = await getEffectiveDatesInRange(schoolId, leave.startDate, leave.endDate, weekoffs);
       if (dates.length > 0) {
         await repo.syncLeaveToAttendance(schoolId, leave.studentId, classId, dates, reviewerId);
       }
@@ -178,16 +261,20 @@ export async function reviewLeaveStep(
   return result;
 }
 
-// Returns weekday dates (Mon–Fri) in the leave range
-function getWeekdayDatesInRange(startDate: Date, endDate: Date): Date[] {
+/** Returns effective dates in the leave range (excluding weekoffs + holidays). */
+async function getEffectiveDatesInRange(
+  schoolId: string, startDate: Date, endDate: Date, weekoffs: number[],
+): Promise<Date[]> {
+  const holidaySet = await getHolidayDatesInRange(schoolId, startDate, endDate);
   const dates: Date[] = [];
-  const cur = new Date(startDate);
-  cur.setUTCHours(0, 0, 0, 0);
-  const end = new Date(endDate);
-  end.setUTCHours(0, 0, 0, 0);
+  const cur = new Date(startDate); cur.setUTCHours(0, 0, 0, 0);
+  const end = new Date(endDate);   end.setUTCHours(0, 0, 0, 0);
   while (cur <= end) {
-    const dow = cur.getDay();
-    if (dow !== 0 && dow !== 6) dates.push(new Date(cur));
+    const dow = cur.getUTCDay();
+    const ds  = cur.toISOString().split('T')[0];
+    if (!weekoffs.includes(dow) && !holidaySet.has(ds)) {
+      dates.push(new Date(cur));
+    }
     cur.setUTCDate(cur.getUTCDate() + 1);
   }
   return dates;

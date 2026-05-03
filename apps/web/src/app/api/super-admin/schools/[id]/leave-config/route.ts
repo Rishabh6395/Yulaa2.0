@@ -14,7 +14,7 @@ const WEEKOFF_DATES = [
   '1970-01-10', // 6 Saturday
 ];
 const WEEKOFF_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const WEEKOFF_YEAR  = '__weekoff__';
+const WEEKOFF_YEAR  = '_weekoff_';
 
 function assertAdminAccess(user: any) {
   if (!user) throw new UnauthorizedError();

@@ -945,19 +945,25 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
   const [saving,      setSaving]      = useState(false);
   const [message,     setMessage]     = useState('');
   const [saveError,   setSaveError]   = useState('');
-  const [weekoffDays, setWeekoffDays] = useState<number[]>([0, 6]);
+  const [weekoffDays,      setWeekoffDays]      = useState<number[]>([0, 6]);
+  const [holidayDates,     setHolidayDates]     = useState<Set<string>>(new Set());
+  const [showDayOffDialog, setShowDayOffDialog] = useState(false);
+  const [dayOffReason,     setDayOffReason]     = useState('');
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-  // Load weekoff days from leave config — re-fetch when the selected date crosses an academic year
+  // Load weekoff days and holidays — re-fetch when selected date crosses an academic year
   useEffect(() => {
     if (!token) return;
     const y = new Date(date).getFullYear();
     const academicYear = `${y}-${y + 1}`;
     fetch(`/api/holidays?year=${academicYear}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(d => setWeekoffDays(d.weekoffDays ?? [0, 6]))
+      .then(d => {
+        setWeekoffDays(d.weekoffDays ?? [0, 6]);
+        setHolidayDates(new Set<string>((d.holidays ?? []).map((h: any) => new Date(h.date).toISOString().split('T')[0])));
+      })
       .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[weekoffs]', err); });
   }, [token, date.substring(0, 4)]);
 
@@ -1032,10 +1038,17 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
   };
 
   const selectedDayOfWeek = new Date(date + 'T00:00:00').getDay();
-  const isWeekend = weekoffDays.includes(selectedDayOfWeek);
+  const isWeekend  = weekoffDays.includes(selectedDayOfWeek);
+  const isHoliday  = holidayDates.has(date);
+  const isDayOff   = isWeekend || isHoliday;
 
-  const saveAttendance = async () => {
-    if (isWeekend) { setSaveError('Cannot mark attendance on a weekoff day.'); return; }
+  const saveAttendance = async (confirmed = false) => {
+    if (isDayOff && !confirmed) {
+      const parts = [...(isWeekend ? ['week-off'] : []), ...(isHoliday ? ['holiday'] : [])];
+      setDayOffReason(parts.join(' and '));
+      setShowDayOffDialog(true);
+      return;
+    }
     setSaving(true); setMessage(''); setSaveError('');
     try {
       const records = students.filter(s => s.schoolStatus && !s.isLeaveLocked).map(s => {
@@ -1249,10 +1262,10 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
             </table>
           </div>
 
-          {isWeekend && (
+          {isDayOff && (
             <div className="mx-4 my-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400 font-medium flex items-center gap-2">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              Weekend — attendance cannot be marked on Saturday or Sunday.
+              {isWeekend && isHoliday ? 'Week-off & Holiday' : isWeekend ? 'Weekly Off' : 'Holiday'} — you can still mark attendance if needed.
             </div>
           )}
 
@@ -1262,11 +1275,39 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
                 {message   && <span className="text-sm text-emerald-600 font-medium">{message}</span>}
                 {saveError && <span className="text-sm text-red-600 font-medium">{saveError}</span>}
               </div>
-              <button onClick={saveAttendance} disabled={saving || isWeekend} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed ml-auto">
+              <button onClick={() => saveAttendance(false)} disabled={saving} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed ml-auto">
                 {saving ? 'Saving…' : 'Save Attendance'}
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Day-off confirmation dialog */}
+      {showDayOffDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-500 shrink-0 mt-0.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                  Today is a {dayOffReason}
+                </h3>
+                <p className="text-sm text-surface-400 mt-1">
+                  Do you still want to mark attendance for {date}?
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowDayOffDialog(false)} className="btn btn-secondary">Cancel</button>
+              <button
+                onClick={() => { setShowDayOffDialog(false); saveAttendance(true); }}
+                className="btn btn-primary"
+              >
+                Yes, Proceed
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

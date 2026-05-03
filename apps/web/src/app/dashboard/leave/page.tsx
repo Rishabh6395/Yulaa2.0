@@ -120,7 +120,7 @@ export default function LeavePage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
-  const [effectiveDays, setEffectiveDays] = useState<{ effective: number; total: number; excluded: number } | null>(null);
+  const [effectiveDays, setEffectiveDays] = useState<{ effective: number; total: number; excluded: number; breakdown?: { date: string; reason: string; name: string }[] } | null>(null);
   const [effectiveLoading, setEffectiveLoading] = useState(false);
   const [activeChild, setActiveChild] = useState<any>(null);
   const [leaveFieldRules, setLeaveFieldRules] = useState<Record<string, any>>({});
@@ -173,14 +173,23 @@ export default function LeavePage() {
     }
     setEffectiveLoading(true);
     const t = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-    fetch(`/api/leave?action=effective_days&start=${form.start_date}&end=${form.end_date}`, {
+    // For parent role, pass studentId so the API uses timetable-based weekoffs
+    const studentParam = isParent && activeChild ? `&studentId=${activeChild.id}` : '';
+    fetch(`/api/leave/effective-days?start=${form.start_date}&end=${form.end_date}${studentParam}`, {
       headers: { Authorization: `Bearer ${t}` },
     })
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setEffectiveDays(d); })
+      .then(d => {
+        if (d) setEffectiveDays({
+          effective: d.effectiveDays,
+          total:     d.totalDays,
+          excluded:  d.weekoffDays + d.holidayDays,
+          breakdown: d.excluded,
+        });
+      })
       .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[effective-days]', err); })
       .finally(() => setEffectiveLoading(false));
-  }, [form.start_date, form.end_date]);
+  }, [form.start_date, form.end_date, isParent, activeChild]);
 
   // Leave data
   const { data, isLoading, error, mutate } = useApi<{ leaves: any[]; workflows: any }>('/api/leave');

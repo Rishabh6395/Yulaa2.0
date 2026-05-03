@@ -8,6 +8,7 @@ interface Period    { no: number; startTime: string; endTime: string; }
 interface SlotData  { subject: string; teacherId: string; }
 
 const DAYS = [
+  { no: 0, label: 'Sunday',    short: 'Sun' },
   { no: 1, label: 'Monday',    short: 'Mon' },
   { no: 2, label: 'Tuesday',   short: 'Tue' },
   { no: 3, label: 'Wednesday', short: 'Wed' },
@@ -578,7 +579,7 @@ export default function SchedulingPage() {
                 <p className="text-sm text-surface-400 text-center py-6">No timetable slots found for this teacher.</p>
               ) : (
                 <div className="space-y-2">
-                  {[1,2,3,4,5,6].map(dayNo => {
+                  {[0,1,2,3,4,5,6].map(dayNo => {
                     const daySlots = proxySlots.filter(s => s.dayOfWeek === dayNo);
                     if (!daySlots.length) return null;
                     const dayLabel = DAYS.find(d => d.no === dayNo)?.label;

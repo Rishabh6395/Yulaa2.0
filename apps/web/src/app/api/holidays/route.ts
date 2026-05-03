@@ -33,9 +33,9 @@ export async function GET(request: Request) {
     const academicYear = url.searchParams.get('year') || '2025-2026';
     const studentId    = url.searchParams.get('studentId');
 
-    // Resolve schoolId — parent has no school_id in role, derive from student record
+    // Resolve schoolId — prefer explicit query param, then role, then student
     const role = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    let schoolId: string | null = role?.school_id ?? null;
+    let schoolId: string | null = url.searchParams.get('schoolId') ?? role?.school_id ?? null;
 
     if (studentId) {
       // When a studentId is provided, derive schoolId from the student record
@@ -80,7 +80,7 @@ export async function GET(request: Request) {
         select:  { id: true, date: true, name: true, type: true },
       }),
       prisma.holidayCalendar.findMany({
-        where:  { schoolId, academicYear: '__weekoff__' },
+        where:  { schoolId, academicYear: '_weekoff_' },
         select: { date: true },
       }),
     ]);
