@@ -105,17 +105,18 @@ async function countEffectiveDays(
 
 export async function listLeaveRequests(
   schoolId: string | null, userId: string, roleCode: string, isAdmin: boolean,
+  studentId?: string | null,
 ): Promise<{ leaves: LeaveRow[]; workflows: { parent: any; teacher: any } }> {
   const isTeacher = roleCode === 'teacher';
   const leaves = await repo.findLeaveRequests(
     schoolId,
     isAdmin    ? undefined : userId,
     isTeacher,              // teachers get own + parent/student leaves
+    studentId ?? null,      // parents: restrict to selected child only
   );
 
-  // For parents (schoolId is null), derive a school from the first leave so we can
-  // fetch the relevant workflow for display — parents only apply to one school at a time.
-  const wfSchoolId: string | null = schoolId ?? (leaves[0] as any)?.schoolId ?? null;
+  // schoolId is already known for all callers after route-level derivation
+  const wfSchoolId: string | null = schoolId;
   const [parentWf, teacherWf] = wfSchoolId
     ? await Promise.all([
         repo.findLeaveWorkflow(wfSchoolId, 'parent'),

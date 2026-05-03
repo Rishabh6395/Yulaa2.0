@@ -4,13 +4,20 @@ export async function findLeaveRequests(
   schoolId: string | null,
   userId?: string,
   includeParentLeaves = false,
+  studentId?: string | null,
 ) {
   if (!schoolId && !userId) return [];
 
-  // Teachers: own leaves + all parent/student leaves (for review) — no other teachers' data
-  const where = includeParentLeaves && schoolId && userId
-    ? { schoolId, OR: [{ userId }, { roleCode: 'parent' }] }
-    : { ...(schoolId ? { schoolId } : {}), ...(userId ? { userId } : {}) };
+  let where: any;
+  if (includeParentLeaves && schoolId && userId) {
+    // Teachers: own leaves + all parent/student leaves in same school
+    where = { schoolId, OR: [{ userId }, { roleCode: 'parent' }] };
+  } else if (studentId && schoolId) {
+    // Parent viewing a specific child: scope to that school + that student
+    where = { schoolId, studentId };
+  } else {
+    where = { ...(schoolId ? { schoolId } : {}), ...(userId ? { userId } : {}) };
+  }
 
   return prisma.leaveRequest.findMany({
     where,

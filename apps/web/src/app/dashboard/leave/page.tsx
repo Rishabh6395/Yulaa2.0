@@ -193,8 +193,11 @@ export default function LeavePage() {
       .finally(() => setEffectiveLoading(false));
   }, [form.start_date, form.end_date, isParent, activeChild]);
 
-  // Leave data
-  const { data, isLoading, error, mutate } = useApi<{ leaves: any[]; workflows: any }>('/api/leave');
+  // Leave data — parents must filter by the selected child to prevent cross-child data leakage
+  const leaveApiUrl = isParent
+    ? (activeChild ? `/api/leave?child_id=${activeChild.id}` : null)
+    : '/api/leave';
+  const { data, isLoading, error, mutate } = useApi<{ leaves: any[]; workflows: any }>(leaveApiUrl);
   const allLeaves = data?.leaves ?? [];
   const workflows = data?.workflows ?? {};
 

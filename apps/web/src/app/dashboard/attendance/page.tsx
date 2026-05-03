@@ -63,8 +63,8 @@ function ParentAttendancePage({ studentId, childName }: { studentId: string; chi
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    const [y] = month.split('-').map(Number);
-    const academicYear = `${y}-${y + 1}`;
+    const [y, m] = month.split('-').map(Number);
+    const academicYear = m >= 4 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
     // Pass studentId so the API derives weekoff days from the class timetable
     fetch(`/api/holidays?year=${academicYear}&studentId=${studentId}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
@@ -451,8 +451,8 @@ function EmployeeAttendanceTeacher({ userId, schoolId }: { userId: string; schoo
   // Load holidays for the current month's academic year
   useEffect(() => {
     if (!token) return;
-    const [y] = month.split('-').map(Number);
-    const academicYear = `${y}-${y + 1}`;
+    const [y, m] = month.split('-').map(Number);
+    const academicYear = m >= 4 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
     fetch(`/api/holidays?year=${academicYear}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => {
@@ -689,8 +689,8 @@ function EmployeeAttendanceAdmin() {
   // Load weekoff days from leave config whenever the viewed month changes
   useEffect(() => {
     if (!token) return;
-    const [y] = month.split('-').map(Number);
-    const academicYear = `${y}-${y + 1}`;
+    const [y, m] = month.split('-').map(Number);
+    const academicYear = m >= 4 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
     fetch(`/api/holidays?year=${academicYear}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => setWeekoffDays(d.weekoffDays ?? [0, 6]))
@@ -956,8 +956,10 @@ function StudentAttendancePage({ userId, attendanceMode }: { userId: string; att
   // Load weekoff days and holidays — re-fetch when selected date crosses an academic year
   useEffect(() => {
     if (!token) return;
-    const y = new Date(date).getFullYear();
-    const academicYear = `${y}-${y + 1}`;
+    const d0 = new Date(date);
+    const y  = d0.getFullYear();
+    const mo = d0.getMonth() + 1; // 1-based
+    const academicYear = mo >= 4 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
     fetch(`/api/holidays?year=${academicYear}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => {

@@ -18,13 +18,23 @@ export async function GET(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primary   = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    // Admins/principals/hod see all school leaves; teachers only see their own + student leaves
     const canSeeAll = ADMIN_ROLES.includes(primary.role_code) || primary.role_code === 'hod';
     const role      = resolveLeaveRole(user);
-    // Parents have no school_id in their role — query by userId across all schools
-    const schoolId  = role.school_id ?? null;
+    const { searchParams } = new URL(request.url);
+
+    // Parents have no school_id — derive it from the requested child (student)
+    let schoolId: string | null = role.school_id ?? null;
+    let studentId: string | null = null;
+    if (!schoolId) {
+      studentId = searchParams.get('child_id');
+      if (!studentId) return Response.json({ leaves: [], workflows: {} });
+      const student = await prisma.student.findUnique({ where: { id: studentId }, select: { schoolId: true } });
+      if (!student) return Response.json({ leaves: [], workflows: {} });
+      schoolId = student.schoolId;
+    }
+
     return Response.json(
-      await listLeaveRequests(schoolId, user.id, role.role_code, canSeeAll),
+      await listLeaveRequests(schoolId, user.id, role.role_code, canSeeAll, studentId),
     );
   } catch (err) { return handleError(err); }
 }
