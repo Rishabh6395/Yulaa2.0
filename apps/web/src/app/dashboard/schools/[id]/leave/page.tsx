@@ -15,6 +15,8 @@ const STAFF_ROLES = [
   { code: 'hod',          label: 'HOD' },
   { code: 'principal',    label: 'Principal' },
   { code: 'school_admin', label: 'School Admin' },
+  { code: 'employee',     label: 'Employee (All Staff)' },
+  { code: 'parent',       label: 'Parent' },
 ];
 
 const WORKFLOW_META = {

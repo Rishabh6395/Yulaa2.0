@@ -1,8 +1,13 @@
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import { AppError, NotFoundError } from '@/utils/errors';
 import { parseCSV } from '@/services/upload.service';
 import * as repo from './teacher.repo';
 import type { TeacherRow } from './teacher.types';
+
+function generateTempPassword(): string {
+  return randomBytes(9).toString('base64url').slice(0, 12);
+}
 
 export async function toggleTeacherStatus(teacherId: string, status: string) {
   if (!['active', 'inactive'].includes(status)) throw new AppError('status must be active or inactive');
@@ -70,7 +75,7 @@ export async function bulkUploadTeachers(schoolId: string, rows: Record<string, 
     const email      = row['email']?.trim();
     const firstName  = row['first_name']?.trim();
     const lastName   = row['last_name']?.trim();
-    const password   = row['password']?.trim() || 'Welcome@123';
+    const password   = row['password']?.trim() || generateTempPassword();
 
     if (!email || !firstName || !lastName) {
       errors.push(`Row ${rowNum}: email, first_name, and last_name are required`);

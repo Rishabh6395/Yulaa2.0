@@ -192,9 +192,7 @@ export default function LeavePage() {
   const balances = balanceData?.balances ?? [];
 
   // Leave types from DB (synced with super admin master config)
-  const { data: typesData } = useApi<{ types: { code: string; name: string }[] }>(
-    !isAdmin ? '/api/leave/types' : null,
-  );
+  const { data: typesData } = useApi<{ types: { code: string; name: string }[] }>('/api/leave/types');
   const leaveTypes = (typesData?.types ?? []).map(t => ({ value: t.code, label: t.name, icon: leaveIcon(t.code) }));
 
   // Filter leaves by tab / role

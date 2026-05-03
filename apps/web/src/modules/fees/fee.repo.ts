@@ -25,7 +25,7 @@ export async function createInvoice(data: CreateInvoiceInput) {
     data: {
       schoolId:      data.schoolId,
       studentId:     data.studentId,
-      invoiceNo:     `INV-${Date.now()}`,
+      invoiceNo:     `INV-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
       amount:        data.amount,
       dueDate:       new Date(data.dueDate),
       installmentNo: data.installmentNo || 1,

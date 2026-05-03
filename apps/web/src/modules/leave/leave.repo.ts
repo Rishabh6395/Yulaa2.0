@@ -1,8 +1,10 @@
 import prisma from '@/lib/prisma';
 
 export async function findLeaveRequests(schoolId: string | null, userId?: string) {
+  // Require at least one filter — prevents returning the entire table on bad calls
+  if (!schoolId && !userId) return [];
   return prisma.leaveRequest.findMany({
-    where: { ...(schoolId ? { schoolId } : {}), ...(userId && { userId }) },
+    where: { ...(schoolId ? { schoolId } : {}), ...(userId ? { userId } : {}) },
     include: {
       user:           { select: { firstName: true, lastName: true } },
       student:        { select: { firstName: true, lastName: true } },
@@ -37,9 +39,14 @@ export async function findOverlappingLeave(
 
 export async function withdrawLeaveRequest(id: string, userId: string) {
   return prisma.leaveRequest.updateMany({
-    where: { id, userId, status: 'pending' },
+    where: { id, userId, status: { in: ['pending', 'approved'] } },
     data:  { status: 'withdrawn', currentStep: 0 },
   });
+}
+
+export async function findStudentSchoolId(studentId: string): Promise<string | null> {
+  const s = await prisma.student.findFirst({ where: { id: studentId }, select: { schoolId: true } });
+  return s?.schoolId ?? null;
 }
 
 export async function createLeaveRequest(data: {
@@ -140,17 +147,29 @@ export async function findLeaveTypesByRole(schoolId: string, roleCode: string) {
     ? [roleCode, 'employee']
     : [roleCode];
 
-  const results = await Promise.all(
-    lookupCodes.map(code =>
-      prisma.leaveTypeMaster.findMany({
-        where: { schoolId, isActive: true, applicableTo: { has: code } },
-        orderBy: { name: 'asc' },
-      })
-    )
-  );
+  // Fetch leave types that either:
+  // 1. Have the role in their applicableTo array, OR
+  // 2. Have an empty applicableTo (meaning they apply to ALL roles)
+  const [roleSpecific, universal] = await Promise.all([
+    // Types specifically tagged for these roles
+    Promise.all(
+      lookupCodes.map(code =>
+        prisma.leaveTypeMaster.findMany({
+          where: { schoolId, isActive: true, applicableTo: { has: code } },
+          orderBy: { name: 'asc' },
+        })
+      )
+    ),
+    // Types with empty applicableTo — applicable to everyone
+    prisma.leaveTypeMaster.findMany({
+      where: { schoolId, isActive: true, applicableTo: { equals: [] } },
+      orderBy: { name: 'asc' },
+    }),
+  ]);
+
   // Deduplicate by id
   const seen = new Set<string>();
-  return results.flat().filter(lt => seen.has(lt.id) ? false : (seen.add(lt.id), true));
+  return [...roleSpecific.flat(), ...universal].filter(lt => seen.has(lt.id) ? false : (seen.add(lt.id), true));
 }
 
 export async function findLeaveBalancePoliciesByRole(schoolId: string, roleCode: string) {

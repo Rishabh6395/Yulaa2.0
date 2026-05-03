@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useApi } from '@/hooks/useApi';
 
-const FEE_TYPES = ['Tuition Fee', 'Transport Fee', 'Library Fee', 'Lab Fee', 'Sports Fee', 'Activity Fee', 'Exam Fee', 'Uniform Fee'];
 const NOTIF_TRIGGERS = [
   { id: 'due_3days', label: '3 days before due date' },
   { id: 'due_1day', label: '1 day before due date' },
@@ -13,14 +13,26 @@ const NOTIF_TRIGGERS = [
 ];
 
 export default function FeesConfigPage({ params }: { params: { id: string } }) {
+  const { data: feeStructuresData, isLoading: loadingFeeTypes } = useApi<{ names: string[] }>(
+    `/api/super-admin/schools/${params.id}/fee-structures`,
+  );
+  const feeTypes: string[] = feeStructuresData?.names ?? [];
+
   const [gateway, setGateway] = useState('razorpay');
   const [keyId, setKeyId] = useState('');
   const [keySecret, setKeySecret] = useState('');
   const [webhookSecret, setWebhookSecret] = useState('');
   const [notifTriggers, setNotifTriggers] = useState<string[]>(['due_1day', 'on_due', 'payment_success']);
-  const [enabledFeeTypes, setEnabledFeeTypes] = useState<string[]>(['Tuition Fee', 'Transport Fee', 'Exam Fee']);
+  const [enabledFeeTypes, setEnabledFeeTypes] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Pre-select all fee types once they load
+  useEffect(() => {
+    if (feeTypes.length > 0 && enabledFeeTypes.length === 0) {
+      setEnabledFeeTypes(feeTypes);
+    }
+  }, [feeTypes]);
 
   function toggleNotif(id: string) {
     setNotifTriggers(n => n.includes(id) ? n.filter(x => x !== id) : [...n, id]);
@@ -75,18 +87,33 @@ export default function FeesConfigPage({ params }: { params: { id: string } }) {
 
       {/* Fee Types */}
       <div className="card p-6 space-y-4">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Enabled Fee Types</h2>
-        <div className="flex flex-wrap gap-2">
-          {FEE_TYPES.map(ft => (
-            <button
-              key={ft}
-              onClick={() => toggleFeeType(ft)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${enabledFeeTypes.includes(ft) ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300' : 'border-surface-200 dark:border-gray-700 text-surface-400 hover:border-brand-300'}`}
-            >
-              {ft}
-            </button>
-          ))}
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Enabled Fee Types</h2>
+          <span className="text-xs text-surface-400">Sourced from fee structures</span>
         </div>
+        {loadingFeeTypes ? (
+          <div className="flex flex-wrap gap-2">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-8 w-24 rounded-full bg-surface-100 dark:bg-gray-700 animate-pulse" />
+            ))}
+          </div>
+        ) : feeTypes.length === 0 ? (
+          <p className="text-sm text-surface-400">
+            No fee types found. Add fee structures for this school first.
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {feeTypes.map(ft => (
+              <button
+                key={ft}
+                onClick={() => toggleFeeType(ft)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${enabledFeeTypes.includes(ft) ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300' : 'border-surface-200 dark:border-gray-700 text-surface-400 hover:border-brand-300'}`}
+              >
+                {ft}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Notification Triggers */}

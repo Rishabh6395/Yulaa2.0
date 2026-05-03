@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useApi } from '@/hooks/useApi';
 
 interface AcademicYear {
   id: string;
@@ -10,25 +11,12 @@ interface AcademicYear {
   status: 'active' | 'upcoming' | 'completed';
 }
 
-const SAMPLE_YEARS: AcademicYear[] = [
-  { id: '1', name: '2024–25', startDate: '2024-06-01', endDate: '2025-03-31', status: 'active' },
-  { id: '2', name: '2023–24', startDate: '2023-06-01', endDate: '2024-03-31', status: 'completed' },
-];
-
-const CLASS_PROMOTIONS = [
-  { from: 'Grade 1', to: 'Grade 2' },
-  { from: 'Grade 2', to: 'Grade 3' },
-  { from: 'Grade 3', to: 'Grade 4' },
-  { from: 'Grade 4', to: 'Grade 5' },
-  { from: 'Grade 5', to: 'Grade 6' },
-  { from: 'Grade 6', to: 'Grade 7' },
-  { from: 'Grade 7', to: 'Grade 8' },
-  { from: 'Grade 8', to: 'Grade 9' },
-  { from: 'Grade 9', to: 'Grade 10' },
-  { from: 'Grade 10', to: 'Grade 11' },
-  { from: 'Grade 11', to: 'Grade 12' },
-  { from: 'Grade 12', to: 'Alumni / Passout' },
-];
+interface ClassRow {
+  id: string;
+  grade: string;
+  section: string;
+  academic_year: string;
+}
 
 const STATUS_STYLES: Record<string, string> = {
   active:    'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400',
@@ -36,15 +24,33 @@ const STATUS_STYLES: Record<string, string> = {
   completed: 'bg-surface-100 text-surface-400 dark:bg-gray-700 dark:text-gray-400',
 };
 
+function sortGrades(grades: string[]): string[] {
+  return [...grades].sort((a, b) => {
+    const numA = parseInt(a.replace(/\D/g, ''), 10);
+    const numB = parseInt(b.replace(/\D/g, ''), 10);
+    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+    return a.localeCompare(b);
+  });
+}
+
 export default function AcademicYearCyclePage({ params }: { params: { id: string } }) {
-  const [years, setYears] = useState<AcademicYear[]>(SAMPLE_YEARS);
+  const { data: classesData, isLoading: loadingClasses } = useApi<{ classes: ClassRow[] }>(
+    `/api/super-admin/schools/${params.id}/classes`,
+  );
+
+  // Derive sorted unique grades from DB
+  const classPromotions = useMemo(() => {
+    const grades = sortGrades([...new Set((classesData?.classes ?? []).map((c) => c.grade))]);
+    return grades.slice(0, -1).map((grade, i) => ({ from: grade, to: grades[i + 1] }));
+  }, [classesData]);
+
+  const [years, setYears] = useState<AcademicYear[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPromoteModal, setShowPromoteModal] = useState(false);
   const [newYear, setNewYear] = useState({ name: '', startDate: '', endDate: '' });
-  const [selectedPromotions, setSelectedPromotions] = useState<string[]>(CLASS_PROMOTIONS.map(p => p.from));
+  const [selectedPromotions, setSelectedPromotions] = useState<string[]>([]);
   const [promoting, setPromoting] = useState(false);
   const [promoted, setPromoted] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   function addYear() {
     if (!newYear.name || !newYear.startDate || !newYear.endDate) return;
@@ -60,6 +66,11 @@ export default function AcademicYearCyclePage({ params }: { params: { id: string
 
   function togglePromotion(from: string) {
     setSelectedPromotions(p => p.includes(from) ? p.filter(x => x !== from) : [...p, from]);
+  }
+
+  function openPromoteModal() {
+    setSelectedPromotions(classPromotions.map(p => p.from));
+    setShowPromoteModal(true);
   }
 
   async function runPromotion() {
@@ -86,31 +97,35 @@ export default function AcademicYearCyclePage({ params }: { params: { id: string
             Add Year
           </button>
         </div>
-        <div className="space-y-3">
-          {years.map(y => (
-            <div key={y.id} className="flex items-center justify-between p-4 rounded-xl border border-surface-200 dark:border-gray-700">
-              <div className="flex items-center gap-4">
-                <div>
-                  <div className="font-semibold text-gray-900 dark:text-gray-100">{y.name}</div>
-                  <div className="text-xs text-surface-400 mt-0.5">
-                    {new Date(y.startDate).toLocaleDateString()} – {new Date(y.endDate).toLocaleDateString()}
+        {years.length === 0 ? (
+          <p className="text-sm text-surface-400">No academic years added yet. Use the button above to add one.</p>
+        ) : (
+          <div className="space-y-3">
+            {years.map(y => (
+              <div key={y.id} className="flex items-center justify-between p-4 rounded-xl border border-surface-200 dark:border-gray-700">
+                <div className="flex items-center gap-4">
+                  <div>
+                    <div className="font-semibold text-gray-900 dark:text-gray-100">{y.name}</div>
+                    <div className="text-xs text-surface-400 mt-0.5">
+                      {new Date(y.startDate).toLocaleDateString()} – {new Date(y.endDate).toLocaleDateString()}
+                    </div>
                   </div>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-md capitalize ${STATUS_STYLES[y.status]}`}>
+                    {y.status}
+                  </span>
                 </div>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-md capitalize ${STATUS_STYLES[y.status]}`}>
-                  {y.status}
-                </span>
+                {y.status !== 'active' && y.status !== 'completed' && (
+                  <button onClick={() => setActive(y.id)} className="text-xs text-brand-600 hover:text-brand-700 font-medium">
+                    Set Active
+                  </button>
+                )}
+                {y.status === 'active' && (
+                  <span className="text-xs text-emerald-600 font-medium">Current Year</span>
+                )}
               </div>
-              {y.status !== 'active' && y.status !== 'completed' && (
-                <button onClick={() => setActive(y.id)} className="text-xs text-brand-600 hover:text-brand-700 font-medium">
-                  Set Active
-                </button>
-              )}
-              {y.status === 'active' && (
-                <span className="text-xs text-emerald-600 font-medium">Current Year</span>
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Student Promotion */}
@@ -129,10 +144,16 @@ export default function AcademicYearCyclePage({ params }: { params: { id: string
             </div>
           </div>
         </div>
-        <button onClick={() => setShowPromoteModal(true)} className="btn btn-primary flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.36 15.57A10 10 0 1 1 9.26 4.76"/></svg>
-          Run Year-End Promotion
-        </button>
+        {loadingClasses ? (
+          <div className="h-10 w-48 rounded-lg bg-surface-100 dark:bg-gray-700 animate-pulse" />
+        ) : classPromotions.length === 0 ? (
+          <p className="text-sm text-surface-400">No classes found for this school. Add classes first to enable promotion.</p>
+        ) : (
+          <button onClick={openPromoteModal} className="btn btn-primary flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.36 15.57A10 10 0 1 1 9.26 4.76"/></svg>
+            Run Year-End Promotion
+          </button>
+        )}
         {promoted && (
           <div className="text-sm text-emerald-600 font-medium flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20,6 9,17 4,12"/></svg>
@@ -183,11 +204,11 @@ export default function AcademicYearCyclePage({ params }: { params: { id: string
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-semibold text-surface-400 uppercase tracking-wide">Promotion Map</span>
                 <div className="flex gap-2">
-                  <button onClick={() => setSelectedPromotions(CLASS_PROMOTIONS.map(p => p.from))} className="text-xs text-brand-600 font-medium">Select All</button>
+                  <button onClick={() => setSelectedPromotions(classPromotions.map(p => p.from))} className="text-xs text-brand-600 font-medium">Select All</button>
                   <button onClick={() => setSelectedPromotions([])} className="text-xs text-surface-400 font-medium">Clear</button>
                 </div>
               </div>
-              {CLASS_PROMOTIONS.map(p => (
+              {classPromotions.map(p => (
                 <label key={p.from} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-surface-50 dark:hover:bg-gray-700/30 cursor-pointer">
                   <input
                     type="checkbox"

@@ -40,7 +40,8 @@ function warnRedisDown() {
 function createRedisClient(): Redis | null {
   if (typeof window !== 'undefined') return null; // browser guard
 
-  const url = process.env.REDIS_URL || 'redis://localhost:6379';
+  const url = process.env.REDIS_URL;
+  if (!url) return null; // no REDIS_URL configured — in-memory fallback will be used
 
   const client = new Redis(url, {
     maxRetriesPerRequest: 1,
@@ -59,14 +60,6 @@ export const redis: Redis | null =
   globalForRedis.redis !== undefined
     ? globalForRedis.redis
     : (globalForRedis.redis = createRedisClient());
-
-/** TTL presets in seconds */
-export const TTL = {
-  dashboard:       120,  // 2 min  — analytics cards
-  dashboardParent:  60,  // 1 min  — per-child view
-  notifications:    60,  // 1 min  — notification bell
-  list:            300,  // 5 min  — paginated lists
-} as const;
 
 /**
  * Get a cached value. Falls back to in-memory cache when Redis is unavailable.

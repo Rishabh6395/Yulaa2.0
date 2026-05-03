@@ -3,11 +3,11 @@ import { cacheGet, cacheSet, cacheInvalidate, tryLock, releaseLock } from '@/lib
 export { cacheInvalidate };
 
 export const CacheTTL = {
-  dashboard:       120,  // 2 min
-  dashboardParent:  60,  // 1 min
-  notifications:    60,  // 1 min — notification bell
-  list:            300,  // 5 min
-} as const;
+  dashboard:       parseInt(process.env.CACHE_TTL_DASHBOARD        || '120', 10),
+  dashboardParent: parseInt(process.env.CACHE_TTL_DASHBOARD_PARENT || '60',  10),
+  notifications:   parseInt(process.env.CACHE_TTL_NOTIFICATIONS    || '60',  10),
+  list:            parseInt(process.env.CACHE_TTL_LIST             || '300', 10),
+};
 
 /**
  * Fetch data from cache, or compute it and store the result.

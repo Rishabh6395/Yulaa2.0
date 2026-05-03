@@ -7,7 +7,8 @@ export async function GET(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
-    const types = await getLeaveTypesForRole(primaryRole.school_id!, primaryRole.role_code);
-    return Response.json({ types });
+    // school_id is null for parents — getLeaveTypesForRole handles this by returning fallbacks
+    const { types, configured } = await getLeaveTypesForRole(primaryRole.school_id, primaryRole.role_code);
+    return Response.json({ types, configured });
   } catch (err) { return handleError(err); }
 }

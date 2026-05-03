@@ -60,13 +60,13 @@ export async function computeAdminDashboard(schoolId: string) {
     prisma.attendance.findMany({ where: { schoolId, date: today }, select: { status: true } }),
     prisma.feeInvoice.findMany({ where: { schoolId }, select: { amount: true, paidAmount: true, status: true } }),
     prisma.announcement.findMany({
-      where: { schoolId }, orderBy: { createdAt: 'desc' }, take: 5,
+      where: { schoolId }, orderBy: { createdAt: 'desc' }, take: parseInt(process.env.PRECOMPUTE_LIMIT || '5', 10),
       select: { id: true, title: true, content: true, priority: true, createdAt: true },
     }),
     prisma.homework.findMany({
       where: { schoolId },
       include: { class: true, teacher: { include: { user: true } } },
-      orderBy: { createdAt: 'desc' }, take: 5,
+      orderBy: { createdAt: 'desc' }, take: parseInt(process.env.PRECOMPUTE_LIMIT || '5', 10),
     }),
   ]);
 
@@ -107,7 +107,7 @@ export async function computeTeacherDashboard(userId: string, schoolId: string) 
 
   if (!teacher) {
     const announcements = await prisma.announcement.findMany({
-      where: { schoolId }, orderBy: { createdAt: 'desc' }, take: 5,
+      where: { schoolId }, orderBy: { createdAt: 'desc' }, take: parseInt(process.env.PRECOMPUTE_LIMIT || '5', 10),
       select: { id: true, title: true, content: true, priority: true, createdAt: true },
     });
     return {
@@ -126,7 +126,7 @@ export async function computeTeacherDashboard(userId: string, schoolId: string) 
       : prisma.student.count({ where: { schoolId } }),
     myClass ? prisma.attendance.findMany({ where: { classId: myClass.id, date: today }, select: { status: true } }) : [],
     prisma.announcement.findMany({
-      where: { schoolId }, orderBy: { createdAt: 'desc' }, take: 5,
+      where: { schoolId }, orderBy: { createdAt: 'desc' }, take: parseInt(process.env.PRECOMPUTE_LIMIT || '5', 10),
       select: { id: true, title: true, content: true, priority: true, createdAt: true },
     }),
   ]);
