@@ -2,7 +2,7 @@ import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 import { upsertLeaveWorkflow } from '@/modules/leave/leave.repo';
-import { WEEKOFF_EPOCH_DATES } from '@/lib/school-utils';
+import { WEEKOFF_EPOCH_DATES, currentAcademicYearLabel } from '@/lib/school-utils';
 
 const WEEKOFF_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const WEEKOFF_YEAR  = '_weekoff_';
@@ -28,7 +28,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const schoolId = params.id;
     const url = new URL(request.url);
     const resource = url.searchParams.get('resource');
-    const academicYear = url.searchParams.get('year') || '2025-2026';
+    const academicYear = url.searchParams.get('year') || currentAcademicYearLabel();
 
     const action = url.searchParams.get('action');
     if (action === 'holiday_template') {
@@ -119,7 +119,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       const { date, name, type, academicYear } = body;
       if (!date || !name) return Response.json({ error: 'date and name required' }, { status: 400 });
       const d = new Date(date);
-      const yr = academicYear || '2025-2026';
+      const yr = academicYear || currentAcademicYearLabel();
       const holiday = await prisma.holidayCalendar.upsert({
         where: { schoolId_date: { schoolId, date: d } },
         create: { schoolId, date: d, name: name.trim(), type: type || 'mandatory', academicYear: yr },
@@ -172,8 +172,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
           if (isNaN(d.getTime())) continue;
           await prisma.holidayCalendar.upsert({
             where: { schoolId_date: { schoolId, date: d } },
-            create: { schoolId, date: d, name: row.name, type: row.type, academicYear: academicYear || '2025-2026' },
-            update: { name: row.name, type: row.type, academicYear: academicYear || '2025-2026' },
+            create: { schoolId, date: d, name: row.name, type: row.type, academicYear: academicYear || currentAcademicYearLabel() },
+            update: { name: row.name, type: row.type, academicYear: academicYear || currentAcademicYearLabel() },
           });
           added++;
         } catch { /* skip duplicates / invalid rows */ }

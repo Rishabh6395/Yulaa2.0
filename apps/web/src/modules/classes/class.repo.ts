@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { currentAcademicYearLabel } from '@/lib/school-utils';
 import type { CreateClassInput, UpdateClassInput } from './class.types';
 
 export async function findClassesBySchool(schoolId: string) {
@@ -22,7 +23,7 @@ export async function createClass(data: CreateClassInput) {
       grade:           data.grade,
       section:         data.section,
       classTeacherId:  data.classTeacherId  || null,
-      academicYear:    data.academicYear    || '2025-2026',
+      academicYear:    data.academicYear    || currentAcademicYearLabel(),
       maxStudents:     data.maxStudents     || 40,
     },
   });

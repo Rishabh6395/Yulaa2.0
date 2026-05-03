@@ -1,7 +1,7 @@
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
-import { WEEKOFF_EPOCH_DATES } from '@/lib/school-utils';
+import { WEEKOFF_EPOCH_DATES, currentAcademicYearLabel } from '@/lib/school-utils';
 
 /**
  * GET /api/holidays?year=2025-2026[&studentId=xxx]
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     if (!user) throw new UnauthorizedError();
 
     const url          = new URL(request.url);
-    const academicYear = url.searchParams.get('year') || '2025-2026';
+    const academicYear = url.searchParams.get('year') || currentAcademicYearLabel();
     const studentId    = url.searchParams.get('studentId');
 
     // Resolve schoolId — prefer explicit query param, then role, then student

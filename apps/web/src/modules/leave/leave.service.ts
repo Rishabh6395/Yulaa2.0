@@ -18,18 +18,6 @@ function currentAcademicYear(): { yearStart: Date; yearEnd: Date; label: string 
   return { yearStart: aprilStart, yearEnd: marchEnd, label: currentAcademicYearLabel() };
 }
 
-// Fallback leave types shown only when school hasn't configured any yet.
-// configured: false is returned alongside so admin UI can show a setup warning.
-const FALLBACK_PARENT_TYPES  = [
-  { code: 'sick',      name: 'Sick Leave' },
-  { code: 'emergency', name: 'Emergency Leave' },
-  { code: 'other',     name: 'Other' },
-];
-const FALLBACK_TEACHER_TYPES = [
-  { code: 'sick',   name: 'Sick Leave' },
-  { code: 'casual', name: 'Casual Leave' },
-  { code: 'other',  name: 'Other' },
-];
 
 function daysBetween(start: Date, end: Date) {
   return Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
@@ -366,10 +354,7 @@ export async function getTeacherBalances(
 
   const configured = dbTypes.length > 0 || policies.length > 0;
 
-  // Use DB-configured leave types; fall back to generic defaults if none configured
-  const typeList = dbTypes.length > 0
-    ? dbTypes.map(t => t.code)
-    : FALLBACK_TEACHER_TYPES.map(t => t.code);
+  const typeList = dbTypes.map(t => t.code);
 
   const result: LeaveBalanceRow[] = typeList.map(lt => {
     const row    = rows.find(r => r.leaveType === lt);
@@ -412,9 +397,8 @@ export async function getStudentLeaveBalance(
 export async function getLeaveTypesForRole(
   schoolId: string | null, roleCode: string,
 ): Promise<{ types: { code: string; name: string }[]; configured: boolean }> {
-  const fallback = roleCode === 'parent' ? FALLBACK_PARENT_TYPES : FALLBACK_TEACHER_TYPES;
-  if (!schoolId) return { types: fallback, configured: false };
+  if (!schoolId) return { types: [], configured: false };
   const dbTypes = await repo.findLeaveTypesByRole(schoolId, roleCode);
   if (dbTypes.length > 0) return { types: dbTypes.map(t => ({ code: t.code, name: t.name })), configured: true };
-  return { types: fallback, configured: false };
+  return { types: [], configured: false };
 }

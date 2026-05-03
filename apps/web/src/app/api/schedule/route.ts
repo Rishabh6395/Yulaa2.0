@@ -1,9 +1,9 @@
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
+import { currentAcademicYearLabel } from '@/lib/school-utils';
 
 const ALLOWED = ['super_admin', 'school_admin', 'principal'];
-const ACADEMIC_YEAR = '2025-2026';
 
 export async function GET(request: Request) {
   try {
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     if (!classId) return Response.json({ slots: [] });
 
     const timetable = await prisma.timetable.findUnique({
-      where: { schoolId_classId_academicYear: { schoolId, classId, academicYear: ACADEMIC_YEAR } },
+      where: { schoolId_classId_academicYear: { schoolId, classId, academicYear: currentAcademicYearLabel() } },
       include: {
         slots: {
           include: { teacher: { select: { id: true, user: { select: { firstName: true, lastName: true } } } } },
@@ -43,9 +43,9 @@ export async function POST(request: Request) {
     if (!classId) return Response.json({ error: 'classId required' }, { status: 400 });
 
     const timetable = await prisma.timetable.upsert({
-      where: { schoolId_classId_academicYear: { schoolId, classId, academicYear: ACADEMIC_YEAR } },
+      where: { schoolId_classId_academicYear: { schoolId, classId, academicYear: currentAcademicYearLabel() } },
       update:  { isActive: true },
-      create:  { schoolId, classId, academicYear: ACADEMIC_YEAR, isActive: true },
+      create:  { schoolId, classId, academicYear: currentAcademicYearLabel(), isActive: true },
     });
 
     await prisma.timetableSlot.deleteMany({ where: { timetableId: timetable.id } });

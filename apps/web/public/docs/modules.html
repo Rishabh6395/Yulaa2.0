@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Backend Module Reference — School Management System</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:14px;background:#f5f7fb;color:#1a1a2e}
+@media print{body{background:#fff;font-size:12px}.no-print{display:none}section{page-break-inside:avoid}}
+
+/* Sidebar */
+.layout{display:flex;min-height:100vh}
+.sidebar{width:240px;background:#0f3460;color:#cdd9e5;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;padding:20px 0}
+.sidebar h2{font-size:13px;letter-spacing:1px;text-transform:uppercase;padding:0 16px 12px;color:#e94560;border-bottom:1px solid rgba(255,255,255,.1)}
+.sidebar a{display:block;padding:7px 20px;color:#cdd9e5;text-decoration:none;font-size:13px;border-left:3px solid transparent}
+.sidebar a:hover,.sidebar a.active{background:rgba(233,69,96,.1);color:#fff;border-left-color:#e94560}
+.sidebar .group{margin-top:12px}
+.sidebar .group-label{font-size:11px;letter-spacing:.8px;text-transform:uppercase;padding:4px 16px 2px;color:#8899a6}
+.main{flex:1;padding:40px 48px;max-width:1000px}
+@media(max-width:768px){.sidebar{display:none}.main{padding:20px}}
+
+/* Headers */
+h1{font-size:26px;font-weight:700;color:#0f3460;margin-bottom:6px}
+.subtitle{font-size:14px;color:#888;margin-bottom:40px}
+h2.mod{font-size:20px;font-weight:700;color:#0f3460;border-left:5px solid #e94560;padding:4px 0 4px 14px;margin:48px 0 20px}
+h3{font-size:15px;font-weight:600;color:#16213e;margin:22px 0 8px}
+h4{font-size:13px;font-weight:600;color:#444;margin:14px 0 5px}
+p{line-height:1.7;color:#333;margin-bottom:8px}
+ul,ol{padding-left:22px;line-height:1.9;color:#333}
+li{margin-bottom:2px}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+th{background:#0f3460;color:#fff;padding:8px 12px;text-align:left;font-weight:600}
+td{padding:8px 12px;border-bottom:1px solid #e8eaf6;vertical-align:top}
+tr:nth-child(even) td{background:#f8f9fc}
+code{background:#eef0f5;padding:1px 5px;border-radius:3px;font-size:12px;font-family:monospace}
+
+/* Boxes */
+.info{background:#e3f2fd;border-left:4px solid #1976d2;padding:10px 14px;border-radius:4px;margin:12px 0;font-size:13px}
+.warn{background:#fff8e1;border-left:4px solid #f9a825;padding:10px 14px;border-radius:4px;margin:12px 0;font-size:13px}
+.fix{background:#e8f5e9;border-left:4px solid #388e3c;padding:10px 14px;border-radius:4px;margin:12px 0;font-size:13px}
+
+/* Flow diagram text */
+.flow{background:#fff;border:1px solid #e0e4f0;border-radius:8px;padding:16px 20px;font-size:13px;margin:12px 0;line-height:2}
+.flow span.arr{color:#e94560;font-weight:700;margin:0 4px}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;margin:1px 3px}
+.t-route{background:#e3f2fd;color:#0d47a1}
+.t-service{background:#f3e5f5;color:#6a1b9a}
+.t-repo{background:#fff3e0;color:#e65100}
+.t-db{background:#e8f5e9;color:#1b5e20}
+.t-util{background:#fce4ec;color:#880e4f}
+hr{border:none;border-top:1px solid #e8eaf6;margin:32px 0}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ═════════ SIDEBAR ═════════ -->
+<nav class="sidebar no-print">
+  <h2>Module Reference</h2>
+  <div class="group"><span class="group-label">Core</span>
+    <a href="#auth">Auth</a>
+    <a href="#roles">Roles &amp; Permissions</a>
+    <a href="#school-utils">School Utils</a>
+  </div>
+  <div class="group"><span class="group-label">People</span>
+    <a href="#admission">Admission</a>
+    <a href="#students">Students</a>
+    <a href="#teachers">Teachers</a>
+    <a href="#parents">Parents</a>
+    <a href="#classes">Classes</a>
+  </div>
+  <div class="group"><span class="group-label">Academic</span>
+    <a href="#timetable">Timetable &amp; Schedule</a>
+    <a href="#attendance">Attendance</a>
+    <a href="#leave">Leave</a>
+    <a href="#homework">Homework</a>
+    <a href="#exams">Exams &amp; Syllabus</a>
+  </div>
+  <div class="group"><span class="group-label">Admin</span>
+    <a href="#fees">Fees</a>
+    <a href="#holidays">Holidays &amp; Weekoffs</a>
+    <a href="#masters">Masters &amp; Config</a>
+    <a href="#form-config">Form Config</a>
+    <a href="#dashboard">Dashboard</a>
+  </div>
+  <div class="group"><span class="group-label">Communication</span>
+    <a href="#announcements">Announcements</a>
+    <a href="#queries">Queries</a>
+    <a href="#notifications">Notifications</a>
+  </div>
+  <div class="group"><span class="group-label">Other</span>
+    <a href="#compliance">Compliance</a>
+    <a href="#transport">Transport</a>
+    <a href="#super-admin">Super Admin</a>
+    <a href="#infra">Infrastructure</a>
+    <a href="#hardcoded">Hardcoded Values Audit</a>
+  </div>
+</nav>
+
+<!-- ═════════ MAIN ═════════ -->
+<main class="main">
+<h1>Backend Module Reference</h1>
+<p class="subtitle">School Management System — Architecture, Data Flow &amp; API Contracts &nbsp;|&nbsp; v1.1</p>
+
+<!-- ─────────────────────────── AUTH ─────────────────────────────── -->
+<section id="auth">
+<h2 class="mod">Auth Module</h2>
+
+<h3>Files</h3>
+<table>
+<tr><th>File</th><th>Role</th></tr>
+<tr><td><code>lib/auth.ts</code></td><td>JWT sign / verify, token extraction from request headers or cookies</td></tr>
+<tr><td><code>modules/auth/auth.service.ts</code></td><td>Login logic, password change, consultant contract expiry check</td></tr>
+<tr><td><code>modules/auth/auth.types.ts</code></td><td>DTOs: <code>LoginInput</code>, <code>LoginResponse</code>, <code>ChangePasswordInput</code></td></tr>
+</table>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/auth/login</code></td><td>POST</td><td>Verify email + password → return JWT + user with all roles</td></tr>
+<tr><td><code>/api/auth/request-otp</code></td><td>POST</td><td>Generate 6-digit OTP → store in Redis (10 min TTL) → email to user</td></tr>
+<tr><td><code>/api/auth/verify-otp</code></td><td>POST</td><td>Check OTP against Redis; mark verified</td></tr>
+<tr><td><code>/api/auth/reset-password</code></td><td>POST</td><td>Verify OTP → bcrypt new password → clear <code>mustResetPassword</code> flag</td></tr>
+<tr><td><code>/api/auth/change-password</code></td><td>POST</td><td>Authenticated: verify old password → update new (min 8 chars)</td></tr>
+<tr><td><code>/api/admin/reset-password</code></td><td>POST</td><td>Admin sets temp password → sets <code>mustResetPassword=true</code> → emails user</td></tr>
+</table>
+
+<h3>Data Flow</h3>
+<div class="flow">
+POST /login
+<span class="arr">→</span> <span class="tag t-service">auth.service.login()</span>
+<span class="arr">→</span> <span class="tag t-db">users + user_roles + schools</span>
+<span class="arr">→</span> bcrypt.compare(password, hash)
+<span class="arr">→</span> <span class="tag t-util">signToken({ id, email, roles })</span>
+<span class="arr">→</span> Return token + user object
+</div>
+<div class="flow">
+OTP Reset:
+<span class="arr">→</span> Redis: <code>otp:{userId}</code> (6-digit, 10 min TTL)
+<span class="arr">→</span> email.service: sends HTML email via Brevo SMTP
+<span class="arr">→</span> verify-otp: Redis lookup + delete on success
+<span class="arr">→</span> reset-password: bcrypt hash + DB update
+</div>
+
+<h3>Security Notes</h3>
+<ul>
+  <li>JWT stored in HTTP-only cookie (<code>token</code>) OR Authorization header (<code>Bearer …</code>)</li>
+  <li>Consultant login is blocked if contract status is <code>expired</code> or <code>terminated</code></li>
+  <li>Error message is always generic ("Invalid email or password") — no user enumeration</li>
+  <li>Token default expiry: <code>JWT_EXPIRY</code> env var (default 7 days)</li>
+</ul>
+</section>
+
+<!-- ─────────────────────────── ROLES ─────────────────────────────── -->
+<section id="roles">
+<h2 class="mod">Roles &amp; Permissions</h2>
+
+<h3>File: <code>lib/roles.ts</code></h3>
+<p>Single source of truth for role groups used in API authorization guards.</p>
+
+<table>
+<tr><th>Constant</th><th>Members</th><th>Used for</th></tr>
+<tr><td><code>CORE_ADMIN_ROLES</code></td><td>super_admin, school_admin</td><td>Destructive admin operations</td></tr>
+<tr><td><code>PRINCIPAL_ADMIN_ROLES</code></td><td>+ principal</td><td>School-wide configuration</td></tr>
+<tr><td><code>MANAGEMENT_ROLES</code></td><td>+ hod</td><td>Leave approval, reports</td></tr>
+<tr><td><code>REVIEWER_ROLES</code></td><td>+ teacher</td><td>Leave review at step level</td></tr>
+<tr><td><code>EMPLOYEE_ROLES</code></td><td>teacher, school_admin, principal, hod, employee</td><td>Leave balance deduction</td></tr>
+<tr><td><code>TIMETABLE_ROLES</code></td><td>teacher, school_admin, principal, hod</td><td>Timetable &amp; reassignment access</td></tr>
+</table>
+
+<div class="info">Role codes are stored in the <code>roles</code> table and joined via <code>user_roles</code>. The <code>getUserFromRequest()</code> function in <code>lib/auth.ts</code> loads all roles for the authenticated user on every request.</div>
+</section>
+
+<!-- ─────────────────────────── SCHOOL UTILS ─────────────────────────────── -->
+<section id="school-utils">
+<h2 class="mod">School Utils</h2>
+
+<h3>File: <code>lib/school-utils.ts</code></h3>
+<p>Shared constants and helper functions used across all school-scoped modules.</p>
+
+<table>
+<tr><th>Export</th><th>Purpose</th></tr>
+<tr><td><code>WEEKOFF_EPOCH_DATES</code></td><td>Maps Sun(0)…Sat(6) to 1970-01-04…1970-01-10 for HolidayCalendar storage</td></tr>
+<tr><td><code>getAcademicYearLabel(date)</code></td><td>Returns <code>'YYYY-YYYY+1'</code> for any date using Indian Apr–Mar year</td></tr>
+<tr><td><code>currentAcademicYearLabel()</code></td><td>Year label for today — used as default in all API routes</td></tr>
+<tr><td><code>getAcademicYearsForRange(start, end)</code></td><td>All year labels spanning a date range (for multi-year holiday lookup)</td></tr>
+<tr><td><code>assertParentOwnsStudent(userId, studentId)</code></td><td>Throws 403 via ParentStudent join table — data isolation guard for parents</td></tr>
+<tr><td><code>getStudentSchoolId(studentId)</code></td><td>Resolves schoolId from student record; throws 404 if not found</td></tr>
+<tr><td><code>getSchoolWeekoffDays(schoolId)</code></td><td>Loads weekoff day numbers (0–6) from HolidayCalendar; defaults to [0,6]</td></tr>
+</table>
+
+<div class="info">Every route that handles academic year defaults now calls <code>currentAcademicYearLabel()</code> — no hardcoded year strings remain in route files.</div>
+</section>
+
+<!-- ─────────────────────────── ADMISSION ─────────────────────────────── -->
+<section id="admission">
+<h2 class="mod">Admission Module</h2>
+
+<h3>Files</h3>
+<table>
+<tr><th>File</th><th>Role</th></tr>
+<tr><td><code>modules/admission/admission.service.ts</code></td><td>Submit, list, detail, approve/reject applications</td></tr>
+<tr><td><code>modules/admission/admission.validator.ts</code></td><td>Aadhaar format, duplicate check, grade existence check</td></tr>
+<tr><td><code>modules/admission/admission.provisioner.ts</code></td><td>Convert approved application → Student + Parent records</td></tr>
+<tr><td><code>modules/admission/admission.types.ts</code></td><td>DTOs: CreateApplicationInput, ValidationResult, ApplicationActionInput</td></tr>
+</table>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Auth</th><th>Description</th></tr>
+<tr><td><code>/api/admission/apply</code></td><td>POST</td><td>Public</td><td>Submit application with parent + children data</td></tr>
+<tr><td><code>/api/admission/applications</code></td><td>GET/POST</td><td>Admin</td><td>List / admin-create applications</td></tr>
+<tr><td><code>/api/admission/applications/[id]</code></td><td>GET/DELETE</td><td>Admin</td><td>Application detail / delete</td></tr>
+<tr><td><code>/api/admission/applications/[id]/action</code></td><td>POST</td><td>Admin</td><td>Move through workflow: approve / reject</td></tr>
+<tr><td><code>/api/admission/workflow</code></td><td>GET/POST</td><td>Admin</td><td>Configure multi-step workflow</td></tr>
+<tr><td><code>/api/admission/otp/send</code></td><td>POST</td><td>Public</td><td>Send OTP to applicant phone</td></tr>
+<tr><td><code>/api/admission/otp/verify</code></td><td>POST</td><td>Public</td><td>Verify OTP before submission</td></tr>
+</table>
+
+<h3>Data Flow — Application Submission</h3>
+<div class="flow">
+POST /apply
+<span class="arr">→</span> Validate school (admissionsOpen=true)
+<span class="arr">→</span> Phone uniqueness check (per school)
+<span class="arr">→</span> <span class="tag t-service">runValidation()</span>: Aadhaar format, grade existence (GradeMaster), duplicate Aadhaar, duplicate name+DOB
+<span class="arr">→</span> Fetch active AdmissionWorkflow
+<span class="arr">→</span> Create <span class="tag t-db">AdmissionApplication + AdmissionChild rows</span>
+<span class="arr">→</span> Return { applicationId, flags, riskScore }
+</div>
+
+<h3>Data Flow — Final Approval → Provisioning</h3>
+<div class="flow">
+POST /action { action: 'approved' }
+<span class="arr">→</span> <span class="tag t-service">processAction()</span>: advance workflow step
+<span class="arr">→</span> Last step reached?
+<span class="arr">→</span> <span class="tag t-service">provisionApprovedApplication()</span>
+<span class="arr">→</span> Create <span class="tag t-db">User + Parent + ParentStudent + Student</span>
+<span class="arr">→</span> Mark application <code>approved</code>
+</div>
+
+<h3>Validation Logic</h3>
+<ul>
+  <li><strong>Aadhaar</strong> — must be exactly 12 digits (regulatory, always enforced)</li>
+  <li><strong>Duplicate Aadhaar</strong> — checked against <code>students</code> table and non-rejected <code>admission_children</code></li>
+  <li><strong>Grade existence</strong> — applied grade must match school's <code>GradeMaster</code>. If GradeMaster is empty (school hasn't configured grades), this check is skipped</li>
+  <li><strong>Duplicate name + DOB</strong> — warning only; admins decide</li>
+  <li>Errors (severity=<code>error</code>) score +30 risk; warnings score +10. Max score = 100</li>
+</ul>
+
+<div class="fix">Grade-age check now uses <code>GradeMaster</code> from DB. If the school hasn't configured grades, the check is silently skipped (no more hardcoded age-range map).</div>
+</section>
+
+<!-- ─────────────────────────── STUDENTS ─────────────────────────────── -->
+<section id="students">
+<h2 class="mod">Students Module</h2>
+
+<h3>Files</h3>
+<table>
+<tr><th>File</th><th>Role</th></tr>
+<tr><td><code>modules/students/student.service.ts</code></td><td>CRUD, parent linking, CSV export</td></tr>
+<tr><td><code>modules/students/student.types.ts</code></td><td>DTOs: StudentListParams, CreateStudentInput, StudentRow</td></tr>
+</table>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/students</code></td><td>GET/POST/PATCH</td><td>List (paginated, filtered), create, update / add parent</td></tr>
+<tr><td><code>/api/students/bulk</code></td><td>POST</td><td>CSV bulk import (transactional)</td></tr>
+<tr><td><code>/api/students/export</code></td><td>GET</td><td>CSV download of student roster</td></tr>
+</table>
+
+<h3>Data Flow — Create Student</h3>
+<div class="flow">
+POST /students
+<span class="arr">→</span> Validate classId belongs to schoolId
+<span class="arr">→</span> Create <span class="tag t-db">Student</span>
+<span class="arr">→</span> If parent supplied: create <span class="tag t-db">User + Parent + ParentStudent</span>
+<span class="arr">→</span> Placeholder email: <code>{phone}.{schoolPrefix}@noemail.local</code> if no email provided
+</div>
+
+<h3>Cross-Module Links</h3>
+<ul>
+  <li><strong>Attendance</strong> — <code>student.id</code> is FK in <code>attendance</code></li>
+  <li><strong>Leave</strong> — <code>student.id</code> in <code>leave_requests.studentId</code></li>
+  <li><strong>Fees</strong> — <code>student.id</code> in <code>fee_invoices.studentId</code></li>
+  <li><strong>ParentStudent</strong> — join table linking Parent ↔ Student (supports multiple parents per student)</li>
+</ul>
+</section>
+
+<!-- ─────────────────────────── TEACHERS ─────────────────────────────── -->
+<section id="teachers">
+<h2 class="mod">Teachers Module</h2>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/teachers</code></td><td>GET/POST</td><td>List (paginated) / create with User account</td></tr>
+<tr><td><code>/api/teachers/bulk</code></td><td>POST</td><td>CSV bulk import</td></tr>
+<tr><td><code>/api/teachers/[id]/subjects</code></td><td>GET/POST</td><td>Assign/list teaching subjects</td></tr>
+</table>
+
+<h3>Data Flow</h3>
+<div class="flow">
+POST /teachers
+<span class="arr">→</span> Create <span class="tag t-db">User</span> (email, bcrypt password)
+<span class="arr">→</span> Create <span class="tag t-db">Teacher</span> (userId, schoolId, designation, department…)
+<span class="arr">→</span> Assign UserRole <code>teacher</code> for schoolId
+<span class="arr">→</span> sendWelcomeEmail (temp password if auto-generated)
+</div>
+
+<h3>Cross-Module Links</h3>
+<ul>
+  <li><strong>Timetable</strong> — <code>TimetableSlot.teacherId</code> assigns teacher to period</li>
+  <li><strong>Attendance</strong> — <code>Attendance.teacherId</code> (employee attendance)</li>
+  <li><strong>Leave</strong> — <code>TeacherLeaveBalance.teacherId</code> tracks leave days used</li>
+  <li><strong>TimetableReassignment</strong> — <code>originalTeacherId</code> + <code>substituteTeacherId</code></li>
+</ul>
+</section>
+
+<!-- ─────────────────────────── PARENTS ─────────────────────────────── -->
+<section id="parents">
+<h2 class="mod">Parents Module</h2>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/parents</code></td><td>GET/POST</td><td>List / create parent accounts</td></tr>
+<tr><td><code>/api/parents/bulk</code></td><td>POST</td><td>CSV bulk import</td></tr>
+<tr><td><code>/api/parent/children</code></td><td>GET</td><td>Authenticated parent: list linked children</td></tr>
+</table>
+
+<h3>Data Isolation</h3>
+<p>Every parent data access goes through <code>assertParentOwnsStudent(userId, studentId)</code> from <code>lib/school-utils.ts</code>. This queries the <code>ParentStudent</code> join table. Parents cannot see data for children they are not linked to, even within the same school.</p>
+<div class="flow">
+GET /api/leave?child_id=X
+<span class="arr">→</span> assertParentOwnsStudent(user.id, X) — throws 403 if not linked
+<span class="arr">→</span> getStudentSchoolId(X)
+<span class="arr">→</span> DB query scoped to { schoolId, studentId: X }
+</div>
+</section>
+
+<!-- ─────────────────────────── CLASSES ─────────────────────────────── -->
+<section id="classes">
+<h2 class="mod">Classes Module</h2>
+
+<h3>Files</h3>
+<table>
+<tr><th>File</th><th>Role</th></tr>
+<tr><td><code>modules/classes/class.repo.ts</code></td><td>findClassesBySchool, createClass, updateClass</td></tr>
+<tr><td><code>modules/classes/class.types.ts</code></td><td>DTOs: CreateClassInput, UpdateClassInput</td></tr>
+</table>
+
+<h3>API Route: <code>/api/classes</code></h3>
+<ul>
+  <li>GET — list classes for the authenticated user's school, includes classTeacher name and active student count</li>
+  <li>POST — create class (grade, section, name, classTeacherId, maxStudents). <code>academicYear</code> defaults to <code>currentAcademicYearLabel()</code></li>
+</ul>
+
+<h3>Cross-Module Links</h3>
+<ul>
+  <li>Students are enrolled to a class via <code>Student.classId</code></li>
+  <li>Timetable is per-class: <code>Timetable.classId</code></li>
+  <li>Attendance is recorded per-class per-date</li>
+  <li>FeeStructure can be scoped to a class</li>
+</ul>
+
+<div class="fix"><code>academicYear</code> in class creation now uses <code>currentAcademicYearLabel()</code> — no longer hardcoded to '2025-2026'.</div>
+</section>
+
+<!-- ─────────────────────────── TIMETABLE ─────────────────────────────── -->
+<section id="timetable">
+<h2 class="mod">Timetable &amp; Scheduling Module</h2>
+
+<h3>Files &amp; Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/timetable/teacher</code></td><td>GET</td><td>Teacher's schedule for a date: assigned + substitute + reassigned-away slots</td></tr>
+<tr><td><code>/api/timetable/reassign</code></td><td>GET/POST/DELETE</td><td>List / create / cancel TimetableReassignments</td></tr>
+<tr><td><code>/api/timetable/log</code></td><td>POST</td><td>Log whether a class actually occurred (TimetableLog)</td></tr>
+<tr><td><code>/api/schedule</code></td><td>GET/POST</td><td>School-level schedule slots for a class</td></tr>
+<tr><td><code>/api/super-admin/schools/[id]/timetable</code></td><td>GET/POST/DELETE</td><td>Admin: manage timetables, bulk upload, proxy reassignment</td></tr>
+</table>
+
+<h3>Data Model</h3>
+<div class="flow">
+Timetable (schoolId, classId, academicYear)
+<span class="arr">→</span> TimetableSlot (dayOfWeek, periodNo, startTime, endTime, subject, teacherId)
+<span class="arr">→</span> TimetableReassignment (slotId, originalTeacherId, substituteTeacherId, startDate, endDate, isActive)
+<span class="arr">→</span> TimetableLog (slotId, teacherId, date, status)
+</div>
+
+<h3>Teacher Daily View Logic</h3>
+<div class="flow">
+GET /api/timetable/teacher?date=2026-05-10
+<span class="arr">→</span> Resolve teacher.id from user
+<span class="arr">→</span> assignedSlots = TimetableSlot WHERE teacherId=me AND dayOfWeek=Saturday AND timetable.academicYear=current
+<span class="arr">→</span> For each: check if active TimetableReassignment exists (startDate ≤ date ≤ endDate)
+<span class="arr">→</span> substituteSlots = TimetableReassignment WHERE substituteTeacherId=me AND isActive AND date in range
+<span class="arr">→</span> Return slotType: 'assigned' | 'reassigned_away' | 'substitute'
+</div>
+
+<h3>Reassignment Safety Guards</h3>
+<ul>
+  <li>Substitute must belong to same school (<code>teacher.schoolId</code> check)</li>
+  <li>Substitute must not have approved leave during the date range (<code>LeaveRequest</code> check)</li>
+  <li>No overlapping active reassignment on same slot and date range</li>
+  <li>Substitute is notified on assignment AND on cancellation (<code>notification.service</code>)</li>
+  <li>DELETE: schoolId guard via <code>slot.timetable.schoolId</code> — prevents cross-school cancellation</li>
+</ul>
+
+<h3>Leave → Reassignment Cascade</h3>
+<div class="flow">
+Teacher withdraws approved leave
+<span class="arr">→</span> <span class="tag t-service">withdrawLeave()</span>
+<span class="arr">→</span> Find TimetableReassignments WHERE originalTeacherId=teacher AND dates overlap AND isActive
+<span class="arr">→</span> Update isActive=false for all
+<span class="arr">→</span> Notify each substitute via <span class="tag t-service">notification.service</span>
+</div>
+
+<h3>Cross-Module Links</h3>
+<ul>
+  <li><strong>Leave</strong> — substitute leave check at reassignment creation; leave withdrawal cascades to reassignment cancellation</li>
+  <li><strong>Attendance</strong> — TimetableLog tracks if period was conducted (different from student attendance)</li>
+  <li><strong>Students</strong> — student weekoff days derived from timetable (days with no slots)</li>
+</ul>
+</section>
+
+<!-- ─────────────────────────── ATTENDANCE ─────────────────────────────── -->
+<section id="attendance">
+<h2 class="mod">Attendance Module</h2>
+
+<h3>Files &amp; Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/attendance</code></td><td>GET/POST</td><td>Get / mark student or teacher attendance</td></tr>
+<tr><td><code>/api/attendance/bulk</code></td><td>POST</td><td>CSV bulk mark for whole class</td></tr>
+<tr><td><code>/api/attendance/monthly</code></td><td>GET</td><td>Monthly report for an employee (day-by-day with holiday/weekoff overlay)</td></tr>
+<tr><td><code>/api/attendance/daily/[date]</code></td><td>GET</td><td>Daily class-wise summary</td></tr>
+</table>
+
+<h3>Status Values (sourced from DB status field)</h3>
+<table>
+<tr><th>Status</th><th>Source</th><th>Meaning</th></tr>
+<tr><td>present</td><td>Marked by teacher</td><td>Normal attendance</td></tr>
+<tr><td>absent</td><td>Computed (no record on past working day)</td><td>Unrecorded working day</td></tr>
+<tr><td>late</td><td>Marked by teacher</td><td>Arrived late</td></tr>
+<tr><td>half_day</td><td>Marked by teacher</td><td>Only half-day</td></tr>
+<tr><td>excused</td><td>Marked by teacher</td><td>Authorised absence</td></tr>
+<tr><td>leave</td><td>Synced from approved LeaveRequest</td><td>Approved leave</td></tr>
+<tr><td>holiday</td><td>Derived from HolidayCalendar</td><td>School holiday</td></tr>
+<tr><td>weekoff</td><td>Derived from school weekoff config</td><td>Non-working day</td></tr>
+<tr><td>future</td><td>Computed (date > today)</td><td>Not yet</td></tr>
+</table>
+
+<h3>Monthly Report Data Flow</h3>
+<div class="flow">
+GET /api/attendance/monthly?month=2026-05
+<span class="arr">→</span> Resolve teacher.id from user
+<span class="arr">→</span> Load Attendance records for month
+<span class="arr">→</span> Load HolidayCalendar (holidays + weekoff config)
+<span class="arr">→</span> Load approved LeaveRequests overlapping month
+<span class="arr">→</span> Build day-by-day records with computed display status
+<span class="arr">→</span> Summary: present/absent/late/half_day/excused/leave/holidays/weekoffs/working_days/attendance_rate
+</div>
+
+<h3>Bulk Upload Security</h3>
+<p>When bulk-uploading student attendance, each <code>student_id</code> in the CSV is validated against <code>students WHERE id IN(...) AND classId=? AND schoolId=?</code>. Rows with student IDs from other classes or schools are silently dropped.</p>
+
+<h3>Academic Year Computation</h3>
+<p>Holiday and weekoff lookup uses the auto-computed academic year: <code>m >= 4 ? "${y}-${y+1}" : "${y-1}-${y}"</code> — so May 2026 looks up year 2026-2027 automatically.</p>
+
+<h3>Cross-Module Links</h3>
+<ul>
+  <li><strong>Leave</strong> — approved student leave auto-creates attendance records with <code>remarks='__leave__'</code>; withdrawal deletes them</li>
+  <li><strong>Holidays</strong> — HolidayCalendar is joined on every monthly report</li>
+  <li><strong>Timetable</strong> — TimetableLog is separate (period-level); Attendance is day-level for students</li>
+</ul>
+</section>
+
+<!-- ─────────────────────────── LEAVE ─────────────────────────────── -->
+<section id="leave">
+<h2 class="mod">Leave Module</h2>
+
+<h3>Files</h3>
+<table>
+<tr><th>File</th><th>Role</th></tr>
+<tr><td><code>modules/leave/leave.service.ts</code></td><td>Submit, review, withdraw, balance, effective days, leave type listing</td></tr>
+<tr><td><code>modules/leave/leave.repo.ts</code></td><td>All DB queries: create, find, advance step, balance, attendance sync</td></tr>
+<tr><td><code>modules/leave/leave.types.ts</code></td><td>LeaveRow, LeaveBalanceRow, LeaveActionRow</td></tr>
+</table>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/leave</code></td><td>GET</td><td>List leave requests (scoped by role)</td></tr>
+<tr><td><code>/api/leave</code></td><td>POST</td><td>Submit new leave request</td></tr>
+<tr><td><code>/api/leave</code></td><td>PATCH</td><td>Approve / reject (reviewer) or withdraw (self)</td></tr>
+<tr><td><code>/api/leave</code></td><td>DELETE</td><td>Admin hard-delete</td></tr>
+<tr><td><code>/api/leave/balance</code></td><td>GET</td><td>Leave balance for authenticated user</td></tr>
+<tr><td><code>/api/leave/types</code></td><td>GET</td><td>Configured leave types for current role</td></tr>
+<tr><td><code>/api/leave/effective-days</code></td><td>POST</td><td>Calculate effective working days for date range</td></tr>
+</table>
+
+<h3>Leave Lifecycle</h3>
+<div class="flow">
+Submit <span class="arr">→</span> status=<b>pending</b>, currentStep=0
+<br>Reviewer approves step 0 <span class="arr">→</span> currentStep++ OR status=<b>approved</b> (last step)
+<br>Reviewer rejects <span class="arr">→</span> status=<b>rejected</b>
+<br>Applicant withdraws pending/approved <span class="arr">→</span> status=<b>withdrawn</b>
+</div>
+
+<h3>Approval Step Validation</h3>
+<div class="flow">
+PATCH { action: 'review', id, action: 'approved' }
+<span class="arr">→</span> findLeaveById(id, schoolId) — scoped to school
+<span class="arr">→</span> Check status === 'pending'
+<span class="arr">→</span> Load LeaveWorkflow steps
+<span class="arr">→</span> Verify step.approverRole === reviewer's roleCode (if set)
+<span class="arr">→</span> Verify step.approverUserId === reviewer's userId (if set)
+<span class="arr">→</span> advanceLeaveStep() → returns new status
+</div>
+
+<h3>Leave Types</h3>
+<p>Leave types come exclusively from <code>LeaveTypeMaster</code> table (school-configured). If the school has not configured any leave types, <code>GET /api/leave/types</code> returns <code>{ types: [], configured: false }</code> and the UI should show a "configure leave types" prompt.</p>
+<div class="fix">Hardcoded fallback leave types (Sick, Casual, Other) have been removed. The system now returns an empty array with <code>configured: false</code> when no types are set up.</div>
+
+<h3>Effective Days Calculation</h3>
+<div class="flow">
+countEffectiveDays(schoolId, start, end, weekoffs)
+<span class="arr">→</span> For each calendar day: skip if weekoff day OR in HolidayCalendar
+<span class="arr">→</span> Student leave: weekoffs from class timetable (days with no slots)
+<span class="arr">→</span> Employee leave: weekoffs from school leave-config (HolidayCalendar _weekoff_ entries)
+</div>
+
+<h3>Post-Approval Side Effects</h3>
+<ul>
+  <li><strong>Employee leave approved</strong> → <code>TeacherLeaveBalance.usedDays</code> incremented by effective days</li>
+  <li><strong>Student leave approved</strong> → attendance records created with <code>remarks='__leave__'</code> for each effective date</li>
+  <li><strong>Leave withdrawn (approved employee)</strong> → TimetableReassignments in the leave period are cancelled; substitutes notified</li>
+  <li><strong>Leave withdrawn (approved student)</strong> → auto-created attendance records deleted</li>
+</ul>
+
+<h3>Cross-Module Links</h3>
+<ul>
+  <li><strong>Attendance</strong> — leave approval creates/deletes attendance records</li>
+  <li><strong>Timetable</strong> — leave withdrawal cascades to reassignment cancellation</li>
+  <li><strong>Holidays</strong> — effective day count excludes school holidays</li>
+  <li><strong>school-utils</strong> — <code>assertParentOwnsStudent</code> guards parent leave submissions</li>
+</ul>
+</section>
+
+<!-- ─────────────────────────── HOMEWORK ─────────────────────────────── -->
+<section id="homework">
+<h2 class="mod">Homework Module</h2>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/homework</code></td><td>GET/POST</td><td>List (by class/subject) / create assignment</td></tr>
+<tr><td><code>/api/homework/submissions</code></td><td>GET/POST/PATCH</td><td>List / submit / grade submissions</td></tr>
+</table>
+
+<h3>Data Flow</h3>
+<div class="flow">
+Teacher creates Homework (classId, subject, dueDate, description)
+<span class="arr">→</span> Students submit HomeworkSubmission (homeworkId, studentId, fileUrl, submittedAt)
+<span class="arr">→</span> Teacher grades: HomeworkSubmission.grade, feedback
+</div>
+
+<h3>Cross-Module Links</h3>
+<ul>
+  <li>Scoped to Class → School for data isolation</li>
+  <li>Teacher creates; students in the class can submit</li>
+</ul>
+</section>
+
+<!-- ─────────────────────────── EXAMS ─────────────────────────────── -->
+<section id="exams">
+<h2 class="mod">Exams &amp; Syllabus Module</h2>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/exam</code></td><td>GET/POST</td><td>List / create exams (class, subject, max marks, passing marks, date)</td></tr>
+<tr><td><code>/api/syllabus</code></td><td>GET/POST</td><td>List / create syllabus items (class, subject, topic, completion %)</td></tr>
+</table>
+
+<h3>Data Flow</h3>
+<div class="flow">
+Exam (schoolId, classId, subject, examType, date, maxMarks, passingMarks)
+<span class="arr">→</span> ExamResult (examId, studentId, marksObtained, grade, remarks)
+<br>Syllabus (schoolId, classId, subject, topic, coveragePercent, teacherId)
+</div>
+
+<h3>Masters Dependency</h3>
+<p><code>examType</code> is sourced from <code>ExamTypeMaster</code> (school-configured). Similarly, grading criteria come from <code>GradingTypeMaster</code>.</p>
+</section>
+
+<!-- ─────────────────────────── FEES ─────────────────────────────── -->
+<section id="fees">
+<h2 class="mod">Fees Module</h2>
+
+<h3>Files</h3>
+<table>
+<tr><th>File</th><th>Role</th></tr>
+<tr><td><code>modules/fees/fee.service.ts</code></td><td>Invoice creation, payment recording, PDF generation</td></tr>
+<tr><td><code>modules/fees/fee.types.ts</code></td><td>FeeInvoiceRow, RecordPaymentInput, FeeSummary</td></tr>
+<tr><td><code>services/default-templates.ts</code></td><td>Default HTML invoice template</td></tr>
+<tr><td><code>services/template.service.ts</code></td><td>@@placeholder@@ rendering engine (21 keys)</td></tr>
+<tr><td><code>services/pdf.service.ts</code></td><td>Puppeteer HTML → PDF Buffer</td></tr>
+</table>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/fees</code></td><td>GET/POST/PATCH</td><td>List invoices / create invoice / record payment</td></tr>
+<tr><td><code>/api/fees/invoice-pdf</code></td><td>GET</td><td>Generate PDF for a specific invoice</td></tr>
+<tr><td><code>/api/fees/notify</code></td><td>POST</td><td>Send fee reminder notifications</td></tr>
+<tr><td><code>/api/fees/export</code></td><td>GET</td><td>CSV export of fee data</td></tr>
+<tr><td><code>/api/super-admin/schools/[id]/fee-structures</code></td><td>GET/POST</td><td>Configure fee types, amounts, installments</td></tr>
+</table>
+
+<h3>Data Flow — Invoice PDF</h3>
+<div class="flow">
+GET /api/fees/invoice-pdf?id=X
+<span class="arr">→</span> Load FeeInvoice + Student + School
+<span class="arr">→</span> Fetch LetterTemplate (type=fee_invoice) OR use DEFAULT_FEE_INVOICE_TEMPLATE
+<span class="arr">→</span> <span class="tag t-service">renderTemplate(html, data)</span>: replace @@student_name@@, @@invoice_no@@, etc.
+<span class="arr">→</span> <span class="tag t-service">htmlToPdf(html)</span>: Puppeteer → Buffer
+<span class="arr">→</span> Return PDF with Content-Disposition: attachment
+</div>
+
+<h3>Invoice Status Flow</h3>
+<div class="flow">
+Create invoice → <b>unpaid</b>
+<span class="arr">→</span> Record payment (partial) → <b>partial</b>
+<span class="arr">→</span> Record payment (full) → <b>paid</b>
+<span class="arr">→</span> Past due date + unpaid/partial → <b>overdue</b>
+</div>
+
+<h3>Template Placeholders (21 keys)</h3>
+<p>School: <code>@@school_name@@</code>, <code>@@school_address@@</code>, <code>@@school_email@@</code>, <code>@@school_phone@@</code>, <code>@@school_city@@</code>, <code>@@school_logo@@</code></p>
+<p>Student: <code>@@student_name@@</code>, <code>@@student_first_name@@</code>, <code>@@student_admission_no@@</code>, <code>@@student_class@@</code>, <code>@@student_grade@@</code></p>
+<p>Invoice: <code>@@invoice_no@@</code>, <code>@@invoice_date@@</code>, <code>@@invoice_amount@@</code>, <code>@@invoice_paid_amount@@</code>, <code>@@invoice_balance_due@@</code>, <code>@@invoice_status@@</code></p>
+<p>General: <code>@@generated_date@@</code>, <code>@@generated_by@@</code></p>
+</section>
+
+<!-- ─────────────────────────── HOLIDAYS ─────────────────────────────── -->
+<section id="holidays">
+<h2 class="mod">Holidays &amp; Weekoffs</h2>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/holidays</code></td><td>GET</td><td>Return holidays + weekoffDays for a school/academic year. For students: weekoffs from class timetable.</td></tr>
+<tr><td><code>/api/super-admin/schools/[id]/leave-config?resource=holidays</code></td><td>GET</td><td>Admin: all holidays for a year</td></tr>
+<tr><td><code>/api/super-admin/schools/[id]/leave-config?resource=weekoffs</code></td><td>GET</td><td>Admin: weekoff day numbers</td></tr>
+<tr><td><code>/api/super-admin/schools/[id]/leave-config</code></td><td>POST</td><td>add_holiday / bulk_holidays / upsert_weekoffs</td></tr>
+</table>
+
+<h3>Storage Model</h3>
+<p>Both holidays and weekoffs live in <code>HolidayCalendar</code>:</p>
+<ul>
+  <li><strong>Holidays</strong> — normal dates, scoped to <code>academicYear</code> (e.g., <code>'2026-2027'</code>)</li>
+  <li><strong>Weekoffs</strong> — epoch dates <code>1970-01-04…1970-01-10</code>, scoped to <code>academicYear='_weekoff_'</code></li>
+</ul>
+
+<h3>Academic Year Auto-Detection</h3>
+<div class="flow">
+All routes: <code>year</code> query param defaults to <code>currentAcademicYearLabel()</code>
+<span class="arr">→</span> May 2026 → looks up 2026-2027
+<span class="arr">→</span> January 2027 → looks up 2026-2027
+<span class="arr">→</span> No year hardcoding anywhere in routes
+</div>
+
+<div class="fix">All <code>|| '2025-2026'</code> fallbacks have been replaced with <code>|| currentAcademicYearLabel()</code> across: <code>/api/holidays</code>, <code>/api/schedule</code>, <code>/api/super-admin/…/leave-config</code>, <code>modules/classes/class.repo.ts</code>.</div>
+
+<h3>Access Control</h3>
+<ul>
+  <li>Viewing: all authenticated users</li>
+  <li>Adding/editing holidays: <strong>super_admin</strong> or <strong>principal</strong> only (school_admin blocked)</li>
+  <li>Weekoff configuration: same as holidays</li>
+</ul>
+</section>
+
+<!-- ─────────────────────────── MASTERS ─────────────────────────────── -->
+<section id="masters">
+<h2 class="mod">Masters &amp; Configuration Module</h2>
+
+<h3>Purpose</h3>
+<p>School-specific master data. Every option list in the application (blood groups, exam types, grade names, qualifications, etc.) comes from these tables — not hardcoded arrays.</p>
+
+<h3>Master Tables (all school-scoped)</h3>
+<table>
+<tr><th>Table</th><th>Route</th><th>Used By</th></tr>
+<tr><td>GradeMaster</td><td><code>/api/masters/grades</code></td><td>Class creation, admission validation</td></tr>
+<tr><td>BloodGroupMaster</td><td><code>/api/masters/blood-groups</code></td><td>Student profile, admission form</td></tr>
+<tr><td>QualificationMaster</td><td><code>/api/masters/qualifications</code></td><td>Teacher profiles</td></tr>
+<tr><td>StreamMaster</td><td><code>/api/masters/streams</code></td><td>Class streams (Science, Commerce, Arts)</td></tr>
+<tr><td>ExamTypeMaster</td><td><code>/api/masters/exam-types</code></td><td>Exam creation</td></tr>
+<tr><td>GradingTypeMaster</td><td><code>/api/masters/grading-types</code></td><td>Grade letter mapping (A, B, C…)</td></tr>
+<tr><td>EventTypeMaster</td><td><code>/api/masters/event-types</code></td><td>School events</td></tr>
+<tr><td>AnnouncementTypeMaster</td><td><code>/api/masters/announcement-types</code></td><td>Announcement categories</td></tr>
+<tr><td>CountryMaster</td><td><code>/api/masters/countries</code></td><td>Address forms</td></tr>
+<tr><td>StateMaster</td><td><code>/api/masters/states</code></td><td>Address forms</td></tr>
+<tr><td>DistrictMaster</td><td><code>/api/masters/districts</code></td><td>Address forms</td></tr>
+<tr><td>SchoolLocationMaster</td><td><code>/api/masters/school-location</code></td><td>School address details</td></tr>
+<tr><td>SchoolHierarchyMaster</td><td><code>/api/masters/school-hierarchy</code></td><td>Org chart positions</td></tr>
+<tr><td>ContentTypeMaster</td><td><code>/api/masters/content-types</code></td><td>Dynamic form field options</td></tr>
+<tr><td>GenericMasterType</td><td><code>/api/masters/custom/[slug]</code></td><td>School-defined custom lists</td></tr>
+<tr><td>GenderMaster</td><td><code>/api/masters/genders</code></td><td>Student/teacher gender options</td></tr>
+<tr><td>LeaveTypeMaster</td><td><code>/api/super-admin/…/leave-config</code></td><td>Leave module</td></tr>
+</table>
+
+<div class="info">All frontend option lists (dropdowns, selects) must load from these APIs — never from hardcoded arrays in components.</div>
+
+<h3>Admission Grade Check → GradeMaster</h3>
+<p>The admission validator now queries <code>GradeMaster</code> to verify the applied grade is in the school's configured list. If the school has no grades configured (empty GradeMaster), the grade check is skipped entirely.</p>
+</section>
+
+<!-- ─────────────────────────── FORM CONFIG ─────────────────────────────── -->
+<section id="form-config">
+<h2 class="mod">Form Config Module</h2>
+
+<h3>Purpose</h3>
+<p>Per-school, per-form, per-role field configuration — controls which fields are visible, editable, required, and what label they show for each school's custom needs.</p>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/form-config</code></td><td>GET/POST</td><td>Load / update field configs for authenticated school</td></tr>
+<tr><td><code>/api/form-config/public</code></td><td>GET</td><td>No auth — admission form config for applicants</td></tr>
+<tr><td><code>/api/form-config/sync</code></td><td>POST</td><td>Reset form config to canonical defaults from <code>lib/formDefinitions.ts</code></td></tr>
+</table>
+
+<h3>Data Flow</h3>
+<div class="flow">
+Form renders
+<span class="arr">→</span> GET /api/form-config?formId=admission_form
+<span class="arr">→</span> Load FormConfig rows for { schoolId, formId, roleCode }
+<span class="arr">→</span> Merge with FORM_DEFINITIONS base (visible/editable/required/label)
+<span class="arr">→</span> Apply school overrides on top of defaults
+</div>
+
+<h3>Form IDs (from <code>lib/formDefinitions.ts</code>)</h3>
+<p>admission_form, add_class_form, add_student_form, add_teacher_form, add_parent_form, create_exam_form, profile_information_form, query_form</p>
+</section>
+
+<!-- ─────────────────────────── DASHBOARD ─────────────────────────────── -->
+<section id="dashboard">
+<h2 class="mod">Dashboard Module</h2>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/dashboard</code></td><td>GET</td><td>Aggregated stats for admin or parent view</td></tr>
+<tr><td><code>/api/cron/dashboard</code></td><td>GET</td><td>Cron-triggered pre-computation and cache warm-up</td></tr>
+</table>
+
+<h3>Cache Strategy</h3>
+<div class="flow">
+withCacheLock(key, ttl, fn)
+<span class="arr">→</span> Try Redis GET
+<span class="arr">→</span> Cache miss: acquire distributed lock (10s hold, 150ms retry)
+<span class="arr">→</span> Execute DB aggregation
+<span class="arr">→</span> Redis SET (TTL: admin=120s, parent=60s)
+<span class="arr">→</span> Release lock
+</div>
+
+<h3>Fallback</h3>
+<p>If Redis is unavailable, falls back to in-process <code>Map</code>-based cache (same TTLs). Cache miss warning is logged once per 60s.</p>
+
+<h3>Admin Dashboard Stats</h3>
+<ul>
+  <li>Total students, teachers, active admissions</li>
+  <li>Today's attendance rate</li>
+  <li>Pending fee amount, recent payments</li>
+  <li>Pending leave approvals count</li>
+</ul>
+</section>
+
+<!-- ─────────────────────────── ANNOUNCEMENTS ─────────────────────────────── -->
+<section id="announcements">
+<h2 class="mod">Announcements &amp; Events Module</h2>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/announcements</code></td><td>GET/POST</td><td>List / create school-wide announcements</td></tr>
+<tr><td><code>/api/events</code></td><td>GET/POST</td><td>List / create school events (calendar)</td></tr>
+</table>
+
+<h3>Masters Dependency</h3>
+<p>Announcement categories come from <code>AnnouncementTypeMaster</code>. Event categories come from <code>EventTypeMaster</code>. Both are school-configured — no hardcoded type lists.</p>
+</section>
+
+<!-- ─────────────────────────── QUERIES ─────────────────────────────── -->
+<section id="queries">
+<h2 class="mod">Queries (Support) Module</h2>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/queries</code></td><td>GET/POST</td><td>Students/parents submit queries; admins list and respond</td></tr>
+</table>
+
+<h3>Data Flow</h3>
+<div class="flow">
+Parent/Student submits StudentQuery (subject, description)
+<span class="arr">→</span> Admin assigns to a responder
+<span class="arr">→</span> Responder replies → query.status = 'resolved'
+<span class="arr">→</span> Notification sent to submitter
+</div>
+</section>
+
+<!-- ─────────────────────────── NOTIFICATIONS ─────────────────────────────── -->
+<section id="notifications">
+<h2 class="mod">Notifications Module</h2>
+
+<h3>File: <code>services/notification.service.ts</code></h3>
+<p>Currently a stub implementation that logs to console in development. Production integration (push/in-app) is pending.</p>
+
+<h3>Channels</h3>
+<ul>
+  <li><code>in_app</code> — stored in DB, shown in notification bell</li>
+  <li><code>push</code> — browser push notification (requires user permission)</li>
+  <li><code>sms</code> — stub only, not yet wired</li>
+</ul>
+
+<h3>Events that Trigger Notifications</h3>
+<table>
+<tr><th>Event</th><th>Recipient</th><th>Module</th></tr>
+<tr><td>Timetable reassignment created</td><td>Substitute teacher</td><td>Timetable</td></tr>
+<tr><td>Timetable reassignment cancelled</td><td>Substitute teacher</td><td>Timetable / Leave</td></tr>
+<tr><td>Leave approved/rejected</td><td>Applicant</td><td>Leave</td></tr>
+<tr><td>Fee reminder</td><td>Parent</td><td>Fees</td></tr>
+<tr><td>Welcome email</td><td>New user</td><td>Auth</td></tr>
+<tr><td>Attendance marked</td><td>Parent (future)</td><td>Attendance</td></tr>
+</table>
+
+<h3>API Route: <code>/api/notifications</code> GET</h3>
+<p>Returns list of notifications for the authenticated user (in-app channel).</p>
+</section>
+
+<!-- ─────────────────────────── COMPLIANCE ─────────────────────────────── -->
+<section id="compliance">
+<h2 class="mod">Compliance Module</h2>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/compliance</code></td><td>GET/POST</td><td>List / create compliance audit items</td></tr>
+<tr><td><code>/api/compliance/[id]</code></td><td>PATCH</td><td>Update status (complete, pending, overdue)</td></tr>
+</table>
+<p>Used by school admin and super admin to track regulatory / audit requirements. Items are school-scoped.</p>
+</section>
+
+<!-- ─────────────────────────── TRANSPORT ─────────────────────────────── -->
+<section id="transport">
+<h2 class="mod">Transport Module</h2>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/api/transport</code></td><td>GET/POST</td><td>Manage transport routes and student pickup assignments</td></tr>
+</table>
+<p>School-scoped transport routes with stop points. Students can be assigned to a route.</p>
+</section>
+
+<!-- ─────────────────────────── SUPER ADMIN ─────────────────────────────── -->
+<section id="super-admin">
+<h2 class="mod">Super Admin Module</h2>
+
+<h3>API Routes</h3>
+<table>
+<tr><th>Route Pattern</th><th>Methods</th><th>Description</th></tr>
+<tr><td><code>/api/super-admin/schools</code></td><td>GET/POST</td><td>List all schools / create new tenant</td></tr>
+<tr><td><code>/api/super-admin/schools/[id]</code></td><td>PATCH</td><td>Update school: name, status, settings</td></tr>
+<tr><td><code>/api/super-admin/schools/[id]/users</code></td><td>GET/POST</td><td>View / create users for a school</td></tr>
+<tr><td><code>/api/super-admin/schools/[id]/classes</code></td><td>GET/POST</td><td>Manage class structure</td></tr>
+<tr><td><code>/api/super-admin/schools/[id]/students</code></td><td>GET/POST</td><td>View / create students</td></tr>
+<tr><td><code>/api/super-admin/schools/[id]/teachers</code></td><td>GET/POST</td><td>View / create teachers</td></tr>
+<tr><td><code>/api/super-admin/schools/[id]/fee-structures</code></td><td>GET/POST</td><td>Fee type configuration</td></tr>
+<tr><td><code>/api/super-admin/schools/[id]/leave-config</code></td><td>GET/POST/PUT/DELETE</td><td>Leave types, policies, workflows, holidays, weekoffs</td></tr>
+<tr><td><code>/api/super-admin/schools/[id]/timetable</code></td><td>GET/POST/DELETE</td><td>Timetable admin, bulk upload, proxy reassignment</td></tr>
+<tr><td><code>/api/super-admin/schools/[id]/menu-permissions</code></td><td>GET/POST</td><td>Role → UI menu visibility</td></tr>
+<tr><td><code>/api/super-admin/users</code></td><td>GET/POST</td><td>Platform-wide user management</td></tr>
+</table>
+
+<h3>Multi-Tenancy Model</h3>
+<div class="flow">
+Every school-scoped route: schoolId = params.id (URL) OR primary.school_id (token)
+<span class="arr">→</span> Super admin: can query any school via schoolId param
+<span class="arr">→</span> School admin / principal: locked to own school_id from JWT
+<span class="arr">→</span> Cross-school queries impossible for non-super roles
+</div>
+</section>
+
+<!-- ─────────────────────────── INFRASTRUCTURE ─────────────────────────────── -->
+<section id="infra">
+<h2 class="mod">Infrastructure &amp; Services</h2>
+
+<h3>lib/prisma.ts — Database</h3>
+<ul>
+  <li>Neon PostgreSQL via PG adapter (Pool: max 3 connections, 30s timeout for cold-start)</li>
+  <li>Prefers <code>DIRECT_URL</code> over <code>DATABASE_URL</code> to bypass PgBouncer for migrations</li>
+  <li>SSL: <code>rejectUnauthorized=false</code> (dev; set to true in prod)</li>
+</ul>
+
+<h3>lib/redis.ts — Caching</h3>
+<ul>
+  <li>ioredis client with automatic fallback to in-process Map cache</li>
+  <li>Lock prefix: <code>lock:</code> | SCAN-based cache invalidation (non-blocking)</li>
+  <li>Logs one warning per 60s when Redis is unavailable</li>
+</ul>
+
+<h3>services/cache.service.ts — Cache Pattern</h3>
+<ul>
+  <li><code>withCache(key, ttl, fn)</code> — simple cache-aside</li>
+  <li><code>withCacheLock(key, ttl, fn)</code> — prevents cache stampede (thundering herd)</li>
+  <li>TTLs (env-configurable): dashboard=120s, parent dashboard=60s, lists=300s</li>
+</ul>
+
+<h3>services/email.service.ts — Email</h3>
+<ul>
+  <li>Brevo (Sendinblue) SMTP API</li>
+  <li>App name: <code>NEXT_PUBLIC_APP_NAME</code> env var</li>
+  <li>App URL: <code>NEXT_PUBLIC_APP_URL</code> env var</li>
+  <li>Dev mode: logs to console when <code>BREVO_API_KEY</code> not set</li>
+</ul>
+
+<h3>services/pdf.service.ts — PDF Generation</h3>
+<ul>
+  <li>Puppeteer (headless Chrome) — dynamic import to avoid cold-start overhead</li>
+  <li>A4 format, 15mm margins, <code>printBackground=true</code></li>
+  <li>Sandboxed: <code>--no-sandbox</code> flag for Docker/serverless environments</li>
+</ul>
+
+<h3>utils/pagination.ts</h3>
+<ul>
+  <li>Default limit: 20, max: 100</li>
+  <li><code>parsePagination(searchParams)</code> → <code>{ page, limit, skip }</code></li>
+</ul>
+
+<h3>utils/errors.ts — Error Handling</h3>
+<ul>
+  <li>Prisma error codes mapped to HTTP status (P2025→404, P2002→409, P1001→503, etc.)</li>
+  <li>All API routes use <code>handleError(err)</code> in catch block</li>
+  <li>Dev mode includes stack traces in responses</li>
+</ul>
+</section>
+
+<!-- ─────────────────────────── HARDCODED AUDIT ─────────────────────────────── -->
+<section id="hardcoded">
+<h2 class="mod">Hardcoded Values Audit</h2>
+
+<h3>Fixed in This Release</h3>
+<table>
+<tr><th>Location</th><th>Was</th><th>Now</th></tr>
+<tr><td><code>api/timetable/teacher/route.ts</code></td><td><code>const ACADEMIC_YEAR = '2025-2026'</code></td><td><code>currentAcademicYearLabel()</code></td></tr>
+<tr><td><code>api/schedule/route.ts</code></td><td><code>const ACADEMIC_YEAR = '2025-2026'</code></td><td><code>currentAcademicYearLabel()</code></td></tr>
+<tr><td><code>api/holidays/route.ts</code></td><td><code>|| '2025-2026'</code></td><td><code>|| currentAcademicYearLabel()</code></td></tr>
+<tr><td><code>api/super-admin/…/leave-config</code> (3 places)</td><td><code>|| '2025-2026'</code></td><td><code>|| currentAcademicYearLabel()</code></td></tr>
+<tr><td><code>api/super-admin/…/timetable</code> (4 places)</td><td><code>|| '2025-2026'</code></td><td><code>|| currentAcademicYearLabel()</code></td></tr>
+<tr><td><code>modules/classes/class.repo.ts</code></td><td><code>|| '2025-2026'</code></td><td><code>|| currentAcademicYearLabel()</code></td></tr>
+<tr><td><code>dashboard/schools/[id]/leave/page.tsx</code></td><td><code>useState('2025-2026')</code></td><td><code>useState(currentAcademicYear)</code></td></tr>
+<tr><td><code>dashboard/attendance/page.tsx</code> (4 places)</td><td>Wrong year formula</td><td>Correct Apr–Mar formula</td></tr>
+<tr><td><code>modules/leave/leave.service.ts</code></td><td>FALLBACK_PARENT_TYPES, FALLBACK_TEACHER_TYPES</td><td>Returns <code>{ types: [], configured: false }</code></td></tr>
+<tr><td><code>modules/admission/admission.validator.ts</code></td><td>GRADE_AGE_MAP (hardcoded age ranges)</td><td>Checks school's GradeMaster; skips if empty</td></tr>
+<tr><td><code>timetable/reassign/route.ts</code> DELETE</td><td>No schoolId guard</td><td><code>slot.timetable.schoolId</code> guard added</td></tr>
+</table>
+
+<h3>Legitimate Constants (Not Changed)</h3>
+<table>
+<tr><th>Constant</th><th>Location</th><th>Reason</th></tr>
+<tr><td>Role codes (super_admin, teacher, …)</td><td><code>lib/roles.ts</code></td><td>System identity constants; stored in DB but referenced as strings</td></tr>
+<tr><td>WEEKOFF_EPOCH_DATES</td><td><code>lib/school-utils.ts</code></td><td>Encoding scheme (not business data); 1970-01-04..10 is a technical choice</td></tr>
+<tr><td>Aadhaar: 12 digits</td><td>admission.validator.ts</td><td>Indian regulatory requirement (UIDAI)</td></tr>
+<tr><td>JWT expiry 7 days</td><td><code>lib/auth.ts</code></td><td>Default; overridden by <code>JWT_EXPIRY</code> env var</td></tr>
+<tr><td>Pagination default 20 / max 100</td><td><code>utils/pagination.ts</code></td><td>System default; reasonable limit</td></tr>
+<tr><td>Prisma pool: max 3 connections</td><td><code>lib/prisma.ts</code></td><td>Neon free tier limit; env-overridable</td></tr>
+<tr><td>PDF: A4, 15mm margins</td><td><code>services/pdf.service.ts</code></td><td>Print standard; no need for DB config</td></tr>
+<tr><td>Indian academic year (April start)</td><td><code>lib/school-utils.ts</code></td><td>Regulatory (CBSE/state boards); hardcoded correctly</td></tr>
+<tr><td>Template placeholder format @@key@@</td><td><code>services/template.service.ts</code></td><td>Technical format, not business data</td></tr>
+<tr><td>Password min 8 chars</td><td><code>modules/auth/auth.service.ts</code></td><td>Security policy baseline</td></tr>
+<tr><td>Cache TTLs (120s / 60s / 300s)</td><td><code>services/cache.service.ts</code></td><td>Env-overridable; sane defaults</td></tr>
+<tr><td>Parent placeholder email format</td><td><code>modules/students/student.service.ts</code></td><td>Functional placeholder; clearly marked <code>@noemail.local</code></td></tr>
+</table>
+
+<h3>What the UI Must Do (Leave Types)</h3>
+<p>Since fallback leave types have been removed, the leave application form must handle <code>configured: false</code>:</p>
+<ul>
+  <li>If <code>GET /api/leave/types</code> returns <code>{ types: [], configured: false }</code> → show: <em>"Leave types are not configured for this school. Please contact your administrator."</em></li>
+  <li>Do not show a hardcoded dropdown; block submission until types are configured</li>
+</ul>
+</section>
+
+<hr/>
+<p style="text-align:center;color:#aaa;font-size:12px;padding:20px 0">
+  School Management System — Backend Module Reference v1.1 &nbsp;|&nbsp; Generated 2026-05-03
+</p>
+</main>
+</div>
+</body>
+</html>
