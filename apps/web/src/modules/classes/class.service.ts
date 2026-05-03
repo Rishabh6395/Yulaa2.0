@@ -5,16 +5,17 @@ import type { ClassRow } from './class.types';
 export async function listClasses(schoolId: string): Promise<ClassRow[]> {
   const classes = await repo.findClassesBySchool(schoolId);
   return classes.map((c) => ({
-    id:            c.id,
-    grade:         c.grade,
-    section:       c.section,
-    capacity:      c.maxStudents,
-    academic_year: c.academicYear,
-    teacher_name:        c.classTeacher
+    id:                    c.id,
+    name:                  c.name || `${c.grade}-${c.section}`,
+    grade:                 c.grade,
+    section:               c.section,
+    capacity:              c.maxStudents,
+    academic_year:         c.academicYear,
+    teacher_name:          c.classTeacher
       ? `${c.classTeacher.user.firstName} ${c.classTeacher.user.lastName}`
       : null,
     class_teacher_user_id: c.classTeacher?.user.id ?? null,
-    student_count: c._count.students,
+    student_count:         c._count.students,
   }));
 }
 

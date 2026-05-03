@@ -4,6 +4,286 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Modal from '@/components/ui/Modal';
 import PageError from '@/components/ui/PageError';
 
+// ─── Fee Type Master Modal ────────────────────────────────────────────────────
+
+function FeeTypeMasterModal({ open, onClose, token }: { open: boolean; onClose: () => void; token: string }) {
+  const [structures, setStructures] = useState<any[]>([]);
+  const [classes,    setClasses]    = useState<any[]>([]);
+  const [loading,    setLoading]    = useState(false);
+  const [form,       setForm]       = useState({ id: '', name: '', amount: '', frequency: 'monthly', classId: '' });
+  const [saving,     setSaving]     = useState(false);
+  const [msg,        setMsg]        = useState('');
+
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [sr, cr] = await Promise.all([
+        fetch('/api/fees?action=structures', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch('/api/classes', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      ]);
+      setStructures(sr.structures || []);
+      setClasses(cr.classes || []);
+    } finally { setLoading(false); }
+  }, [token]);
+
+  useEffect(() => { if (open) load(); }, [open, load]);
+
+  const FREQ_OPTS = [
+    { v: 'one_time', l: 'One Time' }, { v: 'monthly', l: 'Monthly' },
+    { v: 'quarterly', l: 'Quarterly' }, { v: 'annually', l: 'Annually' },
+  ];
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name || !form.amount) { setMsg('Name and amount are required'); return; }
+    setSaving(true); setMsg('');
+    try {
+      const res = await fetch('/api/fees', {
+        method: 'POST', headers,
+        body: JSON.stringify({ action: 'upsert_structure', ...form, amount: parseFloat(form.amount) }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setMsg(d.error || 'Failed to save'); return; }
+      setForm({ id: '', name: '', amount: '', frequency: 'monthly', classId: '' });
+      load();
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this fee type?')) return;
+    await fetch(`/api/fees?structureId=${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    load();
+  };
+
+  const fmt = (n: any) => `₹${parseFloat(n || 0).toLocaleString('en-IN')}`;
+
+  return (
+    <Modal open={open} onClose={onClose} title="Fee Type Master">
+      <div className="space-y-5">
+        <form onSubmit={handleSave} className="space-y-3 p-4 bg-surface-50 dark:bg-gray-800/40 rounded-xl border border-surface-200 dark:border-gray-700">
+          <p className="text-xs font-semibold text-surface-500 uppercase tracking-wide">{form.id ? 'Edit Fee Type' : 'Add Fee Type'}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Name *</label>
+              <input className="input-field" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Tuition Fee" />
+            </div>
+            <div>
+              <label className="label">Amount (₹) *</label>
+              <input type="number" className="input-field" required min="1" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Frequency</label>
+              <select className="input-field" value={form.frequency} onChange={e => setForm(f => ({ ...f, frequency: e.target.value }))}>
+                {FREQ_OPTS.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">Class (optional)</label>
+              <select className="input-field" value={form.classId} onChange={e => setForm(f => ({ ...f, classId: e.target.value }))}>
+                <option value="">All Classes</option>
+                {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          </div>
+          {msg && <p className="text-xs text-red-600">{msg}</p>}
+          <div className="flex gap-2">
+            {form.id && <button type="button" onClick={() => setForm({ id: '', name: '', amount: '', frequency: 'monthly', classId: '' })} className="btn-secondary text-sm">Cancel Edit</button>}
+            <button type="submit" disabled={saving} className="btn-primary text-sm">{saving ? 'Saving...' : form.id ? 'Update' : 'Add Fee Type'}</button>
+          </div>
+        </form>
+
+        {loading ? (
+          <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-10 bg-surface-100 dark:bg-gray-700 rounded-lg animate-pulse" />)}</div>
+        ) : structures.length === 0 ? (
+          <p className="text-sm text-surface-400 text-center py-4">No fee types configured yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {structures.map((s: any) => (
+              <div key={s.id} className="flex items-center justify-between p-3 rounded-xl border border-surface-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{s.name}</p>
+                  <p className="text-xs text-surface-400">{fmt(s.amount)} · {s.frequency}{s.class_name ? ` · ${s.class_name}` : ''}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setForm({ id: s.id, name: s.name, amount: String(s.amount), frequency: s.frequency, classId: s.classId || '' })}
+                    className="text-xs text-brand-600 dark:text-brand-400 hover:underline">Edit</button>
+                  <button onClick={() => handleDelete(s.id)} className="text-xs text-red-500 hover:underline">Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+// ─── Apply Fees Modal ─────────────────────────────────────────────────────────
+
+function ApplyFeesModal({ open, onClose, token, onSuccess }: { open: boolean; onClose: () => void; token: string; onSuccess: () => void }) {
+  const [classes,    setClasses]    = useState<any[]>([]);
+  const [structures, setStructures] = useState<any[]>([]);
+  const [students,   setStudents]   = useState<any[]>([]);
+  const [scope,      setScope]      = useState<'class' | 'students'>('class');
+  const [classId,    setClassId]    = useState('');
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const [feeStructureId, setFeeStructureId]     = useState('');
+  const [amount,     setAmount]     = useState('');
+  const [dueDate,    setDueDate]    = useState('');
+  const [applying,   setApplying]   = useState(false);
+  const [msg,        setMsg]        = useState<{ type: string; text: string } | null>(null);
+
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const fmt = (n: any) => `₹${parseFloat(n || 0).toLocaleString('en-IN')}`;
+
+  useEffect(() => {
+    if (!open) return;
+    Promise.all([
+      fetch('/api/classes', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch('/api/fees?action=structures', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+    ]).then(([cr, sr]) => {
+      setClasses(cr.classes || []);
+      setStructures(sr.structures || []);
+    });
+  }, [open, token]);
+
+  useEffect(() => {
+    if (!classId) { setStudents([]); return; }
+    fetch(`/api/students?class_id=${classId}&status=active`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setStudents(d.students || []));
+  }, [classId, token]);
+
+  // Auto-fill amount when structure is selected
+  useEffect(() => {
+    const s = structures.find((x: any) => x.id === feeStructureId);
+    if (s) setAmount(String(s.amount));
+  }, [feeStructureId, structures]);
+
+  const toggleStudent = (id: string) =>
+    setSelectedStudents(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  const handleApply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dueDate) { setMsg({ type: 'error', text: 'Due date is required' }); return; }
+    if (!amount || parseFloat(amount) <= 0) { setMsg({ type: 'error', text: 'Amount must be greater than 0' }); return; }
+    if (scope === 'students' && selectedStudents.length === 0) { setMsg({ type: 'error', text: 'Select at least one student' }); return; }
+    if (scope === 'class' && !classId) { setMsg({ type: 'error', text: 'Select a class' }); return; }
+    setApplying(true); setMsg(null);
+    try {
+      const res = await fetch('/api/fees', {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          action:          'apply_bulk',
+          classId:         scope === 'class' ? classId : undefined,
+          studentIds:      scope === 'students' ? selectedStudents : [],
+          feeStructureId:  feeStructureId || undefined,
+          amount:          parseFloat(amount),
+          dueDate,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setMsg({ type: 'error', text: d.error || 'Failed to apply fees' }); return; }
+      const failNote = d.failed > 0 ? ` (${d.failed} failed — may already have an invoice)` : '';
+      setMsg({ type: d.failed > 0 ? 'error' : 'success', text: `Fee applied to ${d.created} student${d.created !== 1 ? 's' : ''}${failNote}` });
+      setTimeout(() => { onClose(); onSuccess(); }, 1500);
+    } finally { setApplying(false); }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Apply Fees">
+      <form onSubmit={handleApply} className="space-y-4">
+        {/* Scope selector */}
+        <div>
+          <label className="label">Apply To</label>
+          <div className="flex gap-2 mt-1">
+            {(['class', 'students'] as const).map(s => (
+              <button key={s} type="button" onClick={() => { setScope(s); setSelectedStudents([]); }}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${scope === s ? 'bg-brand-500 text-white border-brand-500' : 'bg-white dark:bg-gray-800 border-surface-200 dark:border-gray-700 text-surface-500 hover:bg-surface-50'}`}>
+                {s === 'class' ? 'Entire Class' : 'Select Students'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Class selector */}
+        <div>
+          <label className="label">Class *</label>
+          <select className="input-field" required value={classId} onChange={e => { setClassId(e.target.value); setSelectedStudents([]); }}>
+            <option value="">Select class</option>
+            {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+
+        {/* Student multi-select */}
+        {scope === 'students' && classId && (
+          <div>
+            <label className="label">Students *</label>
+            {students.length === 0 ? (
+              <p className="text-sm text-surface-400 py-2">No active students in this class.</p>
+            ) : (
+              <div className="border border-surface-200 dark:border-gray-700 rounded-xl overflow-hidden max-h-40 overflow-y-auto">
+                <div className="flex items-center justify-between px-3 py-2 bg-surface-50 dark:bg-gray-800 border-b border-surface-200 dark:border-gray-700">
+                  <span className="text-xs font-medium text-surface-500">{selectedStudents.length}/{students.length} selected</span>
+                  <button type="button" className="text-xs text-brand-600 dark:text-brand-400"
+                    onClick={() => setSelectedStudents(selectedStudents.length === students.length ? [] : students.map((s: any) => s.id))}>
+                    {selectedStudents.length === students.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                {students.map((s: any) => (
+                  <label key={s.id} className="flex items-center gap-3 px-3 py-2 hover:bg-surface-50 dark:hover:bg-gray-700/50 cursor-pointer border-b border-surface-100 dark:border-gray-700/50 last:border-0">
+                    <input type="checkbox" className="rounded" checked={selectedStudents.includes(s.id)} onChange={() => toggleStudent(s.id)} />
+                    <span className="text-sm text-gray-900 dark:text-gray-100">{s.firstName} {s.lastName}</span>
+                    {s.admissionNo && <span className="text-xs text-surface-400 ml-auto">{s.admissionNo}</span>}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Fee structure */}
+        <div>
+          <label className="label">Fee Type (optional)</label>
+          <select className="input-field" value={feeStructureId} onChange={e => setFeeStructureId(e.target.value)}>
+            <option value="">Custom amount</option>
+            {structures.map((s: any) => <option key={s.id} value={s.id}>{s.name} — {fmt(s.amount)}</option>)}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label">Amount (₹) *</label>
+            <input type="number" className="input-field" required min="1" step="0.01"
+              value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" />
+          </div>
+          <div>
+            <label className="label">Due Date *</label>
+            <input type="date" className="input-field" required value={dueDate} onChange={e => setDueDate(e.target.value)} />
+          </div>
+        </div>
+
+        {msg && (
+          <div className={`px-3 py-2 rounded-lg text-sm font-medium ${msg.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400'}`}>
+            {msg.text}
+          </div>
+        )}
+
+        <div className="flex gap-3 pt-1">
+          <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+          <button type="submit" disabled={applying} className="btn-primary flex-1">
+            {applying ? 'Applying...' : 'Apply Fees'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 // ─── Push Notification Modal ──────────────────────────────────────────────────
 
 function NotifyModal({ open, onClose, token }: { open: boolean; onClose: () => void; token: string }) {
@@ -160,6 +440,8 @@ function FeesTable({ invoices, loading, fetchError, summary, filter, setFilter, 
   onRefresh?: () => void;
 }) {
   const [showNotify,    setShowNotify]    = useState(false);
+  const [showApply,     setShowApply]     = useState(false);
+  const [showFeeTypes,  setShowFeeTypes]  = useState(false);
   const [showUpload,    setShowUpload]    = useState(false);
   const [uploadFile,    setUploadFile]    = useState<File | null>(null);
   const [uploading,     setUploading]     = useState(false);
@@ -221,7 +503,15 @@ function FeesTable({ invoices, loading, fetchError, summary, filter, setFilter, 
           <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">{subtitle}</p>
         </div>
         {!isParent && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={() => setShowFeeTypes(true)} className="btn-secondary flex items-center gap-2">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2z"/><circle cx="7" cy="7" r="1"/></svg>
+              Fee Types
+            </button>
+            <button onClick={() => setShowApply(true)} className="btn-secondary flex items-center gap-2">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              Apply Fees
+            </button>
             <button onClick={() => setShowUpload(true)} className="btn-secondary flex items-center gap-2">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               Upload Fees
@@ -233,7 +523,9 @@ function FeesTable({ invoices, loading, fetchError, summary, filter, setFilter, 
           </div>
         )}
       </div>
-      {!isParent && <NotifyModal open={showNotify} onClose={() => setShowNotify(false)} token={token} />}
+      {!isParent && <NotifyModal    open={showNotify}   onClose={() => setShowNotify(false)}   token={token} />}
+      {!isParent && <FeeTypeMasterModal open={showFeeTypes} onClose={() => setShowFeeTypes(false)} token={token} />}
+      {!isParent && <ApplyFeesModal open={showApply} onClose={() => setShowApply(false)} token={token} onSuccess={() => onRefresh?.()} />}
 
       {/* Fee Upload Modal */}
       <Modal open={showUpload} onClose={closeUpload} title="Bulk Upload Fee Invoices">

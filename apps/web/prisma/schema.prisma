@@ -1017,9 +1017,11 @@ model SyllabusItem {
   topic        String   @db.VarChar(200)
   orderNo      Int      @default(0) @map("order_no")
   academicYear String   @map("academic_year") @db.VarChar(9)
-  status       String   @default("pending") @db.VarChar(20)
+  status       String    @default("pending") @db.VarChar(20)
+  startDate    DateTime? @map("start_date") @db.Date
+  endDate      DateTime? @map("end_date") @db.Date
   completedAt  DateTime? @map("completed_at")
-  teacherId    String?  @map("teacher_id")
+  teacherId    String?   @map("teacher_id")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
   school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)

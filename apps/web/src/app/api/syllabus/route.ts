@@ -33,6 +33,7 @@ export async function GET(request: Request) {
         ...(subject ? { subject } : {}),
         ...teacherFilter,
       },
+      include: { class: { select: { name: true, grade: true, section: true } } },
       orderBy: [{ classId: 'asc' }, { subject: 'asc' }, { orderNo: 'asc' }],
     });
 
@@ -60,15 +61,15 @@ export async function POST(request: Request) {
         items.map((it: any) =>
           prisma.syllabusItem.create({
             data: {
-              schoolId,
-              classId: it.classId,
-              subject: it.subject,
-              chapter: it.chapter,
-              topic: it.topic || null,
-              orderNo: it.orderNo ?? 0,
+              school:      { connect: { id: schoolId } },
+              class:       { connect: { id: it.classId } },
+              subject:     it.subject,
+              chapter:     it.chapter,
+              topic:       it.topic || '',
+              orderNo:     it.orderNo ?? 0,
               academicYear: it.academicYear || '',
-              status: 'pending',
-              teacherId: it.teacherId || null,
+              status:      'pending',
+              ...(it.teacherId ? { teacher: { connect: { id: it.teacherId } } } : {}),
             },
           })
         )
@@ -77,19 +78,22 @@ export async function POST(request: Request) {
     }
 
     // Create single item
-    const { classId, subject, chapter, topic, orderNo, academicYear, teacherId } = body;
+    const { classId, subject, chapter, topic, orderNo, academicYear, teacherId, startDate, endDate } = body;
     if (!classId || !subject || !chapter) throw new AppError('classId, subject, chapter required');
+    const resolvedTeacherId = primary.role_code === 'teacher' ? user.id : (teacherId || null);
     const item = await prisma.syllabusItem.create({
       data: {
-        schoolId,
-        classId,
+        school:       { connect: { id: schoolId } },
+        class:        { connect: { id: classId } },
         subject,
         chapter,
-        topic: topic || null,
-        orderNo: orderNo ?? 0,
+        topic:        topic || '',
+        orderNo:      orderNo ?? 0,
         academicYear: academicYear || '',
-        status: 'pending',
-        teacherId: primary.role_code === 'teacher' ? user.id : (teacherId || null),
+        status:       'pending',
+        ...(startDate ? { startDate: new Date(startDate) } : {}),
+        ...(endDate   ? { endDate:   new Date(endDate)   } : {}),
+        ...(resolvedTeacherId ? { teacher: { connect: { id: resolvedTeacherId } } } : {}),
       },
     });
     return Response.json({ item }, { status: 201 });
@@ -105,7 +109,7 @@ export async function PATCH(request: Request) {
     if (!canManage) throw new ForbiddenError();
 
     const body = await request.json();
-    const { id, status, chapter, topic, orderNo } = body;
+    const { id, status, chapter, topic, orderNo, startDate, endDate } = body;
     if (!id) throw new AppError('id required');
 
     const schoolId = getSchoolId(user, body.schoolId);
@@ -118,10 +122,13 @@ export async function PATCH(request: Request) {
     const updated = await prisma.syllabusItem.update({
       where: { id },
       data: {
-        ...(status && { status }),
-        ...(chapter && { chapter }),
+        ...(status    && { status }),
+        ...(chapter   && { chapter }),
         ...(topic !== undefined && { topic }),
         ...(orderNo !== undefined && { orderNo }),
+        ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
+        ...(endDate   !== undefined && { endDate:   endDate   ? new Date(endDate)   : null }),
+        ...(status === 'completed' && { completedAt: new Date() }),
       },
     });
     return Response.json({ item: updated });

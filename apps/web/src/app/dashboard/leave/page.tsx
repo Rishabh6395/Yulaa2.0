@@ -205,8 +205,11 @@ export default function LeavePage() {
   const { data: balanceData } = useApi<{ balances: any[] }>(isTeacher ? '/api/leave/balance' : null);
   const balances = balanceData?.balances ?? [];
 
-  // Leave types from DB (synced with super admin master config)
-  const { data: typesData } = useApi<{ types: { code: string; name: string }[] }>('/api/leave/types');
+  // Leave types from DB — for parents, scope to the selected child's school
+  const leaveTypesUrl = isParent
+    ? (activeChild ? `/api/leave/types?child_id=${activeChild.id}` : null)
+    : '/api/leave/types';
+  const { data: typesData } = useApi<{ types: { code: string; name: string }[] }>(leaveTypesUrl);
   const leaveTypes = (typesData?.types ?? []).map(t => ({ value: t.code, label: t.name, icon: leaveIcon(t.code) }));
 
   // Filter leaves by tab / role, then by status filter

@@ -19,15 +19,30 @@ export async function findLeaveRequests(
 ) {
   if (!schoolId && !userId) return [];
 
+  // Guard: any leave that has a studentId must have that student belonging to THIS school.
+  // This prevents cross-school data leaks even if a leave record was stamped with the wrong schoolId.
+  const studentSchoolGuard = schoolId
+    ? { OR: [{ studentId: null }, { student: { schoolId } }] }
+    : null;
+
   let where: any;
   if (includeParentLeaves && schoolId && userId) {
     // Teachers: own leaves + all parent/student leaves in same school
-    where = { schoolId, OR: [{ userId }, { roleCode: 'parent' }] };
+    where = {
+      schoolId,
+      OR: [{ userId }, { roleCode: 'parent' }],
+      ...(studentSchoolGuard ? { AND: studentSchoolGuard } : {}),
+    };
   } else if (studentId && schoolId) {
-    // Parent viewing a specific child: scope to that school + that student
-    where = { schoolId, studentId };
+    // Parent viewing a specific child: scope to that school + that student.
+    // Also verify the student actually belongs to this school to prevent id-guessing attacks.
+    where = { schoolId, studentId, student: { schoolId } };
   } else {
-    where = { ...(schoolId ? { schoolId } : {}), ...(userId ? { userId } : {}) };
+    where = {
+      ...(schoolId ? { schoolId } : {}),
+      ...(userId ? { userId } : {}),
+      ...(studentSchoolGuard ? { AND: studentSchoolGuard } : {}),
+    };
   }
 
   return prisma.leaveRequest.findMany({

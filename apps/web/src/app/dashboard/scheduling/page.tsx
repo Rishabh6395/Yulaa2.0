@@ -68,7 +68,9 @@ export default function SchedulingPage() {
   const [view,           setView]           = useState<'grid' | 'periods' | 'upload' | 'reassign'>('grid');
   const [newPeriod,      setNewPeriod]      = useState({ startTime: '', endTime: '' });
 
-  const [classSubjects, setClassSubjects] = useState<string[]>([]);
+  const [classSubjects,   setClassSubjects]   = useState<string[]>([]);
+  // Maps subject name → current chapter (in_progress first, then first pending)
+  const [syllabusChapters, setSyllabusChapters] = useState<Record<string, string>>({});
 
   const fileRef        = useRef<HTMLInputElement>(null);
 
@@ -80,6 +82,30 @@ export default function SchedulingPage() {
       .then(d => setClassSubjects((d.streamMasters || []).map((m: any) => m.name)))
       .catch(() => setClassSubjects([]));
   }, [selectedClass, schoolId]);
+
+  // Fetch current syllabus chapter per subject when class changes
+  useEffect(() => {
+    if (!selectedClass) { setSyllabusChapters({}); return; }
+    fetch(`/api/syllabus?classId=${selectedClass}`, { headers: headers(false) })
+      .then(r => r.json())
+      .then(d => {
+        const items: any[] = d.items || [];
+        // For each subject, pick the in_progress chapter first, then first pending
+        const map: Record<string, string> = {};
+        for (const it of items) {
+          const sub = it.subject;
+          if (!map[sub] || (it.status === 'in_progress' && map[sub] !== it.chapter)) {
+            if (it.status === 'in_progress') {
+              map[sub] = it.chapter;
+            } else if (it.status === 'pending' && !map[sub]) {
+              map[sub] = it.chapter;
+            }
+          }
+        }
+        setSyllabusChapters(map);
+      })
+      .catch(() => setSyllabusChapters({}));
+  }, [selectedClass]);
   const [uploading,    setUploading]    = useState(false);
   const [uploadResult, setUploadResult] = useState('');
 
@@ -475,6 +501,12 @@ export default function SchedulingPage() {
                                 <option key={t.id} value={t.id}>{teacherName(t)}</option>
                               ))}
                             </select>
+                            {hasSubject && syllabusChapters[slot.subject] && (
+                              <div className="text-[10px] text-brand-600 dark:text-brand-400 font-medium truncate px-0.5 flex items-center gap-1" title={syllabusChapters[slot.subject]}>
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                                {syllabusChapters[slot.subject]}
+                              </div>
+                            )}
                           </div>
                         </td>
                       );

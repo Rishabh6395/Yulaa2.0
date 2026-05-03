@@ -1,6 +1,7 @@
 import { AppError, NotFoundError } from '@/utils/errors';
 import * as repo from './fee.repo';
 import type { FeeInvoiceRow, FeeSummary } from './fee.types';
+import { currentAcademicYearLabel } from '@/lib/school-utils';
 
 export async function listInvoices(schoolId: string, searchParams: URLSearchParams) {
   const status    = searchParams.get('status');
@@ -45,6 +46,69 @@ export async function createInvoice(schoolId: string, body: Record<string, any>)
     throw new AppError('student_id, amount, and due_date are required');
   }
   return repo.createInvoice({ schoolId, studentId: student_id, amount, dueDate: due_date, installmentNo: installment_no });
+}
+
+export async function listFeeStructures(schoolId: string) {
+  const structures = await repo.findFeeStructures(schoolId);
+  return structures.map(s => ({
+    id:           s.id,
+    name:         s.name,
+    amount:       Number(s.amount),
+    frequency:    s.frequency,
+    academicYear: s.academicYear,
+    classId:      s.classId ?? null,
+    class_name:   s.class?.name ?? null,
+  }));
+}
+
+export async function upsertFeeStructure(schoolId: string, body: Record<string, any>) {
+  const { id, name, amount, frequency, classId, academicYear } = body;
+  if (!name || !amount) throw new AppError('name and amount are required');
+  return repo.upsertFeeStructure({
+    id,
+    schoolId,
+    name:         name.trim(),
+    amount:       Number(amount),
+    frequency:    frequency || 'one_time',
+    classId:      classId || null,
+    academicYear: academicYear || currentAcademicYearLabel(),
+  });
+}
+
+export async function applyBulkFees(schoolId: string, body: Record<string, any>) {
+  const { classId, studentIds, feeStructureId, amount, dueDate, installmentNo } = body;
+  if (!dueDate) throw new AppError('dueDate is required');
+  if (!amount && !feeStructureId) throw new AppError('amount or feeStructureId is required');
+
+  let resolvedAmount = Number(amount);
+  let resolvedStudentIds: string[] = studentIds || [];
+
+  // Load amount from structure if not overridden
+  if (feeStructureId && !amount) {
+    const structures = await repo.findFeeStructures(schoolId);
+    const s = structures.find(x => x.id === feeStructureId);
+    if (s) resolvedAmount = Number(s.amount);
+  }
+  if (!resolvedAmount) throw new AppError('amount must be greater than 0');
+
+  // If classId given without explicit studentIds, load all active students in the class
+  if (classId && resolvedStudentIds.length === 0) {
+    const students = await repo.findStudentsByClass(schoolId, classId);
+    resolvedStudentIds = students.map(s => s.id);
+  }
+  if (resolvedStudentIds.length === 0) throw new AppError('No students selected');
+
+  const dueDateObj = new Date(dueDate);
+  const { created, failed } = await repo.bulkCreateInvoices(
+    resolvedStudentIds.map(studentId => ({
+      schoolId, studentId,
+      amount:         resolvedAmount,
+      dueDate:        dueDateObj,
+      feeStructureId: feeStructureId || undefined,
+      installmentNo:  installmentNo || 1,
+    }))
+  );
+  return { created, failed };
 }
 
 export async function recordPayment(body: Record<string, any>) {
