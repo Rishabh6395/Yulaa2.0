@@ -28,18 +28,24 @@ function getGreeting() {
   return 'Good Evening';
 }
 
-const QUICK_ACTIONS = [
-  { label: 'Admissions', emoji: '📋', route: '/(app)/admissions' },
-  { label: 'Students',   emoji: '🎓', route: '/(app)/students' },
-  { label: 'Fees',       emoji: '💰', route: '/(app)/fees' },
-  { label: 'Leave',      emoji: '🗓️',  route: '/(app)/(tabs)/leave' },
-  { label: 'Teachers',   emoji: '👩‍🏫', route: '/(app)/teachers' },
-  { label: 'Events',     emoji: '📅', route: '/(app)/events' },
+const ALL_QUICK_ACTIONS = [
+  { label: 'Admissions',  emoji: '📋', route: '/(app)/admissions',       roles: ['school_admin','principal','super_admin'] },
+  { label: 'Students',    emoji: '🎓', route: '/(app)/students',          roles: ['school_admin','principal','teacher','hod'] },
+  { label: 'Fees',        emoji: '💰', route: '/(app)/fees',              roles: ['school_admin','principal','parent','student'] },
+  { label: 'Leave',       emoji: '🗓️', route: '/(app)/(tabs)/leave',      roles: ['teacher','school_admin','principal','employee','hod','parent','student'] },
+  { label: 'Teachers',    emoji: '👩‍🏫', route: '/(app)/teachers',          roles: ['school_admin','principal','hod'] },
+  { label: 'Events',      emoji: '📅', route: '/(app)/events',            roles: ['school_admin','principal','teacher','parent','student','hod'] },
+  { label: 'Classes',     emoji: '🎥', route: '/(app)/online-classes',    roles: ['teacher','student','parent','school_admin','principal'] },
+  { label: 'Courses',     emoji: '📚', route: '/(app)/courses',           roles: ['student','parent','teacher','school_admin'] },
+  { label: 'Sessions',    emoji: '🎓', route: '/(app)/career-sessions',   roles: ['parent','student'] },
+  { label: 'Marketplace', emoji: '🛒', route: '/(app)/vendor',            roles: ['parent','student','school_admin','principal'] },
 ];
 
 export default function DashboardScreen() {
   const { user } = useAuth();
   const router   = useRouter();
+  const role = user?.primaryRole ?? '';
+  const QUICK_ACTIONS = ALL_QUICK_ACTIONS.filter(a => a.roles.includes(role)).slice(0, 6);
 
   const { data: dash, isLoading: dashLoading, refetch: refetchDash } = useQuery({
     queryKey: ['dashboard'],
