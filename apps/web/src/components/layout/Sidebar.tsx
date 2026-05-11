@@ -17,8 +17,10 @@ const menuItems: Record<string, MenuItem[]> = {
   super_admin: [
     { label: 'School Library',          href: '/dashboard/schools',              icon: 'Building',     key: 'schools' },
     { label: 'Default School Settings', href: '/dashboard/schools/default',      icon: 'Settings',     key: 'schools_default' },
-    { label: 'All Consultants',         href: '/dashboard/super-admin/consultants', icon: 'Briefcase', key: 'super_consultants' },
-    { label: 'All Vendors',             href: '/dashboard/super-admin/vendors',  icon: 'ShoppingBag',  key: 'super_vendors' },
+    { label: 'All Consultants',         href: '/dashboard/super-admin/consultants',      icon: 'Briefcase',   key: 'super_consultants' },
+    { label: 'All Vendors',             href: '/dashboard/super-admin/vendors',           icon: 'ShoppingBag', key: 'super_vendors' },
+    { label: 'Online Class Config',     href: '/dashboard/super-admin/online-class-config', icon: 'Monitor',   key: 'super_online_class' },
+    { label: 'Course Approvals',        href: '/dashboard/super-admin/courses',           icon: 'BookOpen',    key: 'super_courses' },
   ],
   school_admin: [
     { label: 'Dashboard',        href: '/dashboard',                  icon: 'LayoutDashboard', key: 'dashboard' },
@@ -61,9 +63,11 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Syllabus',       href: '/dashboard/syllabus',      icon: 'BookMarked',      key: 'syllabus' },
     { label: 'Events',         href: '/dashboard/events',        icon: 'CalendarStar',    key: 'events' },
     { label: 'Exam',           href: '/dashboard/exam',          icon: 'ClipboardCheck',  key: 'exam' },
-    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar',        key: 'leave' },
-    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare',   key: 'queries' },
-    { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle',      key: 'settings' },
+    { label: 'Leave',          href: '/dashboard/leave',           icon: 'Calendar',        key: 'leave' },
+    { label: 'Queries',        href: '/dashboard/queries',         icon: 'MessageSquare',   key: 'queries' },
+    { label: 'Online Classes', href: '/dashboard/online-classes',  icon: 'Monitor',         key: 'online_classes' },
+    { label: 'Courses',        href: '/dashboard/courses/manage',  icon: 'BookOpen',        key: 'courses' },
+    { label: 'Profile',        href: '/dashboard/settings',        icon: 'UserCircle',      key: 'settings' },
   ],
   student: [
     { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard', key: 'dashboard' },
@@ -74,8 +78,10 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Syllabus',       href: '/dashboard/syllabus',      icon: 'BookMarked',      key: 'syllabus' },
     { label: 'Exam Schedule',  href: '/dashboard/exam',          icon: 'ClipboardCheck',  key: 'exam' },
     { label: 'Events',         href: '/dashboard/events',        icon: 'CalendarStar',    key: 'events' },
-    { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone',       key: 'announcements' },
-    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare',   key: 'queries' },
+    { label: 'Announcements',  href: '/dashboard/announcements',  icon: 'Megaphone',       key: 'announcements' },
+    { label: 'Queries',        href: '/dashboard/queries',        icon: 'MessageSquare',   key: 'queries' },
+    { label: 'Online Classes', href: '/dashboard/online-classes', icon: 'Monitor',         key: 'online_classes' },
+    { label: 'Courses',        href: '/dashboard/courses',        icon: 'BookOpen',        key: 'courses' },
   ],
   parent: [
     { label: 'Dashboard',       href: '/dashboard',                icon: 'LayoutDashboard', key: 'dashboard' },
@@ -94,6 +100,7 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Career Sessions',      href: '/dashboard/career-sessions', icon: 'Briefcase',   key: 'sessions' },
     { label: 'Vendor / Marketplace', href: '/dashboard/vendor',          icon: 'ShoppingBag', key: 'vendor' },
     { label: 'Online Classes',       href: '/dashboard/online-classes',  icon: 'Monitor',     key: 'online_classes' },
+    { label: 'Courses',              href: '/dashboard/courses',         icon: 'BookOpen',    key: 'courses' },
     { label: 'Transport',            href: '/dashboard/transport',       icon: 'Bus',         key: 'transport' },
   ],
   // HOD and Principal use school_admin items but filtered by their own permissions

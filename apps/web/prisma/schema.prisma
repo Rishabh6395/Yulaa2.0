@@ -30,6 +30,9 @@ model School {
   longitude                Float?
   allowExternalConsultant  Boolean                @default(false) @map("allow_external_consultant")
   allowExternalVendor      Boolean                @default(false) @map("allow_external_vendor")
+  onlineClassEnabled       Boolean                @default(true)  @map("online_class_enabled")
+  courseEnabled            Boolean                @default(false) @map("course_enabled")
+  allowedPlatforms         String[]               @default([])    @map("allowed_platforms")
   admissionApplications AdmissionApplication[]
   admissionWorkflows    AdmissionWorkflow[]
   announcements         Announcement[]
@@ -55,6 +58,8 @@ model School {
   menuPermissions         MenuPermission[]
   timetables              Timetable[]
   sessionBookings         SessionBooking[]
+  onlineClasses           OnlineClass[]
+  courses                 Course[]
   transportRoutes       TransportRoute[]
   transportBuses        TransportBus[]
   transportRides        TransportRide[]
@@ -127,6 +132,7 @@ model User {
   vendors               Vendor?
   createdEvents         SchoolEvent[]
   operatedRides         TransportRide[]        @relation("TransportRideEmployee")
+  courseEnrollments     CourseEnrollment[]
 
   @@map("users")
 }
@@ -166,10 +172,12 @@ model Teacher {
   leaveBalances   TeacherLeaveBalance[]
   school          School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  timetableSlots  TimetableSlot[]
-  timetableLogs   TimetableLog[]
-  eventTasks      EventTask[]
-  syllabusItems   SyllabusItem[]
+  timetableSlots       TimetableSlot[]
+  timetableLogs        TimetableLog[]
+  eventTasks           EventTask[]
+  syllabusItems        SyllabusItem[]
+  onlineClasses        OnlineClass[]
+  taughtCourses        Course[]
 
   @@unique([userId, schoolId])
   @@index([schoolId])
@@ -203,10 +211,12 @@ model Student {
   queries             StudentQuery[]
   class               Class?               @relation(fields: [classId], references: [id])
   school              School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  eventParticipants   EventParticipant[]
-  examResults         ExamResult[]
-  rideStudents        RideStudent[]
-  sessionBookings     SessionBooking[]
+  eventParticipants        EventParticipant[]
+  examResults              ExamResult[]
+  rideStudents             RideStudent[]
+  sessionBookings          SessionBooking[]
+  onlineClassAttendances   OnlineClassAttendance[]
+  courseEnrollments        CourseEnrollment[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -266,6 +276,7 @@ model Class {
   exams          Exam[]
   examEntries    ExamTimetableEntry[]
   streamMasters  StreamMaster[]
+  onlineClasses  OnlineClass[]
 
   @@unique([schoolId, grade, section, academicYear])
   @@map("classes")
@@ -976,6 +987,7 @@ model TimetableSlot {
   createdAt   DateTime       @default(now()) @map("created_at")
   logs          TimetableLog[]
   reassignments TimetableReassignment[]
+  onlineClasses OnlineClass[]
   teacher       Teacher?       @relation(fields: [teacherId], references: [id])
   timetable     Timetable      @relation(fields: [timetableId], references: [id], onDelete: Cascade)
 
@@ -1763,3 +1775,167 @@ model VendorRating {
   @@index([vendorId])
   @@map("vendor_ratings")
 }
+
+// ─── Online Classes ───────────────────────────────────────────────────────────
+
+model OnlineClass {
+  id              String    @id @default(uuid())
+  schoolId        String    @map("school_id")
+  slotId          String?   @map("slot_id")
+  teacherId       String    @map("teacher_id")
+  classId         String?   @map("class_id")
+  title           String    @db.VarChar(200)
+  subject         String?   @db.VarChar(100)
+  platform        String    @default("meet") @db.VarChar(20)
+  meetingLink     String?   @map("meeting_link")
+  meetingId       String?   @map("meeting_id") @db.VarChar(300)
+  meetingPassword String?   @map("meeting_password") @db.VarChar(100)
+  scheduledAt     DateTime  @map("scheduled_at")
+  durationMinutes Int       @default(45) @map("duration_minutes")
+  status          String    @default("scheduled") @db.VarChar(20)
+  recordingUrl    String?   @map("recording_url")
+  isRecorded      Boolean   @default(false) @map("is_recorded")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+  school          School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher         Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  slot            TimetableSlot? @relation(fields: [slotId], references: [id])
+  class           Class?    @relation(fields: [classId], references: [id])
+  attendances     OnlineClassAttendance[]
+
+  @@index([schoolId, scheduledAt])
+  @@index([teacherId])
+  @@index([classId])
+  @@map("online_classes")
+}
+
+model OnlineClassAttendance {
+  id              String      @id @default(uuid())
+  onlineClassId   String      @map("online_class_id")
+  studentId       String      @map("student_id")
+  status          String      @default("absent") @db.VarChar(20)
+  markedByTeacher Boolean     @default(false) @map("marked_by_teacher")
+  joinedAt        DateTime?   @map("joined_at")
+  leftAt          DateTime?   @map("left_at")
+  durationMinutes Int?        @map("duration_minutes")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  onlineClass     OnlineClass @relation(fields: [onlineClassId], references: [id], onDelete: Cascade)
+  student         Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([onlineClassId, studentId])
+  @@index([onlineClassId])
+  @@index([studentId])
+  @@map("online_class_attendance")
+}
+
+// ─── Courses ──────────────────────────────────────────────────────────────────
+
+model Course {
+  id                  String    @id @default(uuid())
+  schoolId            String?   @map("school_id")
+  teacherId           String?   @map("teacher_id")
+  instructorName      String?   @map("instructor_name") @db.VarChar(200)
+  title               String    @db.VarChar(200)
+  description         String?
+  thumbnail           String?   @db.VarChar(500)
+  type                String    @default("recorded") @db.VarChar(20)
+  price               Decimal   @default(0) @db.Decimal(10, 2)
+  currency            String    @default("INR") @db.VarChar(5)
+  isFree              Boolean   @default(false) @map("is_free")
+  isPublished         Boolean   @default(false) @map("is_published")
+  isExternal          Boolean   @default(false) @map("is_external")
+  requiresApproval    Boolean   @default(false) @map("requires_approval")
+  approvedById        String?   @map("approved_by_id")
+  approvedAt          DateTime? @map("approved_at")
+  totalDuration       Int       @default(0) @map("total_duration")
+  certificateEnabled  Boolean   @default(false) @map("certificate_enabled")
+  tags                String[]
+  targetGrades        String[]  @map("target_grades")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at")
+  school              School?   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher             Teacher?  @relation(fields: [teacherId], references: [id])
+  modules             CourseModule[]
+  enrollments         CourseEnrollment[]
+
+  @@index([schoolId, isPublished])
+  @@index([isExternal, isPublished])
+  @@map("courses")
+}
+
+model CourseModule {
+  id          String         @id @default(uuid())
+  courseId    String         @map("course_id")
+  title       String         @db.VarChar(200)
+  description String?
+  sortOrder   Int            @default(0) @map("sort_order")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  course      Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons     CourseLesson[]
+
+  @@index([courseId])
+  @@map("course_modules")
+}
+
+model CourseLesson {
+  id          String           @id @default(uuid())
+  moduleId    String           @map("module_id")
+  title       String           @db.VarChar(200)
+  description String?
+  type        String           @default("video") @db.VarChar(20)
+  contentUrl  String?          @map("content_url")
+  meetingLink String?          @map("meeting_link")
+  scheduledAt DateTime?        @map("scheduled_at")
+  duration    Int?
+  isPreview   Boolean          @default(false) @map("is_preview")
+  sortOrder   Int              @default(0) @map("sort_order")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  module      CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress    CourseProgress[]
+
+  @@index([moduleId])
+  @@map("course_lessons")
+}
+
+model CourseEnrollment {
+  id                  String          @id @default(uuid())
+  courseId            String          @map("course_id")
+  userId              String          @map("user_id")
+  studentId           String?         @map("student_id")
+  enrolledAt          DateTime        @default(now()) @map("enrolled_at")
+  completedAt         DateTime?       @map("completed_at")
+  progressPct         Float           @default(0) @map("progress_pct")
+  certificateNo       String?         @unique @map("certificate_no") @db.VarChar(50)
+  certificateUrl      String?         @map("certificate_url")
+  certificateIssuedAt DateTime?       @map("certificate_issued_at")
+  paymentStatus       String          @default("pending") @map("payment_status") @db.VarChar(20)
+  paymentRef          String?         @map("payment_ref")
+  amountPaid          Decimal         @default(0) @map("amount_paid") @db.Decimal(10, 2)
+  gateway             String?         @db.VarChar(20)
+  createdAt           DateTime        @default(now()) @map("created_at")
+  course              Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  student             Student?        @relation(fields: [studentId], references: [id])
+  progress            CourseProgress[]
+
+  @@unique([courseId, userId])
+  @@index([courseId])
+  @@index([userId])
+  @@map("course_enrollments")
+}
+
+model CourseProgress {
+  id             String           @id @default(uuid())
+  enrollmentId   String           @map("enrollment_id")
+  lessonId       String           @map("lesson_id")
+  completedAt    DateTime?        @map("completed_at")
+  watchedSeconds Int              @default(0) @map("watched_seconds")
+  enrollment     CourseEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson         CourseLesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, lessonId])
+  @@index([enrollmentId])
+  @@map("course_progress")
+}
+
+

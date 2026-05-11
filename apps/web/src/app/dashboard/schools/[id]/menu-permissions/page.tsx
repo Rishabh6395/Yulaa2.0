@@ -32,6 +32,7 @@ const ALL_MENU_ITEMS = [
   { id: 'sessions',         label: 'Career Sessions' },
   { id: 'vendor',           label: 'Vendor / Marketplace' },
   { id: 'online_classes',   label: 'Online Classes' },
+  { id: 'courses',          label: 'Courses' },
 ];
 
 const ROLES = [
