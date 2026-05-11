@@ -1,9 +1,10 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useEffect, useState } from 'react';
 
-export default function SchoolStudentsPage({ params }: { params: { id: string } }) {
-  const schoolId = params.id;
+export default function SchoolStudentsPage({}) {
+  const { id: schoolId } = useParams<{ id: string }>();
   const [students, setStudents] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

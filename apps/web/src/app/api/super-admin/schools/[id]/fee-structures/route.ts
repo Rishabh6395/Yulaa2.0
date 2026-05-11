@@ -7,12 +7,12 @@ function assertSuperAdmin(user: any) {
   if (!user.roles.some((r: any) => r.role_code === 'super_admin')) throw new ForbiddenError();
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertSuperAdmin(user);
     const structures = await prisma.feeStructure.findMany({
-      where:    { schoolId: params.id },
+      where:    { schoolId: (await params).id },
       select:   { name: true },
       distinct: ['name'],
       orderBy:  { name: 'asc' },

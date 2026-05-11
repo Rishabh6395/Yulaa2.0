@@ -5,14 +5,14 @@ import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/util
 
 
 /** GET /api/admission/applications/[id] — admin */
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(_request);
     if (!user) throw new UnauthorizedError();
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
     if (!ADMIN_ROLES.includes(primaryRole.role_code)) throw new ForbiddenError();
 
-    const app = await getApplicationDetail(params.id);
+    const app = await getApplicationDetail((await params).id);
     if (!app) throw new AppError('Application not found', 404);
     // Super admin may access any school's application; others only their own school
     if (primaryRole.role_code !== 'super_admin' && app.schoolId !== primaryRole.school_id) {
@@ -23,7 +23,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 }
 
 /** PATCH /api/admission/applications/[id] — admin edits application details */
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
@@ -34,7 +34,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const { default: prisma } = await import('@/lib/prisma');
 
     // Verify school ownership before any writes
-    const existing = await prisma.admissionApplication.findUnique({ where: { id: params.id }, select: { schoolId: true } });
+    const existing = await prisma.admissionApplication.findUnique({ where: { id: (await params).id }, select: { schoolId: true } });
     if (!existing) throw new AppError('Application not found', 404);
     if (primaryRole.role_code !== 'super_admin' && existing.schoolId !== primaryRole.school_id) {
       throw new ForbiddenError();
@@ -47,7 +47,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (body.parentEmail !== undefined) parentUpdate.parentEmail = body.parentEmail;
 
     if (Object.keys(parentUpdate).length > 0) {
-      await prisma.admissionApplication.update({ where: { id: params.id }, data: parentUpdate });
+      await prisma.admissionApplication.update({ where: { id: (await params).id }, data: parentUpdate });
     }
 
     // Update individual children
@@ -68,7 +68,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       }
     }
 
-    const app = await getApplicationDetail(params.id);
+    const app = await getApplicationDetail((await params).id);
     return Response.json({ application: app });
   } catch (err) { return handleError(err); }
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter , useParams } from 'next/navigation';
 import { useApi } from '@/hooks/useApi';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -17,7 +17,8 @@ const FLAG_COLORS: Record<string, string> = {
 };
 
 
-export default function ApplicationDetailPage({ params }: { params: { id: string } }) {
+export default function ApplicationDetailPage({}) {
+  const params = useParams<{ id: string }>();
   const router = useRouter();
 
   const [comment,    setComment]    = useState('');

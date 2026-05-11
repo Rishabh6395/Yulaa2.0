@@ -1,4 +1,5 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useState } from 'react';
 
@@ -12,7 +13,8 @@ const COMPLIANCE_ITEMS = [
   { id: 'rti_reports', label: 'RTI Reports', desc: 'Generate Right to Information compliance reports' },
 ];
 
-export default function CompliancePage({ params }: { params: { id: string } }) {
+export default function CompliancePage({}) {
+  const params = useParams<{ id: string }>();
   const [enabled, setEnabled] = useState<string[]>(['tc_doc', 'admission_form', 'fee_receipts', 'attendance_register']);
   const [academicYear, setAcademicYear] = useState('2024-25');
   const [boardAffiliationNo, setBoardAffiliationNo] = useState('');

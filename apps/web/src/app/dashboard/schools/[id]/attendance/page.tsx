@@ -1,4 +1,5 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useState, useEffect } from 'react';
 
@@ -71,7 +72,8 @@ function Toggle({ checked, onChange, label, desc }: { checked: boolean; onChange
 
 // ─── Page ───────────────────────────────────────────────────────────────────────
 
-export default function AttendanceConfigPage({ params }: { params: { id: string } }) {
+export default function AttendanceConfigPage({}) {
+  const params = useParams<{ id: string }>();
   // Attendance mode
   const [mode, setMode] = useState('class');
 

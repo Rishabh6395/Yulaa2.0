@@ -1,8 +1,10 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useState } from 'react';
 
-export default function AnnouncementsConfigPage({ params }: { params: { id: string } }) {
+export default function AnnouncementsConfigPage({}) {
+  const params = useParams<{ id: string }>();
   const [allowTeacherPost, setAllowTeacherPost] = useState(true);
   const [requireApproval, setRequireApproval] = useState(false);
   const [targetAudiences, setTargetAudiences] = useState<string[]>(['parents', 'teachers', 'students']);

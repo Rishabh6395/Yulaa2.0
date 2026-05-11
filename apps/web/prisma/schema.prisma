@@ -53,6 +53,8 @@ model School {
   menuPermissions       MenuPermission[]
   timetables            Timetable[]
   transportRoutes       TransportRoute[]
+  transportBuses        TransportBus[]
+  transportRides        TransportRide[]
   userRoles             UserRole[]
   vendorInventory       VendorInventory[]
   // New modules
@@ -121,6 +123,7 @@ model User {
   userRoles             UserRole[]
   vendors               Vendor?
   createdEvents         SchoolEvent[]
+  operatedRides         TransportRide[]        @relation("TransportRideEmployee")
 
   @@map("users")
 }
@@ -199,6 +202,7 @@ model Student {
   school              School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   eventParticipants   EventParticipant[]
   examResults         ExamResult[]
+  rideStudents        RideStudent[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -570,10 +574,68 @@ model TransportRoute {
   morningDeparture String?  @map("morning_departure") @db.VarChar(10)
   eveningDeparture String?  @map("evening_departure") @db.VarChar(10)
   stops            Json?
-  createdAt        DateTime @default(now()) @map("created_at")
-  school           School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt        DateTime        @default(now()) @map("created_at")
+  school           School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  rides            TransportRide[]
 
   @@map("transport_routes")
+}
+
+model TransportBus {
+  id          String          @id @default(uuid())
+  schoolId    String          @map("school_id")
+  busNumber   String          @map("bus_number") @db.VarChar(50)
+  capacity    Int?
+  gpsEnabled  Boolean         @default(false) @map("gps_enabled")
+  gpsDeviceId String?         @map("gps_device_id") @db.VarChar(100)
+  isActive    Boolean         @default(true) @map("is_active")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  school      School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  rides       TransportRide[]
+
+  @@map("transport_buses")
+}
+
+model TransportRide {
+  id               String        @id @default(uuid())
+  schoolId         String        @map("school_id")
+  routeId          String        @map("route_id")
+  busId            String?       @map("bus_id")
+  employeeId       String        @map("employee_id")
+  direction        String        @default("morning") @db.VarChar(20)
+  emergencyContact String?       @map("emergency_contact") @db.VarChar(20)
+  departureTime    DateTime?     @map("departure_time")
+  arrivalTime      DateTime?     @map("arrival_time")
+  status           String        @default("pending") @db.VarChar(20)
+  gpsEnabled       Boolean       @default(false) @map("gps_enabled")
+  gpsLat           Float?        @map("gps_lat")
+  gpsLng           Float?        @map("gps_lng")
+  notes            String?
+  createdAt        DateTime      @default(now()) @map("created_at")
+  school           School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  route            TransportRoute @relation(fields: [routeId], references: [id])
+  bus              TransportBus? @relation(fields: [busId], references: [id])
+  employee         User          @relation("TransportRideEmployee", fields: [employeeId], references: [id])
+  rideStudents     RideStudent[]
+
+  @@index([schoolId])
+  @@index([status])
+  @@map("transport_rides")
+}
+
+model RideStudent {
+  id           String        @id @default(uuid())
+  rideId       String        @map("ride_id")
+  studentId    String        @map("student_id")
+  pickupStatus String        @default("pending") @map("pickup_status") @db.VarChar(20)
+  dropStatus   String        @default("pending") @map("drop_status") @db.VarChar(20)
+  notifiedAt   DateTime?     @map("notified_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  ride         TransportRide @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  student      Student       @relation(fields: [studentId], references: [id])
+
+  @@unique([rideId, studentId])
+  @@map("ride_students")
 }
 
 model Vendor {

@@ -23,7 +23,7 @@ async function resolveType(schoolId: string, slug: string) {
   return type;
 }
 
-export async function GET(request: Request, { params }: { params: { slug: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
@@ -31,7 +31,7 @@ export async function GET(request: Request, { params }: { params: { slug: string
     const schoolId   = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
     const activeOnly = searchParams.get('includeInactive') !== 'true';
 
-    const type = await resolveType(schoolId, params.slug);
+    const type = await resolveType(schoolId, (await params).slug);
     const values = await prisma.genericMasterValue.findMany({
       where: { typeId: type.id, ...(activeOnly && { isActive: true }) },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
@@ -41,7 +41,7 @@ export async function GET(request: Request, { params }: { params: { slug: string
   } catch (err) { return handleError(err); }
 }
 
-export async function POST(request: Request, { params }: { params: { slug: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
@@ -51,7 +51,7 @@ export async function POST(request: Request, { params }: { params: { slug: strin
     const schoolId = getSchoolId(user, bodySchoolId);
     if (!name?.trim()) throw new AppError('Name is required', 400);
 
-    const type  = await resolveType(schoolId, params.slug);
+    const type  = await resolveType(schoolId, (await params).slug);
     const value = await prisma.genericMasterValue.create({
       data: { typeId: type.id, name: name.trim(), sortOrder: sortOrder ?? 0 },
     });
@@ -60,7 +60,7 @@ export async function POST(request: Request, { params }: { params: { slug: strin
   } catch (err) { return handleError(err); }
 }
 
-export async function PATCH(request: Request, { params }: { params: { slug: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();

@@ -1,4 +1,5 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useState, useMemo } from 'react';
 import { useApi } from '@/hooks/useApi';
@@ -33,7 +34,8 @@ function sortGrades(grades: string[]): string[] {
   });
 }
 
-export default function AcademicYearCyclePage({ params }: { params: { id: string } }) {
+export default function AcademicYearCyclePage({}) {
+  const params = useParams<{ id: string }>();
   const { data: classesData, isLoading: loadingClasses } = useApi<{ classes: ClassRow[] }>(
     `/api/super-admin/schools/${params.id}/classes`,
   );

@@ -20,12 +20,12 @@ function assertAdmin(user: any) {
   return primary;
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertAdmin(user!);
 
-    const schoolId = params.id;
+    const schoolId = (await params).id;
     const role     = new URL(request.url).searchParams.get('role') || 'school_admin';
 
     const saved = await prisma.menuPermission.findMany({
@@ -38,12 +38,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
   } catch (err) { return handleError(err); }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertAdmin(user!);
 
-    const schoolId = params.id;
+    const schoolId = (await params).id;
     const { role, enabledItems } = await request.json();
 
     if (!role || !Array.isArray(enabledItems)) {

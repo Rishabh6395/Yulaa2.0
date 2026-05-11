@@ -1,4 +1,5 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useEffect, useRef, useState } from 'react';
 
@@ -46,7 +47,8 @@ function fmtDate(d: string) {
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
-export default function TimetablePage({ params }: { params: { id: string } }) {
+export default function TimetablePage({}) {
+  const params = useParams<{ id: string }>();
   const schoolId = params.id;
 
   const academicYear = activeAcademicYear();

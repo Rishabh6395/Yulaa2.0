@@ -1,8 +1,10 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useState } from 'react';
 
-export default function HomeworkConfigPage({ params }: { params: { id: string } }) {
+export default function HomeworkConfigPage({}) {
+  const params = useParams<{ id: string }>();
   const [allowAttachments, setAllowAttachments] = useState(true);
   const [maxFileSizeMb, setMaxFileSizeMb] = useState('10');
   const [allowedTypes, setAllowedTypes] = useState<string[]>(['pdf', 'doc', 'image']);

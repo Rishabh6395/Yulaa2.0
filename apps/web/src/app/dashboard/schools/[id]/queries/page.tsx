@@ -1,10 +1,12 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useState } from 'react';
 
 const CATEGORIES_DEFAULT = ['Academic', 'Fee', 'Transport', 'Attendance', 'Behaviour', 'General'];
 
-export default function QueriesConfigPage({ params }: { params: { id: string } }) {
+export default function QueriesConfigPage({}) {
+  const params = useParams<{ id: string }>();
   const [categories, setCategories] = useState<string[]>(CATEGORIES_DEFAULT);
   const [newCategory, setNewCategory] = useState('');
   const [slaHours, setSlaHours] = useState('24');

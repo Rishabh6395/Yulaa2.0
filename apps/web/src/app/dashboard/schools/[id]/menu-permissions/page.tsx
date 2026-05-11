@@ -1,4 +1,5 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useEffect, useState, useCallback } from 'react';
 
@@ -42,7 +43,8 @@ const ROLES = [
   { id: 'student',      label: 'Student' },
 ];
 
-export default function MenuPermissionsPage({ params }: { params: { id: string } }) {
+export default function MenuPermissionsPage({}) {
+  const params = useParams<{ id: string }>();
   const schoolId = params.id;
 
   const [activeRole, setActiveRole] = useState('school_admin');

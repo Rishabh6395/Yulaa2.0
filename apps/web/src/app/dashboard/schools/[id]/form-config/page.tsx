@@ -1,4 +1,5 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useEffect, useState, useCallback } from 'react';
 import { FORM_DEFINITIONS, type FieldDef } from '@/lib/formDefinitions';
@@ -33,7 +34,8 @@ function defaultRules(fields: Array<{ id: string }>): Record<string, FieldRule> 
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
-export default function FormConfigPage({ params }: { params: { id: string } }) {
+export default function FormConfigPage({}) {
+  const params = useParams<{ id: string }>();
   const schoolId = params.id;
 
   const [activeForm,   setActiveForm]   = useState(FORMS[0].id);

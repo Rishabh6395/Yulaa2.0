@@ -9,11 +9,11 @@ function assertSuperAdmin(user: any) {
   if (!user.roles.some((r: any) => r.role_code === 'super_admin')) throw new ForbiddenError();
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertSuperAdmin(user);
-    const schoolId = params.id;
+    const schoolId = (await params).id;
 
     const [users, roles] = await Promise.all([
       prisma.user.findMany({
@@ -35,7 +35,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   } catch (err) { return handleError(err); }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertSuperAdmin(user);
@@ -59,8 +59,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
         passwordHash, status: 'active',
         userRoles: {
           create: [
-            { roleId, schoolId: params.id, isPrimary: true },
-            ...(employeeRole ? [{ roleId: employeeRole.id, schoolId: params.id, isPrimary: false }] : []),
+            { roleId, schoolId: (await params).id, isPrimary: true },
+            ...(employeeRole ? [{ roleId: employeeRole.id, schoolId: (await params).id, isPrimary: false }] : []),
           ],
         },
       },
@@ -70,8 +70,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     // All employee-role codes (teacher, principal, school_admin) need a Teacher/Employee profile record
     // for attendance punch in/out tracking
     if (employeeRole && role) {
-      const exists = await prisma.teacher.findFirst({ where: { userId: newUser.id, schoolId: params.id } });
-      if (!exists) await prisma.teacher.create({ data: { userId: newUser.id, schoolId: params.id } });
+      const exists = await prisma.teacher.findFirst({ where: { userId: newUser.id, schoolId: (await params).id } });
+      if (!exists) await prisma.teacher.create({ data: { userId: newUser.id, schoolId: (await params).id } });
     }
 
     // Send welcome email (non-blocking — don't fail user creation if email fails)
@@ -85,31 +85,31 @@ export async function POST(request: Request, { params }: { params: { id: string 
   } catch (err) { return handleError(err); }
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertSuperAdmin(user);
     const { userId, status, action, roleId } = await request.json();
 
     if (action === 'addRole' && userId && roleId) {
-      const ur = await prisma.userRole.create({ data: { userId, roleId, schoolId: params.id, isPrimary: false }, include: { role: true } });
+      const ur = await prisma.userRole.create({ data: { userId, roleId, schoolId: (await params).id, isPrimary: false }, include: { role: true } });
 
       const EMPLOYEE_ROLE_CODES = ['teacher', 'principal', 'school_admin'];
       if (EMPLOYEE_ROLE_CODES.includes(ur.role.code)) {
         // Auto-assign employee role if not already assigned
         const employeeRole = await prisma.role.findFirst({ where: { code: 'employee' } });
         if (employeeRole) {
-          const alreadyHas = await prisma.userRole.findFirst({ where: { userId, roleId: employeeRole.id, schoolId: params.id } });
-          if (!alreadyHas) await prisma.userRole.create({ data: { userId, roleId: employeeRole.id, schoolId: params.id, isPrimary: false } });
+          const alreadyHas = await prisma.userRole.findFirst({ where: { userId, roleId: employeeRole.id, schoolId: (await params).id } });
+          if (!alreadyHas) await prisma.userRole.create({ data: { userId, roleId: employeeRole.id, schoolId: (await params).id, isPrimary: false } });
         }
         // All employee-role codes need a Teacher/Employee profile record for attendance tracking
-        const exists = await prisma.teacher.findFirst({ where: { userId, schoolId: params.id } });
-        if (!exists) await prisma.teacher.create({ data: { userId, schoolId: params.id } });
+        const exists = await prisma.teacher.findFirst({ where: { userId, schoolId: (await params).id } });
+        if (!exists) await prisma.teacher.create({ data: { userId, schoolId: (await params).id } });
       }
       return Response.json({ userRole: ur });
     }
     if (action === 'removeRole' && userId && roleId) {
-      await prisma.userRole.deleteMany({ where: { userId, roleId, schoolId: params.id } });
+      await prisma.userRole.deleteMany({ where: { userId, roleId, schoolId: (await params).id } });
       return Response.json({ success: true });
     }
     if (userId && status) {

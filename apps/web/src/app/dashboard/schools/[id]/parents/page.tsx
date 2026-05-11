@@ -1,4 +1,5 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useState, useRef } from 'react';
 import Modal from '@/components/ui/Modal';
@@ -85,7 +86,8 @@ function LinkChildModal({
   );
 }
 
-export default function SchoolParentsPage({ params }: { params: { id: string } }) {
+export default function SchoolParentsPage({}) {
+  const params = useParams<{ id: string }>();
   const schoolId = params.id;
 
   const [page,          setPage]         = useState(1);

@@ -40,7 +40,7 @@ function normalizeStages(stages: any[]) {
 
 // ── GET ───────────────────────────────────────────────────────────────────────
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertAdmin(user!);
@@ -48,7 +48,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const { searchParams } = new URL(request.url);
     const type     = searchParams.get('type') || 'admission';
     const role     = searchParams.get('role') ?? null;
-    const schoolId = params.id;
+    const schoolId = (await params).id;
 
     // ── Admission (existing model) ──
     if (type === 'admission') {
@@ -131,12 +131,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
 // ── POST ──────────────────────────────────────────────────────────────────────
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertAdmin(user!);
 
-    const schoolId = params.id;
+    const schoolId = (await params).id;
     const body   = await request.json();
     const { type, stages } = body;
 

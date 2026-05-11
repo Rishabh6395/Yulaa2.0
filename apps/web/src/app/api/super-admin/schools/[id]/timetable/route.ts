@@ -11,11 +11,11 @@ function assertAdminAccess(user: any) {
 }
 
 // ─── GET ─────────────────────────────────────────────────────────────────────
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertAdminAccess(user);
-    const schoolId = params.id;
+    const schoolId = (await params).id;
     const url = new URL(request.url);
     const classId      = url.searchParams.get('classId');
     const academicYear = url.searchParams.get('year') || currentAcademicYearLabel();
@@ -76,11 +76,11 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // ─── POST ─────────────────────────────────────────────────────────────────────
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertAdminAccess(user);
-    const schoolId = params.id;
+    const schoolId = (await params).id;
     const body = await request.json();
     const { action } = body;
 
@@ -250,11 +250,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
 }
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertAdminAccess(user);
-    const schoolId = params.id;
+    const schoolId = (await params).id;
     const url = new URL(request.url);
     const classId      = url.searchParams.get('classId');
     const academicYear = url.searchParams.get('year') || currentAcademicYearLabel();

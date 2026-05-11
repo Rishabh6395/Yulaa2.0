@@ -1,9 +1,13 @@
 import jwt from 'jsonwebtoken';
 import prisma from './prisma';
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
-if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is not set');
 const JWT_EXPIRY = process.env.JWT_EXPIRY || '7d';
+
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET environment variable is not set');
+  return secret;
+}
 
 export interface JwtPayload {
   userId: string;
@@ -30,12 +34,12 @@ export interface AuthUser {
 }
 
 export function signToken(payload: object, expiresIn: string = JWT_EXPIRY): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn } as any);
+  return jwt.sign(payload, getJwtSecret(), { expiresIn } as any);
 }
 
 export function verifyToken(token: string): JwtPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as JwtPayload;
+    return jwt.verify(token, getJwtSecret()) as JwtPayload;
   } catch {
     return null;
   }

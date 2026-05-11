@@ -1,4 +1,5 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useEffect, useState, useCallback } from 'react';
 
@@ -381,7 +382,8 @@ function ParamsPanel({ params }: { params: WorkflowParam[] }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function WorkflowPage({ params }: { params: { id: string } }) {
+export default function WorkflowPage({}) {
+  const params = useParams<{ id: string }>();
   const schoolId = params.id;
 
   const [activeType,      setActiveType]      = useState<WorkflowType>('admission');
