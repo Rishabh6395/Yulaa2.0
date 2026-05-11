@@ -15,8 +15,10 @@ interface MenuItem {
 // All possible menu items per role — key is used for permission lookup
 const menuItems: Record<string, MenuItem[]> = {
   super_admin: [
-    { label: 'School Library',          href: '/dashboard/schools',         icon: 'Building',        key: 'schools' },
-    { label: 'Default School Settings', href: '/dashboard/schools/default', icon: 'Settings',        key: 'schools_default' },
+    { label: 'School Library',          href: '/dashboard/schools',              icon: 'Building',     key: 'schools' },
+    { label: 'Default School Settings', href: '/dashboard/schools/default',      icon: 'Settings',     key: 'schools_default' },
+    { label: 'All Consultants',         href: '/dashboard/super-admin/consultants', icon: 'Briefcase', key: 'super_consultants' },
+    { label: 'All Vendors',             href: '/dashboard/super-admin/vendors',  icon: 'ShoppingBag',  key: 'super_vendors' },
   ],
   school_admin: [
     { label: 'Dashboard',        href: '/dashboard',                  icon: 'LayoutDashboard', key: 'dashboard' },
@@ -44,6 +46,8 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Queries',          href: '/dashboard/queries',          icon: 'MessageSquare',   key: 'queries' },
     { label: 'Transport',        href: '/dashboard/transport',        icon: 'Bus',             key: 'transport' },
     { label: 'Performance',      href: '/dashboard/performance',      icon: 'TrendingUp',      key: 'performance' },
+    { label: 'Career Sessions',       href: '/dashboard/career-sessions/manage', icon: 'Briefcase',   key: 'sessions' },
+    { label: 'Vendor / Marketplace',  href: '/dashboard/vendor/manage',          icon: 'ShoppingBag', key: 'vendor' },
     { label: 'Compliance',       href: '/dashboard/compliance',       icon: 'ShieldCheck',     key: 'compliance' },
     { label: 'Reports',          href: '/dashboard/reports',          icon: 'BarChart',        key: 'reports' },
     { label: 'Profile',          href: '/dashboard/settings',         icon: 'UserCircle',      key: 'settings' },
@@ -87,9 +91,10 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Announcements',   href: '/dashboard/announcements',  icon: 'Megaphone',       key: 'announcements' },
     { label: 'Leave',           href: '/dashboard/leave',          icon: 'Calendar',        key: 'leave' },
     { label: 'Queries',         href: '/dashboard/queries',        icon: 'MessageSquare',   key: 'queries' },
-    { label: 'Career Sessions', href: '/dashboard/sessions',       icon: 'Briefcase',       key: 'sessions' },
-    { label: 'Online Classes',  href: '/dashboard/online-classes', icon: 'Monitor',         key: 'online_classes' },
-    { label: 'Transport',       href: '/dashboard/transport',      icon: 'Bus',             key: 'transport' },
+    { label: 'Career Sessions',      href: '/dashboard/career-sessions', icon: 'Briefcase',   key: 'sessions' },
+    { label: 'Vendor / Marketplace', href: '/dashboard/vendor',          icon: 'ShoppingBag', key: 'vendor' },
+    { label: 'Online Classes',       href: '/dashboard/online-classes',  icon: 'Monitor',     key: 'online_classes' },
+    { label: 'Transport',            href: '/dashboard/transport',       icon: 'Bus',         key: 'transport' },
   ],
   // HOD and Principal use school_admin items but filtered by their own permissions
   hod: [
@@ -138,13 +143,20 @@ const menuItems: Record<string, MenuItem[]> = {
     { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle',      key: 'settings' },
   ],
   vendor: [
-    { label: 'Dashboard', href: '/dashboard',           icon: 'LayoutDashboard', key: 'dashboard' },
-    { label: 'Inventory', href: '/dashboard/inventory', icon: 'ShoppingBag',     key: 'inventory' },
+    { label: 'Dashboard',   href: '/dashboard',                 icon: 'LayoutDashboard', key: 'dashboard' },
+    { label: 'Products',    href: '/dashboard/vendor/products', icon: 'ShoppingBag',     key: 'products' },
+    { label: 'Orders',      href: '/dashboard/vendor/orders',   icon: 'Package',         key: 'orders' },
+    { label: 'Ratings',     href: '/dashboard/vendor/ratings',  icon: 'Star',            key: 'ratings' },
+    { label: 'My Contract', href: '/dashboard/contracts',       icon: 'FileText',        key: 'contracts' },
+    { label: 'Profile',     href: '/dashboard/settings',        icon: 'UserCircle',      key: 'settings' },
   ],
   consultant: [
-    { label: 'Dashboard',       href: '/dashboard',           icon: 'LayoutDashboard', key: 'dashboard' },
-    { label: 'Career Sessions', href: '/dashboard/sessions',  icon: 'Briefcase',       key: 'sessions' },
-    { label: 'My Contract',     href: '/dashboard/contracts', icon: 'FileText',        key: 'contracts' },
+    { label: 'Dashboard',     href: '/dashboard',                          icon: 'LayoutDashboard', key: 'dashboard' },
+    { label: 'Sessions',      href: '/dashboard/consultant/sessions',      icon: 'Briefcase',       key: 'sessions' },
+    { label: 'Availability',  href: '/dashboard/consultant/availability',  icon: 'CalendarDays',    key: 'availability' },
+    { label: 'Bookings',      href: '/dashboard/consultant/bookings',      icon: 'CalendarCheck',   key: 'bookings' },
+    { label: 'My Contract',   href: '/dashboard/contracts',                icon: 'FileText',        key: 'contracts' },
+    { label: 'Profile',       href: '/dashboard/settings',                 icon: 'UserCircle',      key: 'settings' },
   ],
 };
 
@@ -230,6 +242,17 @@ const icons: Record<string, React.ReactNode> = {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="7" width="20" height="14" rx="2"/>
       <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+    </svg>
+  ),
+  Package: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+      <path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
+    </svg>
+  ),
+  Star: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
     </svg>
   ),
   FileText: (
