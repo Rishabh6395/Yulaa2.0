@@ -11,6 +11,7 @@ type TimetableSlot = {
   dayOfWeek: number;
   class?: { name: string; grade: string; section: string };
   classId: string;
+  slotType?: string;
 };
 
 type Class = {
