@@ -552,6 +552,7 @@ model SupportQuery {
   raisedById   String   @map("raised_by_id")
   raisedByRole String   @map("raised_by_role") @db.VarChar(30)
   queryType    String?  @map("query_type") @db.VarChar(50)
+  priority     String   @default("normal") @db.VarChar(20)
   subject      String   @db.VarChar(200)
   description  String
   status       String   @default("open") @db.VarChar(20)
@@ -569,17 +570,29 @@ model SupportQuery {
 }
 
 model SupportQueryReply {
-  id        String   @id @default(uuid())
-  queryId   String   @map("query_id")
-  userId    String   @map("user_id")
-  message   String
-  createdAt DateTime @default(now()) @map("created_at")
+  id          String   @id @default(uuid())
+  queryId     String   @map("query_id")
+  userId      String   @map("user_id")
+  message     String
+  attachments String[]
+  createdAt   DateTime @default(now()) @map("created_at")
 
   query SupportQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
   user  User         @relation("SupportQueryReplyUser", fields: [userId], references: [id])
 
   @@index([queryId])
   @@map("support_query_replies")
+}
+
+model QuerySlaPolicy {
+  id              String   @id @default(uuid())
+  priority        String   @unique @db.VarChar(20)
+  responseHours   Int      @default(24) @map("response_hours")
+  resolutionHours Int      @default(72) @map("resolution_hours")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("query_sla_policies")
 }
 
 model TransportRoute {

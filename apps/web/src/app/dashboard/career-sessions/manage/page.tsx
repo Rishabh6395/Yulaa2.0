@@ -35,7 +35,7 @@ export default function ManageConsultantsPage() {
 
   const [form, setForm] = useState({
     first_name: '', last_name: '', email: '', password: '',
-    specialization: '', qualifications: [] as string[], session_fee: '',
+    specialization: '', qualification: '', session_fee: '',
     is_external: false, contract_end: '',
   });
 
@@ -64,15 +64,6 @@ export default function ManageConsultantsPage() {
       .catch(() => {});
   }, [token]);
 
-  const toggleQual = (name: string) => {
-    setForm(f => ({
-      ...f,
-      qualifications: f.qualifications.includes(name)
-        ? f.qualifications.filter(q => q !== name)
-        : [...f.qualifications, name],
-    }));
-  };
-
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true); setError('');
@@ -84,7 +75,7 @@ export default function ManageConsultantsPage() {
         email:         form.email,
         password:      form.password,
         specialization: form.specialization || undefined,
-        qualifications: form.qualifications.length ? form.qualifications.join(', ') : undefined,
+        qualifications: form.qualification || undefined,
         session_fee:   form.session_fee ? Number(form.session_fee) : undefined,
         is_external:   isSuperAdmin ? form.is_external : false,
         contract_end:  form.contract_end,
@@ -93,7 +84,7 @@ export default function ManageConsultantsPage() {
     const data = await res.json();
     if (!res.ok) { setError(data.error || 'Failed to create consultant.'); setSaving(false); return; }
     setShowForm(false);
-    setForm({ first_name: '', last_name: '', email: '', password: '', specialization: '', qualifications: [], session_fee: '', is_external: false, contract_end: '' });
+    setForm({ first_name: '', last_name: '', email: '', password: '', specialization: '', qualification: '', session_fee: '', is_external: false, contract_end: '' });
     load();
     setSaving(false);
   };
@@ -154,27 +145,14 @@ export default function ManageConsultantsPage() {
 
             {/* Qualifications from master */}
             {qualifications.length > 0 && (
-              <div className="col-span-2">
-                <label className="label">Qualifications</label>
-                <div className="flex flex-wrap gap-2 p-3 border border-surface-200 dark:border-gray-700 rounded-xl bg-surface-50 dark:bg-gray-800/30">
+              <div>
+                <label className="label">Qualification</label>
+                <select className="input" value={form.qualification} onChange={e => setForm(f => ({ ...f, qualification: e.target.value }))}>
+                  <option value="">— Select qualification —</option>
                   {qualifications.map(q => (
-                    <button
-                      key={q.id}
-                      type="button"
-                      onClick={() => toggleQual(q.name)}
-                      className={`px-3 py-1 text-xs rounded-full border font-medium transition-colors ${
-                        form.qualifications.includes(q.name)
-                          ? 'bg-brand-500 text-white border-brand-500'
-                          : 'border-surface-200 dark:border-gray-600 text-surface-500 dark:text-gray-400 hover:border-brand-300'
-                      }`}
-                    >
-                      {q.name}
-                    </button>
+                    <option key={q.id} value={q.name}>{q.name}</option>
                   ))}
-                </div>
-                {form.qualifications.length > 0 && (
-                  <p className="text-xs text-surface-400 mt-1">Selected: {form.qualifications.join(', ')}</p>
-                )}
+                </select>
               </div>
             )}
 
