@@ -149,6 +149,15 @@ export async function POST(request: Request) {
           contractEnd:     contract_end ? new Date(contract_end) : null,
         },
       });
+    } else if (!vendorProfile.allowedSchoolIds.includes(schoolId)) {
+      // Link existing vendor to this school
+      vendorProfile = await prisma.vendor.update({
+        where: { id: vendorProfile.id },
+        data: {
+          allowedSchoolIds: [...vendorProfile.allowedSchoolIds, schoolId],
+          ...(contract_end && { contractEnd: new Date(contract_end) }),
+        },
+      });
     }
 
     return Response.json({ vendor: vendorProfile }, { status: 201 });

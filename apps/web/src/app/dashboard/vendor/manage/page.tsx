@@ -16,7 +16,7 @@ type Vendor = {
   avg_rating: number | null;
 };
 
-const CATEGORIES = ['books', 'uniform', 'stationery', 'sports', 'lanyard', 'other'];
+const DEFAULT_CATEGORIES = ['Books', 'Uniform', 'Stationery', 'Sports', 'Lanyard', 'Other'];
 
 export default function ManageVendorsPage() {
   const [vendors,    setVendors]    = useState<Vendor[]>([]);
@@ -26,14 +26,19 @@ export default function ManageVendorsPage() {
   const [error,      setError]      = useState('');
   const [editId,     setEditId]     = useState<string | null>(null);
   const [newEndDate, setNewEndDate] = useState('');
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
 
   const [form, setForm] = useState({
     first_name: '', last_name: '', email: '', password: '',
-    company_name: '', category: 'books', is_external: false, contract_end: '',
+    company_name: '', category: '', is_external: false, contract_end: '',
   });
 
-  const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const token    = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+  const userRole = typeof window !== 'undefined'
+    ? (JSON.parse(localStorage.getItem('user') || '{}').primaryRole || '')
+    : '';
+  const isSuperAdmin = userRole === 'super_admin';
+  const headers  = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   const load = () => {
     setLoading(true);
@@ -45,26 +50,43 @@ export default function ManageVendorsPage() {
 
   useEffect(() => { load(); }, []);
 
+  // Load product categories from custom master (slug: product_category)
+  useEffect(() => {
+    if (!token) return;
+    fetch('/api/masters/custom/product_category', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.masterValues?.length) {
+          const vals = d.masterValues.map((v: any) => v.name);
+          setCategories(vals);
+          setForm(f => ({ ...f, category: vals[0].toLowerCase() || '' }));
+        } else {
+          setForm(f => ({ ...f, category: DEFAULT_CATEGORIES[0].toLowerCase() }));
+        }
+      })
+      .catch(() => { setForm(f => ({ ...f, category: DEFAULT_CATEGORIES[0].toLowerCase() })); });
+  }, [token]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true); setError('');
     const res = await fetch('/api/vendor/manage', {
       method: 'POST', headers,
       body: JSON.stringify({
-        first_name: form.first_name,
-        last_name: form.last_name,
-        email: form.email,
-        password: form.password,
+        first_name:   form.first_name,
+        last_name:    form.last_name,
+        email:        form.email,
+        password:     form.password || undefined,
         company_name: form.company_name,
-        category: form.category,
-        is_external: form.is_external,
+        category:     form.category,
+        is_external:  isSuperAdmin ? form.is_external : false,
         contract_end: form.contract_end || undefined,
       }),
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error || 'Failed to create vendor.'); setSaving(false); return; }
     setShowForm(false);
-    setForm({ first_name: '', last_name: '', email: '', password: '', company_name: '', category: 'books', is_external: false, contract_end: '' });
+    setForm(f => ({ first_name: '', last_name: '', email: '', password: '', company_name: '', category: f.category, is_external: false, contract_end: '' }));
     load();
     setSaving(false);
   };
@@ -85,7 +107,7 @@ export default function ManageVendorsPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Vendors</h1>
-          <p className="text-sm text-surface-400 mt-0.5">Manage vendors for your school — add internal suppliers or link external marketplace vendors.</p>
+          <p className="text-sm text-surface-400 mt-0.5">Manage vendors and suppliers for your school.</p>
         </div>
         <button onClick={() => setShowForm(true)} className="btn btn-primary">+ Add Vendor</button>
       </div>
@@ -95,47 +117,54 @@ export default function ManageVendorsPage() {
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">New Vendor</h2>
           <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className="label">Company / Shop Name</label>
+              <label className="label">Company / Shop Name *</label>
               <input required className="input" value={form.company_name} onChange={e => setForm(f => ({ ...f, company_name: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Contact First Name</label>
+              <label className="label">Contact First Name *</label>
               <input required className="input" value={form.first_name} onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Contact Last Name</label>
+              <label className="label">Contact Last Name *</label>
               <input required className="input" value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Email</label>
+              <label className="label">Email *</label>
               <input required type="email" className="input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
             </div>
             <div>
               <label className="label">Password</label>
-              <input required type="password" className="input" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+              <input type="password" className="input" placeholder="Default: Yulaa@2024" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Category</label>
-              <select className="input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                {CATEGORIES.map(c => <option key={c} value={c} className="capitalize">{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+              <label className="label">Product Category *</label>
+              <select required className="input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                <option value="">— Select Category —</option>
+                {categories.map(c => (
+                  <option key={c} value={c.toLowerCase()}>{c}</option>
+                ))}
               </select>
             </div>
             <div>
               <label className="label">Contract End Date</label>
               <input type="date" className="input" value={form.contract_end} onChange={e => setForm(f => ({ ...f, contract_end: e.target.value }))} />
             </div>
-            <div className="col-span-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.is_external}
-                  onChange={e => setForm(f => ({ ...f, is_external: e.target.checked }))}
-                />
-                <span className="text-sm">External vendor (not exclusive to this school)</span>
-              </label>
-            </div>
 
-            {error && <p className="col-span-2 text-sm text-red-600">{error}</p>}
+            {/* External checkbox — only for super_admin */}
+            {isSuperAdmin && (
+              <div className="col-span-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.is_external}
+                    onChange={e => setForm(f => ({ ...f, is_external: e.target.checked }))}
+                  />
+                  <span className="text-sm">External vendor (not exclusive to this school)</span>
+                </label>
+              </div>
+            )}
+
+            {error && <p className="col-span-2 text-sm text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">{error}</p>}
             <div className="col-span-2 flex gap-3">
               <button type="submit" disabled={saving} className="btn btn-primary">{saving ? 'Creating…' : 'Create Vendor'}</button>
               <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>
@@ -158,7 +187,7 @@ export default function ManageVendorsPage() {
             <thead className="bg-surface-50 dark:bg-gray-800 border-b border-surface-200 dark:border-gray-700">
               <tr>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Vendor</th>
-                <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Type</th>
+                <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Category</th>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Products</th>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Contract</th>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Rating</th>
@@ -171,17 +200,17 @@ export default function ManageVendorsPage() {
                   <td className="p-4">
                     <p className="font-medium text-sm text-gray-900 dark:text-gray-100">{v.company_name}</p>
                     <p className="text-xs text-surface-400">{v.contact_name} · {v.email}</p>
-                    {v.category && (
-                      <span className="text-xs bg-surface-100 dark:bg-gray-700 px-1.5 py-0.5 rounded capitalize mt-0.5 inline-block">{v.category}</span>
-                    )}
-                  </td>
-                  <td className="p-4">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${v.is_external ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
+                    <span className={`text-xs font-medium px-1.5 py-0.5 rounded mt-0.5 inline-block ${v.is_external ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
                       {v.is_external ? 'External' : 'Internal'}
                     </span>
                   </td>
+                  <td className="p-4">
+                    {v.category && (
+                      <span className="text-xs bg-surface-100 dark:bg-gray-700 px-2 py-0.5 rounded-full capitalize">{v.category}</span>
+                    )}
+                  </td>
                   <td className="p-4 text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {v.product_count}
+                    {v.product_count} products
                   </td>
                   <td className="p-4">
                     {editId === v.id ? (

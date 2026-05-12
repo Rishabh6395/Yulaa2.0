@@ -132,8 +132,14 @@ export async function POST(request: Request) {
           experienceYears: experience_years ?? null,
           sessionFee: session_fee ?? null,
           isExternal: Boolean(is_external),
-          allowedSchoolIds: is_external ? [schoolId] : [],
+          allowedSchoolIds: [schoolId],
         },
+      });
+    } else if (!consultantProfile.allowedSchoolIds.includes(schoolId)) {
+      // Link existing consultant to this school
+      consultantProfile = await prisma.consultant.update({
+        where: { id: consultantProfile.id },
+        data: { allowedSchoolIds: [...consultantProfile.allowedSchoolIds, schoolId] },
       });
     }
 
