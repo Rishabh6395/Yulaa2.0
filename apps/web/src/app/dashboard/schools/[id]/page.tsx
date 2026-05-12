@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter , useParams } from 'next/navigation';
 import SchoolConfigModules from '@/components/school/SchoolConfigModules';
 
-export default function SchoolConfigPage({ params }: { params: { id: string } }) {
+export default function SchoolConfigPage({}) {
+  const params = useParams<{ id: string }>();
   const { id }  = params;
   const router  = useRouter();
   const [school,  setSchool]  = useState<any>(null);

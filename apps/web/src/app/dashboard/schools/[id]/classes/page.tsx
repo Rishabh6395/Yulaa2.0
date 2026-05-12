@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter , useParams } from 'next/navigation';
 
-export default function SchoolClassesPage({ params }: { params: { id: string } }) {
+export default function SchoolClassesPage({}) {
+  const params = useParams<{ id: string }>();
   const schoolId = params.id;
   const router = useRouter();
   const [classes, setClasses] = useState<any[]>([]);

@@ -43,6 +43,22 @@ export async function login({ email, password }: LoginInput): Promise<LoginRespo
     }
   }
 
+  // Vendor contract expiry check
+  if (user.userRoles.some((ur) => ur.role.code === 'vendor')) {
+    const vendor = await prisma.vendor.findUnique({ where: { userId: user.id } });
+    if (vendor && !vendor.isActive) {
+      throw new ForbiddenError('Your vendor account has been deactivated. Contact the administrator.');
+    }
+    if (vendor?.contractEnd && vendor.contractEnd < new Date()) {
+      const expiredOn = vendor.contractEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      const err = new ForbiddenError(
+        `Your vendor contract expired on ${expiredOn}. Please contact the school administrator to renew.`
+      );
+      (err as any).code = 'CONTRACT_EXPIRED';
+      throw err;
+    }
+  }
+
   const roles = user.userRoles.map((ur) => ({
     role_code:   ur.role.code,
     role_name:   ur.role.displayName,

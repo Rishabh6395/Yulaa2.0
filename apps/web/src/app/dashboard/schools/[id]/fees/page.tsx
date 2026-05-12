@@ -1,4 +1,5 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useState, useEffect } from 'react';
 import { useApi } from '@/hooks/useApi';
@@ -12,7 +13,8 @@ const NOTIF_TRIGGERS = [
   { id: 'payment_success', label: 'Payment success confirmation' },
 ];
 
-export default function FeesConfigPage({ params }: { params: { id: string } }) {
+export default function FeesConfigPage({}) {
+  const params = useParams<{ id: string }>();
   const { data: feeStructuresData, isLoading: loadingFeeTypes } = useApi<{ names: string[] }>(
     `/api/super-admin/schools/${params.id}/fee-structures`,
   );

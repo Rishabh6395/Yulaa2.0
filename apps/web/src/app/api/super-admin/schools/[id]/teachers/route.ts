@@ -7,24 +7,24 @@ function assertSuperAdmin(user: any) {
   if (!user.roles.some((r: any) => r.role_code === 'super_admin')) throw new ForbiddenError();
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertSuperAdmin(user);
-    return Response.json({ teachers: await listTeachers(params.id) });
+    return Response.json({ teachers: await listTeachers((await params).id) });
   } catch (err) { return handleError(err); }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertSuperAdmin(user);
-    const teacher = await createTeacher(params.id, await request.json());
+    const teacher = await createTeacher((await params).id, await request.json());
     return Response.json({ teacher }, { status: 201 });
   } catch (err) { return handleError(err); }
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertSuperAdmin(user);

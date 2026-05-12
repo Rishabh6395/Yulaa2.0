@@ -1,8 +1,10 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useEffect, useState } from 'react';
 
-export default function UsersRolesPage({ params }: { params: { id: string } }) {
+export default function UsersRolesPage({}) {
+  const params = useParams<{ id: string }>();
   const schoolId = params.id;
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);

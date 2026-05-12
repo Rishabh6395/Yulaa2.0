@@ -75,7 +75,10 @@ export default function ReportsPage() {
 
   const isAdmin = ['school_admin', 'super_admin', 'principal'].includes(user?.primaryRole);
 
-  const handleDownload = (url: string, filename: string) => {
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  const handleDownload = (url: string, filename: string, key?: string) => {
+    if (key) setDownloading(key);
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.blob())
       .then(blob => {
@@ -87,7 +90,14 @@ export default function ReportsPage() {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(objUrl);
-      });
+      })
+      .finally(() => { if (key) setDownloading(null); });
+  };
+
+  const exportXlsx = (type: string) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const params = type === 'attendance' ? `&month=${month}&year=${year}` : '';
+    handleDownload(`/api/reports/export?type=${type}${params}`, `${type}-${today}.xlsx`, type);
   };
 
   const fetchReport = useCallback(async () => {
@@ -177,37 +187,48 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Data Export Cards — admin only */}
+      {/* Excel exports — admin only, school-specific */}
       {isAdmin && (
         <div className="card p-5">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Data Exports</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button
-              onClick={() => handleDownload('/api/students/export', `students-${new Date().toISOString().slice(0,10)}.csv`)}
-              className="flex items-center gap-3 p-3 rounded-xl border border-surface-200 dark:border-gray-700 hover:bg-surface-50 dark:hover:bg-gray-800 transition-colors text-left"
-            >
-              <div className="w-9 h-9 rounded-lg bg-brand-50 dark:bg-brand-950/40 flex items-center justify-center flex-shrink-0">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-brand-600 dark:text-brand-400"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Student Details</p>
-                <p className="text-xs text-surface-400 dark:text-gray-500">All students with class &amp; parent info</p>
-              </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-auto text-surface-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            </button>
-            <button
-              onClick={() => handleDownload('/api/fees/export', `fees-${new Date().toISOString().slice(0,10)}.csv`)}
-              className="flex items-center gap-3 p-3 rounded-xl border border-surface-200 dark:border-gray-700 hover:bg-surface-50 dark:hover:bg-gray-800 transition-colors text-left"
-            >
-              <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center flex-shrink-0">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-600 dark:text-emerald-400"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Student Fee Report</p>
-                <p className="text-xs text-surface-400 dark:text-gray-500">All fee invoices with payment status</p>
-              </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-auto text-surface-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            </button>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-600 dark:text-emerald-400">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/>
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Excel Reports</h3>
+              <p className="text-xs text-surface-400 dark:text-gray-500">School-specific data exports (.xlsx)</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {[
+              { key: 'students',   label: 'Students',        desc: 'All active students with class & parent info', iconCls: 'text-blue-600 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-950/40',    path: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z' },
+              { key: 'admissions', label: 'Admissions',      desc: 'All admission applications & status',          iconCls: 'text-amber-600 dark:text-amber-400',  bg: 'bg-amber-50 dark:bg-amber-950/40',  path: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 3h6v4H9z' },
+              { key: 'attendance', label: 'Attendance',      desc: `${MONTHS[month-1]} ${year} records`,           iconCls: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/40', path: 'M3 4h18v16a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4zM16 2v4M8 2v4M3 10h18M9 16l2 2 4-4' },
+              { key: 'fees',       label: 'Fee Invoices',    desc: 'All invoices with payment status',             iconCls: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/40', path: 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' },
+              { key: 'leave',      label: 'Leave Requests',  desc: 'All leave requests with approvals',            iconCls: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/40', path: 'M3 4h18v18H3zM16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01' },
+              { key: 'homework',   label: 'Homework',        desc: 'All homework assignments by class',            iconCls: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-950/40', path: 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z' },
+            ].map(({ key, label, desc, iconCls, bg, path }) => (
+              <button key={key} onClick={() => exportXlsx(key)} disabled={downloading === key}
+                className="flex items-center gap-3 p-3 rounded-xl border border-surface-200 dark:border-gray-700 hover:bg-surface-50 dark:hover:bg-gray-800 transition-colors text-left disabled:opacity-60">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${bg}`}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={iconCls}>
+                    <path d={path}/>
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{label}</p>
+                  <p className="text-xs text-surface-400 dark:text-gray-500 truncate">{desc}</p>
+                </div>
+                {downloading === key ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-auto text-brand-500 animate-spin shrink-0"><circle cx="12" cy="12" r="10" opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-auto text-surface-400 shrink-0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                )}
+              </button>
+            ))}
           </div>
         </div>
       )}

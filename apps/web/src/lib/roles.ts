@@ -28,4 +28,6 @@ export type RoleCode =
   | 'teacher'
   | 'employee'
   | 'parent'
-  | 'student';
+  | 'student'
+  | 'consultant'
+  | 'vendor';

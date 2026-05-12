@@ -7,29 +7,29 @@ function assertSuperAdmin(user: any) {
   if (!user.roles.some((r: any) => r.role_code === 'super_admin')) throw new ForbiddenError();
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertSuperAdmin(user);
-    return Response.json({ classes: await listClasses(params.id) });
+    return Response.json({ classes: await listClasses((await params).id) });
   } catch (err) { return handleError(err); }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertSuperAdmin(user);
-    const cls = await createClass(params.id, await request.json());
+    const cls = await createClass((await params).id, await request.json());
     return Response.json({ class: cls }, { status: 201 });
   } catch (err) { return handleError(err); }
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertSuperAdmin(user);
     const body = await request.json();
-    const cls = await updateClass(params.id, body);
+    const cls = await updateClass((await params).id, body);
     return Response.json({ class: cls });
   } catch (err) { return handleError(err); }
 }

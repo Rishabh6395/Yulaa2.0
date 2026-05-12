@@ -1,4 +1,5 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useEffect, useRef, useState } from 'react';
 
@@ -56,7 +57,8 @@ const WEEKDAYS = [
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function LeaveConfigPage({ params }: { params: { id: string } }) {
+export default function LeaveConfigPage({}) {
+  const params = useParams<{ id: string }>();
   const schoolId = params.id;
   const [tab, setTab] = useState<Tab>('leave-types');
 

@@ -211,6 +211,15 @@ const makeModules = (schoolId: string): ConfigModule[] => [
     status: 'available',
     icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>,
   },
+  {
+    id: 'external-config',
+    label: 'External Services Config',
+    description: 'Enable / disable external career consultants and vendors for this school. Control area scope and visibility.',
+    color: 'bg-fuchsia-50 dark:bg-fuchsia-950/50 text-fuchsia-600 dark:text-fuchsia-400',
+    href: `/dashboard/schools/${schoolId}/external-config`,
+    status: 'available',
+    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+  },
 ];
 
 export default function SchoolConfigModules({ schoolId, isDefault }: { schoolId: string; isDefault?: boolean }) {

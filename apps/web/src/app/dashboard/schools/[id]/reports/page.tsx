@@ -1,4 +1,5 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useState } from 'react';
 
@@ -17,7 +18,8 @@ const REPORT_TEMPLATES = [
 
 const CATEGORIES = ['All', ...Array.from(new Set(REPORT_TEMPLATES.map(r => r.category)))];
 
-export default function ReportsPage({ params }: { params: { id: string } }) {
+export default function ReportsPage({}) {
+  const params = useParams<{ id: string }>();
   const [activeCategory, setActiveCategory] = useState('All');
   const [generating, setGenerating] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState('');

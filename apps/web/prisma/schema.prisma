@@ -24,10 +24,15 @@ model School {
   state                 String?                @db.VarChar(100)
   website               String?                @db.VarChar(200)
   boardType             String?                @map("board_type") @db.VarChar(30)
-  isDefault             Boolean                @default(false) @map("is_default")
-  attendanceMode        String                 @default("class") @map("attendance_mode") @db.VarChar(20)
-  latitude              Float?
-  longitude             Float?
+  isDefault                Boolean                @default(false) @map("is_default")
+  attendanceMode           String                 @default("class") @map("attendance_mode") @db.VarChar(20)
+  latitude                 Float?
+  longitude                Float?
+  allowExternalConsultant  Boolean                @default(false) @map("allow_external_consultant")
+  allowExternalVendor      Boolean                @default(false) @map("allow_external_vendor")
+  onlineClassEnabled       Boolean                @default(true)  @map("online_class_enabled")
+  courseEnabled            Boolean                @default(false) @map("course_enabled")
+  allowedPlatforms         String[]               @default([])    @map("allowed_platforms")
   admissionApplications AdmissionApplication[]
   admissionWorkflows    AdmissionWorkflow[]
   announcements         Announcement[]
@@ -50,9 +55,14 @@ model School {
   students              Student[]
   teacherLeaveBalances  TeacherLeaveBalance[]
   teachers              Teacher[]
-  menuPermissions       MenuPermission[]
-  timetables            Timetable[]
+  menuPermissions         MenuPermission[]
+  timetables              Timetable[]
+  sessionBookings         SessionBooking[]
+  onlineClasses           OnlineClass[]
+  courses                 Course[]
   transportRoutes       TransportRoute[]
+  transportBuses        TransportBus[]
+  transportRides        TransportRide[]
   userRoles             UserRole[]
   vendorInventory       VendorInventory[]
   // New modules
@@ -121,6 +131,8 @@ model User {
   userRoles             UserRole[]
   vendors               Vendor?
   createdEvents         SchoolEvent[]
+  operatedRides         TransportRide[]        @relation("TransportRideEmployee")
+  courseEnrollments     CourseEnrollment[]
 
   @@map("users")
 }
@@ -160,10 +172,12 @@ model Teacher {
   leaveBalances   TeacherLeaveBalance[]
   school          School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  timetableSlots  TimetableSlot[]
-  timetableLogs   TimetableLog[]
-  eventTasks      EventTask[]
-  syllabusItems   SyllabusItem[]
+  timetableSlots       TimetableSlot[]
+  timetableLogs        TimetableLog[]
+  eventTasks           EventTask[]
+  syllabusItems        SyllabusItem[]
+  onlineClasses        OnlineClass[]
+  taughtCourses        Course[]
 
   @@unique([userId, schoolId])
   @@index([schoolId])
@@ -197,8 +211,12 @@ model Student {
   queries             StudentQuery[]
   class               Class?               @relation(fields: [classId], references: [id])
   school              School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  eventParticipants   EventParticipant[]
-  examResults         ExamResult[]
+  eventParticipants        EventParticipant[]
+  examResults              ExamResult[]
+  rideStudents             RideStudent[]
+  sessionBookings          SessionBooking[]
+  onlineClassAttendances   OnlineClassAttendance[]
+  courseEnrollments        CourseEnrollment[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -208,13 +226,17 @@ model Student {
 }
 
 model Parent {
-  id             String          @id @default(uuid())
-  userId         String          @unique @map("user_id")
-  occupation     String?
-  createdAt      DateTime        @default(now()) @map("created_at")
-  parentStudents ParentStudent[]
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  queries        StudentQuery[]
+  id                String             @id @default(uuid())
+  userId            String             @unique @map("user_id")
+  occupation        String?
+  createdAt         DateTime           @default(now()) @map("created_at")
+  parentStudents    ParentStudent[]
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  queries           StudentQuery[]
+  sessionBookings   SessionBooking[]
+  vendorOrders      VendorOrder[]
+  consultantRatings ConsultantRating[]
+  vendorRatings     VendorRating[]
 
   @@map("parents")
 }
@@ -254,6 +276,7 @@ model Class {
   exams          Exam[]
   examEntries    ExamTimetableEntry[]
   streamMasters  StreamMaster[]
+  onlineClasses  OnlineClass[]
 
   @@unique([schoolId, grade, section, academicYear])
   @@map("classes")
@@ -570,21 +593,92 @@ model TransportRoute {
   morningDeparture String?  @map("morning_departure") @db.VarChar(10)
   eveningDeparture String?  @map("evening_departure") @db.VarChar(10)
   stops            Json?
-  createdAt        DateTime @default(now()) @map("created_at")
-  school           School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt        DateTime        @default(now()) @map("created_at")
+  school           School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  rides            TransportRide[]
 
   @@map("transport_routes")
 }
 
+model TransportBus {
+  id          String          @id @default(uuid())
+  schoolId    String          @map("school_id")
+  busNumber   String          @map("bus_number") @db.VarChar(50)
+  capacity    Int?
+  gpsEnabled  Boolean         @default(false) @map("gps_enabled")
+  gpsDeviceId String?         @map("gps_device_id") @db.VarChar(100)
+  isActive    Boolean         @default(true) @map("is_active")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  school      School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  rides       TransportRide[]
+
+  @@map("transport_buses")
+}
+
+model TransportRide {
+  id               String        @id @default(uuid())
+  schoolId         String        @map("school_id")
+  routeId          String        @map("route_id")
+  busId            String?       @map("bus_id")
+  employeeId       String        @map("employee_id")
+  direction        String        @default("morning") @db.VarChar(20)
+  emergencyContact String?       @map("emergency_contact") @db.VarChar(20)
+  departureTime    DateTime?     @map("departure_time")
+  arrivalTime      DateTime?     @map("arrival_time")
+  status           String        @default("pending") @db.VarChar(20)
+  gpsEnabled       Boolean       @default(false) @map("gps_enabled")
+  gpsLat           Float?        @map("gps_lat")
+  gpsLng           Float?        @map("gps_lng")
+  notes            String?
+  createdAt        DateTime      @default(now()) @map("created_at")
+  school           School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  route            TransportRoute @relation(fields: [routeId], references: [id])
+  bus              TransportBus? @relation(fields: [busId], references: [id])
+  employee         User          @relation("TransportRideEmployee", fields: [employeeId], references: [id])
+  rideStudents     RideStudent[]
+
+  @@index([schoolId])
+  @@index([status])
+  @@map("transport_rides")
+}
+
+model RideStudent {
+  id           String        @id @default(uuid())
+  rideId       String        @map("ride_id")
+  studentId    String        @map("student_id")
+  pickupStatus String        @default("pending") @map("pickup_status") @db.VarChar(20)
+  dropStatus   String        @default("pending") @map("drop_status") @db.VarChar(20)
+  notifiedAt   DateTime?     @map("notified_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  ride         TransportRide @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  student      Student       @relation(fields: [studentId], references: [id])
+
+  @@unique([rideId, studentId])
+  @@map("ride_students")
+}
+
 model Vendor {
-  id          String            @id @default(uuid())
-  userId      String            @unique @map("user_id")
-  companyName String            @map("company_name") @db.VarChar(200)
-  gstNo       String?           @map("gst_no") @db.VarChar(20)
-  address     String?
-  createdAt   DateTime          @default(now()) @map("created_at")
-  inventory   VendorInventory[]
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String            @id @default(uuid())
+  userId           String            @unique @map("user_id")
+  companyName      String            @map("company_name") @db.VarChar(200)
+  gstNo            String?           @map("gst_no") @db.VarChar(20)
+  address          String?
+  description      String?
+  category         String?           @db.VarChar(50)
+  isExternal       Boolean           @default(false) @map("is_external")
+  isActive         Boolean           @default(true) @map("is_active")
+  areaScope        String            @default("school") @map("area_scope") @db.VarChar(20)
+  allowedSchoolIds String[]          @map("allowed_school_ids")
+  lat              Float?
+  lng              Float?
+  contractStart    DateTime?         @map("contract_start") @db.Date
+  contractEnd      DateTime?         @map("contract_end") @db.Date
+  createdAt        DateTime          @default(now()) @map("created_at")
+  inventory        VendorInventory[]
+  products         VendorProduct[]
+  orders           VendorOrder[]
+  ratings          VendorRating[]
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("vendors")
 }
@@ -609,16 +703,26 @@ model VendorInventory {
 }
 
 model Consultant {
-  id              String               @id @default(uuid())
-  userId          String               @unique @map("user_id")
-  specialization  String?
-  bio             String?
-  qualifications  String?
-  experienceYears Int?                 @map("experience_years")
-  createdAt       DateTime             @default(now()) @map("created_at")
-  contracts       ConsultantContract[]
-  sessions        ConsultantSession[]
-  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String                   @id @default(uuid())
+  userId           String                   @unique @map("user_id")
+  specialization   String?
+  bio              String?
+  qualifications   String?
+  experienceYears  Int?                     @map("experience_years")
+  isExternal       Boolean                  @default(false) @map("is_external")
+  sessionFee       Decimal?                 @map("session_fee") @db.Decimal(10, 2)
+  isActive         Boolean                  @default(true) @map("is_active")
+  areaScope        String                   @default("school") @map("area_scope") @db.VarChar(20)
+  allowedSchoolIds String[]                 @map("allowed_school_ids")
+  lat              Float?
+  lng              Float?
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  contracts        ConsultantContract[]
+  sessions         ConsultantSession[]
+  availability     ConsultantAvailability[]
+  bookings         SessionBooking[]
+  ratings          ConsultantRating[]
+  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("consultants")
 }
@@ -883,6 +987,7 @@ model TimetableSlot {
   createdAt   DateTime       @default(now()) @map("created_at")
   logs          TimetableLog[]
   reassignments TimetableReassignment[]
+  onlineClasses OnlineClass[]
   teacher       Teacher?       @relation(fields: [teacherId], references: [id])
   timetable     Timetable      @relation(fields: [timetableId], references: [id], onDelete: Cascade)
 
@@ -1521,3 +1626,316 @@ model GenericMasterValue {
   @@index([typeId])
   @@map("generic_master_values")
 }
+
+// ─── Career Sessions — Individual Bookings ────────────────────────────────────
+
+model ConsultantAvailability {
+  id           String           @id @default(uuid())
+  consultantId String           @map("consultant_id")
+  dayOfWeek    Int?             @map("day_of_week")
+  date         DateTime?        @db.Date
+  startTime    String           @map("start_time") @db.VarChar(10)
+  endTime      String           @map("end_time") @db.VarChar(10)
+  mode         String           @default("online") @db.VarChar(20)
+  maxBookings  Int              @default(1) @map("max_bookings")
+  isActive     Boolean          @default(true) @map("is_active")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  consultant   Consultant       @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  bookings     SessionBooking[]
+
+  @@index([consultantId])
+  @@map("consultant_availability")
+}
+
+model SessionBooking {
+  id               String                  @id @default(uuid())
+  consultantId     String                  @map("consultant_id")
+  parentId         String                  @map("parent_id")
+  availabilityId   String?                 @map("availability_id")
+  studentId        String?                 @map("student_id")
+  schoolId         String?                 @map("school_id")
+  sessionDate      DateTime                @map("session_date") @db.Date
+  startTime        String                  @map("start_time") @db.VarChar(10)
+  endTime          String                  @map("end_time") @db.VarChar(10)
+  mode             String                  @default("online") @db.VarChar(20)
+  meetingLink      String?                 @map("meeting_link")
+  notes            String?
+  status           String                  @default("pending") @db.VarChar(20)
+  sessionFee       Decimal?                @map("session_fee") @db.Decimal(10, 2)
+  paymentStatus    String                  @default("pending") @map("payment_status") @db.VarChar(20)
+  paymentRef       String?                 @map("payment_ref")
+  cancellationNote String?                 @map("cancellation_note")
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @default(now()) @updatedAt @map("updated_at")
+  consultant       Consultant              @relation(fields: [consultantId], references: [id])
+  parent           Parent                  @relation(fields: [parentId], references: [id])
+  availability     ConsultantAvailability? @relation(fields: [availabilityId], references: [id])
+  student          Student?                @relation(fields: [studentId], references: [id])
+  school           School?                 @relation(fields: [schoolId], references: [id])
+  rating           ConsultantRating?
+
+  @@index([consultantId])
+  @@index([parentId])
+  @@index([sessionDate])
+  @@map("session_bookings")
+}
+
+model ConsultantRating {
+  id           String         @id @default(uuid())
+  bookingId    String         @unique @map("booking_id")
+  consultantId String         @map("consultant_id")
+  parentId     String         @map("parent_id")
+  rating       Int
+  review       String?
+  createdAt    DateTime       @default(now()) @map("created_at")
+  booking      SessionBooking @relation(fields: [bookingId], references: [id])
+  consultant   Consultant     @relation(fields: [consultantId], references: [id])
+  parent       Parent         @relation(fields: [parentId], references: [id])
+
+  @@index([consultantId])
+  @@map("consultant_ratings")
+}
+
+// ─── Vendor E-Commerce ────────────────────────────────────────────────────────
+
+model VendorProduct {
+  id          String            @id @default(uuid())
+  vendorId    String            @map("vendor_id")
+  name        String            @db.VarChar(200)
+  description String?
+  category    String            @db.VarChar(50)
+  price       Decimal           @db.Decimal(10, 2)
+  mrp         Decimal?          @db.Decimal(10, 2)
+  quantity    Int               @default(0)
+  unit        String            @default("piece") @db.VarChar(20)
+  imageUrls   String[]          @map("image_urls")
+  tags        String[]
+  isActive    Boolean           @default(true) @map("is_active")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @default(now()) @updatedAt @map("updated_at")
+  vendor      Vendor            @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  orderItems  VendorOrderItem[]
+
+  @@index([vendorId])
+  @@index([category])
+  @@map("vendor_products")
+}
+
+model VendorOrder {
+  id              String            @id @default(uuid())
+  vendorId        String            @map("vendor_id")
+  parentId        String            @map("parent_id")
+  orderNo         String            @unique @map("order_no") @db.VarChar(30)
+  totalAmount     Decimal           @map("total_amount") @db.Decimal(10, 2)
+  deliveryAddress String?           @map("delivery_address")
+  deliveryMode    String            @default("delivery") @map("delivery_mode") @db.VarChar(20)
+  status          String            @default("pending") @db.VarChar(20)
+  paymentStatus   String            @default("pending") @map("payment_status") @db.VarChar(20)
+  paymentRef      String?           @map("payment_ref")
+  notes           String?
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @default(now()) @updatedAt @map("updated_at")
+  vendor          Vendor            @relation(fields: [vendorId], references: [id])
+  parent          Parent            @relation(fields: [parentId], references: [id])
+  items           VendorOrderItem[]
+  rating          VendorRating?
+
+  @@index([vendorId])
+  @@index([parentId])
+  @@map("vendor_orders")
+}
+
+model VendorOrderItem {
+  id        String        @id @default(uuid())
+  orderId   String        @map("order_id")
+  productId String        @map("product_id")
+  quantity  Int
+  unitPrice Decimal       @map("unit_price") @db.Decimal(10, 2)
+  total     Decimal       @db.Decimal(10, 2)
+  createdAt DateTime      @default(now()) @map("created_at")
+  order     VendorOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   VendorProduct @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@map("vendor_order_items")
+}
+
+model VendorRating {
+  id        String      @id @default(uuid())
+  orderId   String      @unique @map("order_id")
+  vendorId  String      @map("vendor_id")
+  parentId  String      @map("parent_id")
+  rating    Int
+  review    String?
+  createdAt DateTime    @default(now()) @map("created_at")
+  order     VendorOrder @relation(fields: [orderId], references: [id])
+  vendor    Vendor      @relation(fields: [vendorId], references: [id])
+  parent    Parent      @relation(fields: [parentId], references: [id])
+
+  @@index([vendorId])
+  @@map("vendor_ratings")
+}
+
+// ─── Online Classes ───────────────────────────────────────────────────────────
+
+model OnlineClass {
+  id              String    @id @default(uuid())
+  schoolId        String    @map("school_id")
+  slotId          String?   @map("slot_id")
+  teacherId       String    @map("teacher_id")
+  classId         String?   @map("class_id")
+  title           String    @db.VarChar(200)
+  subject         String?   @db.VarChar(100)
+  platform        String    @default("meet") @db.VarChar(20)
+  meetingLink     String?   @map("meeting_link")
+  meetingId       String?   @map("meeting_id") @db.VarChar(300)
+  meetingPassword String?   @map("meeting_password") @db.VarChar(100)
+  scheduledAt     DateTime  @map("scheduled_at")
+  durationMinutes Int       @default(45) @map("duration_minutes")
+  status          String    @default("scheduled") @db.VarChar(20)
+  recordingUrl    String?   @map("recording_url")
+  isRecorded      Boolean   @default(false) @map("is_recorded")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+  school          School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher         Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  slot            TimetableSlot? @relation(fields: [slotId], references: [id])
+  class           Class?    @relation(fields: [classId], references: [id])
+  attendances     OnlineClassAttendance[]
+
+  @@index([schoolId, scheduledAt])
+  @@index([teacherId])
+  @@index([classId])
+  @@map("online_classes")
+}
+
+model OnlineClassAttendance {
+  id              String      @id @default(uuid())
+  onlineClassId   String      @map("online_class_id")
+  studentId       String      @map("student_id")
+  status          String      @default("absent") @db.VarChar(20)
+  markedByTeacher Boolean     @default(false) @map("marked_by_teacher")
+  joinedAt        DateTime?   @map("joined_at")
+  leftAt          DateTime?   @map("left_at")
+  durationMinutes Int?        @map("duration_minutes")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  onlineClass     OnlineClass @relation(fields: [onlineClassId], references: [id], onDelete: Cascade)
+  student         Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([onlineClassId, studentId])
+  @@index([onlineClassId])
+  @@index([studentId])
+  @@map("online_class_attendance")
+}
+
+// ─── Courses ──────────────────────────────────────────────────────────────────
+
+model Course {
+  id                  String    @id @default(uuid())
+  schoolId            String?   @map("school_id")
+  teacherId           String?   @map("teacher_id")
+  instructorName      String?   @map("instructor_name") @db.VarChar(200)
+  title               String    @db.VarChar(200)
+  description         String?
+  thumbnail           String?   @db.VarChar(500)
+  type                String    @default("recorded") @db.VarChar(20)
+  price               Decimal   @default(0) @db.Decimal(10, 2)
+  currency            String    @default("INR") @db.VarChar(5)
+  isFree              Boolean   @default(false) @map("is_free")
+  isPublished         Boolean   @default(false) @map("is_published")
+  isExternal          Boolean   @default(false) @map("is_external")
+  requiresApproval    Boolean   @default(false) @map("requires_approval")
+  approvedById        String?   @map("approved_by_id")
+  approvedAt          DateTime? @map("approved_at")
+  totalDuration       Int       @default(0) @map("total_duration")
+  certificateEnabled  Boolean   @default(false) @map("certificate_enabled")
+  tags                String[]
+  targetGrades        String[]  @map("target_grades")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at")
+  school              School?   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher             Teacher?  @relation(fields: [teacherId], references: [id])
+  modules             CourseModule[]
+  enrollments         CourseEnrollment[]
+
+  @@index([schoolId, isPublished])
+  @@index([isExternal, isPublished])
+  @@map("courses")
+}
+
+model CourseModule {
+  id          String         @id @default(uuid())
+  courseId    String         @map("course_id")
+  title       String         @db.VarChar(200)
+  description String?
+  sortOrder   Int            @default(0) @map("sort_order")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  course      Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons     CourseLesson[]
+
+  @@index([courseId])
+  @@map("course_modules")
+}
+
+model CourseLesson {
+  id          String           @id @default(uuid())
+  moduleId    String           @map("module_id")
+  title       String           @db.VarChar(200)
+  description String?
+  type        String           @default("video") @db.VarChar(20)
+  contentUrl  String?          @map("content_url")
+  meetingLink String?          @map("meeting_link")
+  scheduledAt DateTime?        @map("scheduled_at")
+  duration    Int?
+  isPreview   Boolean          @default(false) @map("is_preview")
+  sortOrder   Int              @default(0) @map("sort_order")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  module      CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress    CourseProgress[]
+
+  @@index([moduleId])
+  @@map("course_lessons")
+}
+
+model CourseEnrollment {
+  id                  String          @id @default(uuid())
+  courseId            String          @map("course_id")
+  userId              String          @map("user_id")
+  studentId           String?         @map("student_id")
+  enrolledAt          DateTime        @default(now()) @map("enrolled_at")
+  completedAt         DateTime?       @map("completed_at")
+  progressPct         Float           @default(0) @map("progress_pct")
+  certificateNo       String?         @unique @map("certificate_no") @db.VarChar(50)
+  certificateUrl      String?         @map("certificate_url")
+  certificateIssuedAt DateTime?       @map("certificate_issued_at")
+  paymentStatus       String          @default("pending") @map("payment_status") @db.VarChar(20)
+  paymentRef          String?         @map("payment_ref")
+  amountPaid          Decimal         @default(0) @map("amount_paid") @db.Decimal(10, 2)
+  gateway             String?         @db.VarChar(20)
+  createdAt           DateTime        @default(now()) @map("created_at")
+  course              Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  student             Student?        @relation(fields: [studentId], references: [id])
+  progress            CourseProgress[]
+
+  @@unique([courseId, userId])
+  @@index([courseId])
+  @@index([userId])
+  @@map("course_enrollments")
+}
+
+model CourseProgress {
+  id             String           @id @default(uuid())
+  enrollmentId   String           @map("enrollment_id")
+  lessonId       String           @map("lesson_id")
+  completedAt    DateTime?        @map("completed_at")
+  watchedSeconds Int              @default(0) @map("watched_seconds")
+  enrollment     CourseEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson         CourseLesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, lessonId])
+  @@index([enrollmentId])
+  @@map("course_progress")
+}
+
+

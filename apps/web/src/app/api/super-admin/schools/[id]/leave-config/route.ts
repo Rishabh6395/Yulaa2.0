@@ -22,10 +22,10 @@ function assertHolidayAccess(user: any) {
 }
 
 // ─── GET: leave types, policies, holidays, weekoffs ─────────────────────────
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
-    const schoolId = params.id;
+    const schoolId = (await params).id;
     const url = new URL(request.url);
     const resource = url.searchParams.get('resource');
     const academicYear = url.searchParams.get('year') || currentAcademicYearLabel();
@@ -98,10 +98,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // ─── POST: create leave type, add holiday, bulk holidays, upsert weekoffs ────
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
-    const schoolId = params.id;
+    const schoolId = (await params).id;
     const body = await request.json();
 
     if (body.action === 'create_leave_type') {
@@ -206,11 +206,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
 }
 
 // ─── PUT: upsert balance policy, update leave type, upsert workflow ───────────
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertAdminAccess(user);
-    const schoolId = params.id;
+    const schoolId = (await params).id;
     const body = await request.json();
 
     if (body.action === 'upsert_policy') {
@@ -254,10 +254,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 }
 
 // ─── DELETE: remove leave type OR holiday ────────────────────────────────────
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
-    const schoolId = params.id;
+    const schoolId = (await params).id;
     const url = new URL(request.url);
     const leaveTypeId = url.searchParams.get('leaveTypeId');
     const holidayId = url.searchParams.get('holidayId');

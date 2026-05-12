@@ -8,22 +8,22 @@ function assertSuperAdmin(user: any) {
 }
 
 /** GET /api/super-admin/schools/[id]/admission-workflow */
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertSuperAdmin(user);
-    const workflow = await getWorkflow(params.id);
+    const workflow = await getWorkflow((await params).id);
     return Response.json({ workflow });
   } catch (err) { return handleError(err); }
 }
 
 /** POST /api/super-admin/schools/[id]/admission-workflow — body: { name, steps } */
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     assertSuperAdmin(user);
     const body     = await request.json();
-    const workflow = await saveWorkflow({ ...body, schoolId: params.id });
+    const workflow = await saveWorkflow({ ...body, schoolId: (await params).id });
     return Response.json({ workflow }, { status: 201 });
   } catch (err) { return handleError(err); }
 }

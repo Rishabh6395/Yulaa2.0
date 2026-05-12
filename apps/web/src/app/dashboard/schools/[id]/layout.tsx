@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname , useParams } from 'next/navigation';
 
 function BackIcon() {
   return (
@@ -11,7 +11,8 @@ function BackIcon() {
   );
 }
 
-export default function SchoolLayout({ children, params }: { children: React.ReactNode; params: { id: string } }) {
+export default function SchoolLayout({ children }: { children: React.ReactNode }) {
+  const params = useParams<{ id: string }>();
   const { id } = params;
   const router  = useRouter();
   const pathname = usePathname();

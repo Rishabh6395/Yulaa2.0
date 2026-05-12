@@ -1,4 +1,5 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useEffect, useState } from 'react';
 
@@ -10,8 +11,8 @@ const STATUS_COLORS: Record<string, string> = {
   enrolled: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400',
 };
 
-export default function SchoolAdmissionsPage({ params }: { params: { id: string } }) {
-  const schoolId = params.id;
+export default function SchoolAdmissionsPage({}) {
+  const { id: schoolId } = useParams<{ id: string }>();
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');

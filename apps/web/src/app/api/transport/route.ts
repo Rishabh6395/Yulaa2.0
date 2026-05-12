@@ -4,17 +4,23 @@ import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/util
 import prisma from '@/lib/prisma';
 
 
-function requireAdmin(roleCode: string) {
-  if (!ALLOWED_ROLES.includes(roleCode)) throw new ForbiddenError();
+function getPrimary(user: any) { return user.roles.find((r: any) => r.is_primary) ?? user.roles[0]; }
+function isSuperAdmin(user: any) { return user.roles.some((r: any) => r.role_code === 'super_admin'); }
+
+function getSchoolId(user: any, override?: string | null): string {
+  if (isSuperAdmin(user) && override) return override;
+  const primary = getPrimary(user);
+  if (!ALLOWED_ROLES.includes(primary.role_code)) throw new ForbiddenError();
+  if (!primary.school_id) throw new ForbiddenError();
+  return primary.school_id;
 }
 
 export async function GET(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    requireAdmin(primary.role_code);
-    const schoolId = primary.school_id!;
+    const { searchParams } = new URL(request.url);
+    const schoolId = getSchoolId(user, searchParams.get('school_id'));
 
     const routes = await prisma.transportRoute.findMany({
       where: { schoolId },
@@ -29,11 +35,9 @@ export async function POST(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    requireAdmin(primary.role_code);
-    const schoolId = primary.school_id!;
-
-    const { name, driverName, driverPhone, vehicleNo, capacity, morningDeparture, eveningDeparture, stops } = await request.json();
+    const body = await request.json();
+    const schoolId = getSchoolId(user, body.schoolId);
+    const { name, driverName, driverPhone, vehicleNo, capacity, morningDeparture, eveningDeparture, stops } = body;
     if (!name?.trim()) throw new AppError('Route name is required');
 
     const route = await prisma.transportRoute.create({
@@ -58,15 +62,12 @@ export async function PATCH(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    requireAdmin(primary.role_code);
-    const schoolId = primary.school_id!;
-
     const { id, name, driverName, driverPhone, vehicleNo, capacity, morningDeparture, eveningDeparture, stops } = await request.json();
     if (!id) throw new AppError('id is required');
-
-    const existing = await prisma.transportRoute.findFirst({ where: { id, schoolId } });
+    const primary = getPrimary(user);
+    const existing = await prisma.transportRoute.findFirst({ where: { id } });
     if (!existing) throw new AppError('Route not found', 404);
+    if (!isSuperAdmin(user) && existing.schoolId !== primary.school_id) throw new ForbiddenError();
 
     const route = await prisma.transportRoute.update({
       where: { id },
@@ -90,16 +91,15 @@ export async function DELETE(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    requireAdmin(primary.role_code);
-    const schoolId = primary.school_id!;
+    const primary = getPrimary(user);
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) throw new AppError('id is required');
 
-    const existing = await prisma.transportRoute.findFirst({ where: { id, schoolId } });
+    const existing = await prisma.transportRoute.findFirst({ where: { id } });
     if (!existing) throw new AppError('Route not found', 404);
+    if (!isSuperAdmin(user) && existing.schoolId !== primary.school_id) throw new ForbiddenError();
 
     await prisma.transportRoute.delete({ where: { id } });
 

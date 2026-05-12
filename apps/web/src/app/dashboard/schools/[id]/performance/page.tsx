@@ -1,4 +1,5 @@
 'use client';
+import { useParams } from 'next/navigation';
 
 import { useState } from 'react';
 
@@ -18,7 +19,8 @@ const GRADE_BOUNDARIES_DEFAULT = [
   { label: 'F', min: 0, max: 49, color: '#dc2626' },
 ];
 
-export default function PerformanceConfigPage({ params }: { params: { id: string } }) {
+export default function PerformanceConfigPage({}) {
+  const params = useParams<{ id: string }>();
   const [gradeScale, setGradeScale] = useState('percentage');
   const [terms, setTerms] = useState(['Term 1', 'Term 2', 'Final']);
   const [newTerm, setNewTerm] = useState('');

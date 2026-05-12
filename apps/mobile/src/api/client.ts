@@ -150,3 +150,48 @@ export const getHolidays = (year: string) => apiFetch<any>(`/api/holidays?year=$
 
 // ─── Reports ──────────────────────────────────────────────────────────────────
 export const getReports = (params: string) => apiFetch<any>(`/api/reports?${params}`);
+
+// ─── Online Classes ───────────────────────────────────────────────────────────
+export const getOnlineClasses = (p?: string) =>
+  apiFetch<any>(`/api/online-classes${p ? '?' + p : ''}`);
+export const createOnlineClass = (body: any) =>
+  apiFetch<any>('/api/online-classes', { method: 'POST', body: JSON.stringify(body) });
+export const updateOnlineClass = (body: any) =>
+  apiFetch<any>('/api/online-classes', { method: 'PATCH', body: JSON.stringify(body) });
+export const getOnlineClassAttendance = (onlineClassId: string) =>
+  apiFetch<any>(`/api/online-classes/attendance?online_class_id=${onlineClassId}`);
+export const saveOnlineClassAttendance = (body: any) =>
+  apiFetch<any>('/api/online-classes/attendance', { method: 'POST', body: JSON.stringify(body) });
+
+// ─── Courses ──────────────────────────────────────────────────────────────────
+export const getCourses       = (p?: string) => apiFetch<any>(`/api/courses${p ? '?' + p : ''}`);
+export const getCourse        = (id: string) => apiFetch<any>(`/api/courses/${id}`);
+export const enrollCourse     = (id: string) =>
+  apiFetch<any>(`/api/courses/${id}/enroll`, { method: 'POST', body: JSON.stringify({}) });
+export const getMyEnrollments = ()           => apiFetch<any>('/api/courses/my-enrollments');
+export const updateProgress   = (id: string, body: any) =>
+  apiFetch<any>(`/api/courses/${id}/progress`, { method: 'PATCH', body: JSON.stringify(body) });
+
+// ─── Career Sessions ──────────────────────────────────────────────────────────
+export const getConsultants = (p?: string) =>
+  apiFetch<any>(`/api/career-sessions/consultants${p ? '?' + p : ''}`);
+export const getConsultantSlots = (consultantId: string) =>
+  apiFetch<any>(`/api/career-sessions/slots?consultant_id=${consultantId}`);
+export const getMyBookings = () => apiFetch<any>('/api/career-sessions/my-bookings');
+export const bookSession = (body: any) =>
+  apiFetch<any>('/api/career-sessions/book', { method: 'POST', body: JSON.stringify(body) });
+export const cancelBooking = (id: string) =>
+  apiFetch<any>('/api/career-sessions/my-bookings', { method: 'PATCH', body: JSON.stringify({ id, action: 'cancel' }) });
+export const rateSession = (id: string, rating: number, review?: string) =>
+  apiFetch<any>('/api/career-sessions/my-bookings', { method: 'PATCH', body: JSON.stringify({ id, action: 'rate', rating, review }) });
+
+// ─── Vendor / Marketplace ─────────────────────────────────────────────────────
+export const getVendors = (p?: string) =>
+  apiFetch<any>(`/api/vendor${p ? '?' + p : ''}`);
+export const getVendorProducts = (vendorId: string) =>
+  apiFetch<any>(`/api/vendor/products?vendor_id=${vendorId}`);
+export const placeOrder = (body: any) =>
+  apiFetch<any>('/api/vendor/orders', { method: 'POST', body: JSON.stringify(body) });
+export const getMyOrders = () => apiFetch<any>('/api/vendor/orders?mine=true');
+export const rateVendor = (body: any) =>
+  apiFetch<any>('/api/vendor/ratings', { method: 'POST', body: JSON.stringify(body) });
