@@ -7,15 +7,16 @@ import prisma from '@/lib/prisma';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
 
     const course = await prisma.course.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         teacher: { select: { user: { select: { firstName: true, lastName: true, avatarUrl: true } } } },
         modules: {
