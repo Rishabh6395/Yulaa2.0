@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const role  = primaryRole(user);
-    const query = await submitQuery(role.school_id!, user.id, role.role_code, await request.json());
+    const query = await submitQuery(role.school_id ?? null, user.id, role.role_code, await request.json());
     return Response.json({ query }, { status: 201 });
   } catch (err) { return handleError(err); }
 }

@@ -47,9 +47,10 @@ function safeParseAttachment(raw: string) {
 }
 
 export async function submitQuery(
-  schoolId: string, userId: string, roleCode: string, body: Record<string, any>,
+  schoolId: string | null, userId: string, roleCode: string, body: Record<string, any>,
 ) {
   if (roleCode === 'super_admin') throw new AppError('Super admins cannot raise queries');
+  if (!schoolId) throw new AppError('School context is required to raise a query');
 
   const { subject, description, query_type, priority, attachments } = body;
   if (!subject?.trim())     throw new AppError('subject is required');

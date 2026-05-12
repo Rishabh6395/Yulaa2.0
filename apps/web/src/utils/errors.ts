@@ -106,5 +106,8 @@ export function handleError(err: unknown): Response {
   }
 
   console.error('[API Error]', err);
-  return Response.json({ error: 'Internal server error' }, { status: 500 });
+  return Response.json(
+    { error: isDev ? String((err as any)?.message ?? err) : 'Internal server error' },
+    { status: 500 },
+  );
 }

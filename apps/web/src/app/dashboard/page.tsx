@@ -602,48 +602,63 @@ function AdminDashboard({ data, feedReady = true, allowed, pending, userId = '' 
         </div>
       )}
 
-      {/* Admission pipeline */}
-      <SectionCard>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Admission Applications</h3>
-          <a href="/dashboard/admissions" className="text-xs text-brand-500 dark:text-brand-400 font-medium hover:underline">View all</a>
-        </div>
-        {(() => {
-          const total    = (stats?.admissions?.approved || 0) + (stats?.admissions?.pending || 0) + (stats?.admissions?.rejected || 0);
-          const approved = stats?.admissions?.approved || 0;
-          const pending  = stats?.admissions?.pending  || 0;
-          const rejected = stats?.admissions?.rejected || 0;
-          const pctA = total > 0 ? Math.round((approved / total) * 100) : 0;
-          const pctP = total > 0 ? Math.round((pending  / total) * 100) : 0;
-          const pctR = total > 0 ? Math.round((rejected / total) * 100) : 0;
-          return (
-            <div className="space-y-3">
-              <div className="flex gap-4 text-sm">
-                <span className="font-bold text-2xl text-gray-900 dark:text-gray-100">{total}</span>
-                <span className="text-xs text-surface-400 dark:text-gray-500 self-end mb-0.5">total applications</span>
+      {/* Admissions + Announcements — same width as calendar */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-600 dark:text-amber-400"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
               </div>
-              <div className="h-3 rounded-full overflow-hidden bg-surface-100 dark:bg-gray-800 flex">
-                <div className="bg-emerald-400 dark:bg-emerald-500 transition-all" style={{ width: `${pctA}%` }}/>
-                <div className="bg-amber-400  dark:bg-amber-500  transition-all" style={{ width: `${pctP}%` }}/>
-                <div className="bg-red-400    dark:bg-red-500    transition-all" style={{ width: `${pctR}%` }}/>
-              </div>
-              <div className="flex gap-4 text-xs text-gray-600 dark:text-gray-400">
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400"/> Approved: {approved}</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400"/>  Pending: {pending}</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400"/>    Rejected: {rejected}</span>
-              </div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Admission Applications</h3>
             </div>
-          );
-        })()}
-      </SectionCard>
+            <a href="/dashboard/admissions" className="text-xs text-brand-500 dark:text-brand-400 font-medium hover:underline">View all →</a>
+          </div>
+          {(() => {
+            const total    = (stats?.admissions?.approved || 0) + (stats?.admissions?.pending || 0) + (stats?.admissions?.rejected || 0);
+            const approved = stats?.admissions?.approved || 0;
+            const pend     = stats?.admissions?.pending  || 0;
+            const rejected = stats?.admissions?.rejected || 0;
+            const pctA = total > 0 ? Math.round((approved / total) * 100) : 0;
+            const pctP = total > 0 ? Math.round((pend     / total) * 100) : 0;
+            const pctR = total > 0 ? Math.round((rejected / total) * 100) : 0;
+            return (
+              <div className="space-y-3">
+                <div className="flex gap-3 items-end">
+                  <span className="font-bold text-2xl text-gray-900 dark:text-gray-100">{total}</span>
+                  <span className="text-xs text-surface-400 dark:text-gray-500 mb-0.5">total applications</span>
+                </div>
+                <div className="h-3 rounded-full overflow-hidden bg-surface-100 dark:bg-gray-800 flex">
+                  <div className="bg-emerald-400 dark:bg-emerald-500 transition-all" style={{ width: `${pctA}%` }}/>
+                  <div className="bg-amber-400  dark:bg-amber-500  transition-all" style={{ width: `${pctP}%` }}/>
+                  <div className="bg-red-400    dark:bg-red-500    transition-all" style={{ width: `${pctR}%` }}/>
+                </div>
+                <div className="flex gap-4 text-xs text-gray-600 dark:text-gray-400 flex-wrap">
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400"/> Approved: {approved}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400"/>  Pending: {pend}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400"/>    Rejected: {rejected}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-2">
+                  {[{l:'Approved',v:approved,c:'text-emerald-600 dark:text-emerald-400'},{l:'Pending',v:pend,c:'text-amber-600 dark:text-amber-400'},{l:'Rejected',v:rejected,c:'text-red-600 dark:text-red-400'}].map(s => (
+                    <div key={s.l} className="text-center p-2 rounded-lg bg-surface-50 dark:bg-gray-800/50">
+                      <p className={`text-lg font-bold ${s.c}`}>{s.v}</p>
+                      <p className="text-[10px] text-surface-400">{s.l}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
 
-      {/* Pending tasks — single card */}
+        {allowed.has('announcements') ? (feedReady
+          ? <AnnouncementsCard announcements={announcements} />
+          : <FeedSkeleton />)
+          : <div/>}
+      </div>
+
+      {/* Pending tasks — full width */}
       <PendingTasksCard pending={pending} />
-
-      {/* Announcements — full width, bigger */}
-      {allowed.has('announcements') && (feedReady
-        ? <AnnouncementsCard announcements={announcements} />
-        : <FeedSkeleton />)}
     </div>
   );
 }
