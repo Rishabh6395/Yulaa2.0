@@ -21,22 +21,30 @@ type ContractRow = {
   };
 };
 
+type QualificationItem = { id: string; name: string };
+
 export default function ManageConsultantsPage() {
-  const [rows,     setRows]     = useState<ContractRow[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [saving,   setSaving]   = useState(false);
-  const [error,    setError]    = useState('');
-  const [editId,   setEditId]   = useState<string | null>(null);
-  const [newEndDate, setNewEndDate] = useState('');
+  const [rows,          setRows]          = useState<ContractRow[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [showForm,      setShowForm]      = useState(false);
+  const [saving,        setSaving]        = useState(false);
+  const [error,         setError]         = useState('');
+  const [editId,        setEditId]        = useState<string | null>(null);
+  const [newEndDate,    setNewEndDate]    = useState('');
+  const [qualifications, setQualifications] = useState<QualificationItem[]>([]);
 
   const [form, setForm] = useState({
     first_name: '', last_name: '', email: '', password: '',
-    specialization: '', session_fee: '', is_external: false, contract_end: '',
+    specialization: '', qualification: '', session_fee: '',
+    is_external: false, contract_end: '',
   });
 
-  const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const token    = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+  const userRole = typeof window !== 'undefined'
+    ? (JSON.parse(localStorage.getItem('user') || '{}').primaryRole || '')
+    : '';
+  const isSuperAdmin = userRole === 'super_admin';
+  const headers  = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   const load = () => {
     setLoading(true);
@@ -48,26 +56,35 @@ export default function ManageConsultantsPage() {
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    if (!token) return;
+    fetch('/api/masters/qualifications', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setQualifications(d.qualificationMasters ?? []))
+      .catch(() => {});
+  }, [token]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true); setError('');
     const res = await fetch('/api/consultant/manage', {
       method: 'POST', headers,
       body: JSON.stringify({
-        first_name: form.first_name,
-        last_name: form.last_name,
-        email: form.email,
-        password: form.password,
+        first_name:    form.first_name,
+        last_name:     form.last_name,
+        email:         form.email,
+        password:      form.password,
         specialization: form.specialization || undefined,
-        session_fee: form.session_fee ? Number(form.session_fee) : undefined,
-        is_external: form.is_external,
-        contract_end: form.contract_end,
+        qualifications: form.qualification || undefined,
+        session_fee:   form.session_fee ? Number(form.session_fee) : undefined,
+        is_external:   isSuperAdmin ? form.is_external : false,
+        contract_end:  form.contract_end,
       }),
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error || 'Failed to create consultant.'); setSaving(false); return; }
     setShowForm(false);
-    setForm({ first_name: '', last_name: '', email: '', password: '', specialization: '', session_fee: '', is_external: false, contract_end: '' });
+    setForm({ first_name: '', last_name: '', email: '', password: '', specialization: '', qualification: '', session_fee: '', is_external: false, contract_end: '' });
     load();
     setSaving(false);
   };
@@ -88,7 +105,7 @@ export default function ManageConsultantsPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Career Consultants</h1>
-          <p className="text-sm text-surface-400 mt-0.5">Manage consultants for your school — create internal or link external consultants.</p>
+          <p className="text-sm text-surface-400 mt-0.5">Manage consultants for your school — create and link career consultants.</p>
         </div>
         <button onClick={() => setShowForm(true)} className="btn btn-primary">+ Add Consultant</button>
       </div>
@@ -98,20 +115,20 @@ export default function ManageConsultantsPage() {
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">New Consultant</h2>
           <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">First Name</label>
+              <label className="label">First Name *</label>
               <input required className="input" value={form.first_name} onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Last Name</label>
+              <label className="label">Last Name *</label>
               <input required className="input" value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Email</label>
+              <label className="label">Email *</label>
               <input required type="email" className="input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
             </div>
             <div>
               <label className="label">Password</label>
-              <input required type="password" className="input" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+              <input type="password" className="input" placeholder="Default: Yulaa@2024" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
             </div>
             <div>
               <label className="label">Specialization</label>
@@ -122,21 +139,38 @@ export default function ManageConsultantsPage() {
               <input type="number" min="0" className="input" placeholder="Leave empty for free" value={form.session_fee} onChange={e => setForm(f => ({ ...f, session_fee: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Contract End Date</label>
+              <label className="label">Contract End Date *</label>
               <input required type="date" className="input" value={form.contract_end} onChange={e => setForm(f => ({ ...f, contract_end: e.target.value }))} />
             </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 cursor-pointer pb-2">
-                <input
-                  type="checkbox"
-                  checked={form.is_external}
-                  onChange={e => setForm(f => ({ ...f, is_external: e.target.checked }))}
-                />
-                <span className="text-sm">External consultant</span>
-              </label>
-            </div>
 
-            {error && <p className="col-span-2 text-sm text-red-600">{error}</p>}
+            {/* Qualifications from master */}
+            {qualifications.length > 0 && (
+              <div>
+                <label className="label">Qualification</label>
+                <select className="input" value={form.qualification} onChange={e => setForm(f => ({ ...f, qualification: e.target.value }))}>
+                  <option value="">— Select qualification —</option>
+                  {qualifications.map(q => (
+                    <option key={q.id} value={q.name}>{q.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* External checkbox — only for super_admin */}
+            {isSuperAdmin && (
+              <div className="col-span-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.is_external}
+                    onChange={e => setForm(f => ({ ...f, is_external: e.target.checked }))}
+                  />
+                  <span className="text-sm">External consultant (not exclusive to this school)</span>
+                </label>
+              </div>
+            )}
+
+            {error && <p className="col-span-2 text-sm text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">{error}</p>}
             <div className="col-span-2 flex gap-3">
               <button type="submit" disabled={saving} className="btn btn-primary">{saving ? 'Creating…' : 'Create Consultant'}</button>
               <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>

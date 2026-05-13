@@ -275,23 +275,27 @@ interface StatCardProps {
 
 function StatCard({ title, value, subtext, icon, iconBg, trend }: StatCardProps) {
   return (
-    <div className="card p-5 hover:shadow-card-hover dark:hover:shadow-lg transition-all duration-200 group">
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold text-surface-400 dark:text-gray-500 uppercase tracking-wider">{title}</p>
-          <p className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">{value}</p>
-          {subtext && <p className="text-xs text-surface-400 dark:text-gray-500">{subtext}</p>}
-        </div>
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg} transition-transform duration-200 group-hover:scale-110`}>
+    <div className="card p-4 hover:shadow-card-hover dark:hover:shadow-lg transition-all duration-200 group">
+      <div className="flex items-center justify-between gap-3">
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg} transition-transform duration-200 group-hover:scale-110`}>
           {icon}
         </div>
+        <div className="flex-1 min-w-0 text-right">
+          <p className="text-[10px] font-semibold text-surface-400 dark:text-gray-500 uppercase tracking-wider truncate">{title}</p>
+          <p className="text-xl font-display font-bold text-gray-900 dark:text-gray-100 leading-tight">{value}</p>
+        </div>
       </div>
-      {trend !== undefined && (
-        <div className={`mt-3 flex items-center gap-1 text-xs font-medium ${trend >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            {trend >= 0 ? <polyline points="18,15 12,9 6,15"/> : <polyline points="6,9 12,15 18,9"/>}
-          </svg>
-          {Math.abs(trend)}% from last week
+      {(subtext || trend !== undefined) && (
+        <div className="mt-2.5 pt-2.5 border-t border-surface-100 dark:border-gray-800 flex items-center justify-between gap-2">
+          {subtext && <p className="text-[11px] text-surface-400 dark:text-gray-500 truncate flex-1">{subtext}</p>}
+          {trend !== undefined && (
+            <div className={`flex items-center gap-0.5 text-[11px] font-semibold flex-shrink-0 ${trend >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                {trend >= 0 ? <polyline points="18,15 12,9 6,15"/> : <polyline points="6,9 12,15 18,9"/>}
+              </svg>
+              {Math.abs(trend)}%
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -327,19 +331,19 @@ function SectionCard({ children, className = '' }: { children: React.ReactNode; 
   return <div className={`card p-6 ${className}`}>{children}</div>;
 }
 
-// ── Announcements card — full-width, bigger ───────────────────────────────────
+// ── Announcements card ────────────────────────────────────────────────────────
 
 function AnnouncementsCard({ announcements }: { announcements: any[] }) {
   return (
-    <div className="card p-6">
-      <div className="flex items-center justify-between mb-5">
+    <div className="card p-5">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-950/50 flex items-center justify-center">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-brand-600 dark:text-brand-400">
               <path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/>
             </svg>
           </div>
-          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Announcements</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Announcements</h3>
           {announcements.length > 0 && (
             <span className="px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 text-xs font-bold">{announcements.length}</span>
           )}
@@ -348,23 +352,25 @@ function AnnouncementsCard({ announcements }: { announcements: any[] }) {
       </div>
 
       {announcements.length === 0 ? (
-        <p className="text-sm text-surface-400 dark:text-gray-500 text-center py-4">No announcements yet.</p>
+        <p className="text-sm text-surface-400 dark:text-gray-500 text-center py-6">No announcements yet.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {announcements.map((a: any) => (
-            <div key={a.id} className="flex gap-3 p-4 rounded-xl bg-surface-50 dark:bg-gray-800/50 hover:bg-surface-100 dark:hover:bg-gray-700/50 transition-colors">
+        <div className="divide-y divide-surface-100 dark:divide-gray-800">
+          {announcements.slice(0, 6).map((a: any) => (
+            <div key={a.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+              <div className="flex-shrink-0 mt-0.5">
+                <AnnouncementTypeBadge type={a.type} />
+              </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <AnnouncementTypeBadge type={a.type} />
-                  {a.priority === 'urgent' && (
-                    <span className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase">● Urgent</span>
-                  )}
-                  <span className="text-[10px] text-surface-400 dark:text-gray-500 ml-auto">
-                    {new Date(a.published_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                  </span>
-                </div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{a.title}</p>
-                <p className="text-xs text-surface-500 dark:text-gray-400 mt-1 line-clamp-2">{a.message}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{a.title}</p>
+                <p className="text-xs text-surface-400 dark:text-gray-500 mt-0.5 line-clamp-1">{a.message}</p>
+              </div>
+              <div className="flex-shrink-0 text-right ml-2">
+                <p className="text-[10px] text-surface-400 dark:text-gray-500 whitespace-nowrap">
+                  {new Date(a.published_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                </p>
+                {a.priority === 'urgent' && (
+                  <span className="text-[9px] font-bold text-red-500 dark:text-red-400 uppercase">Urgent</span>
+                )}
               </div>
             </div>
           ))}
@@ -409,53 +415,46 @@ function PendingTasksCard({ pending }: { pending: { admissions: any[]; leaves: a
 
   return (
     <div className="card p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-600 dark:text-amber-400">
-              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-          </div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Pending Tasks</h3>
-          <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 text-xs font-bold animate-pulse">
-            {items.length}
-          </span>
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-600 dark:text-amber-400">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
         </div>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Pending Tasks</h3>
+        <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 text-xs font-bold animate-pulse">
+          {items.length}
+        </span>
       </div>
 
-      <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+      <div className="divide-y divide-surface-100 dark:divide-gray-800 max-h-72 overflow-y-auto">
         {items.map(item => (
-          <div key={item.id} className="p-4 rounded-xl border border-surface-100 dark:border-gray-700 border-l-4 border-l-amber-400 dark:border-l-amber-500">
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase ${
-                    item._kind === 'admission'
-                      ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
-                      : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
-                  }`}>{item._kind}</span>
-                  {item.stepLabel && <span className="text-[10px] text-surface-400 dark:text-gray-500">{item.stepLabel}</span>}
-                  {item._kind === 'admission' && item.totalSteps > 0 && (
-                    <span className="text-[10px] text-surface-400 ml-auto">Step {item.currentStep + 1}/{item.totalSteps}</span>
-                  )}
-                </div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{item.title}</p>
-                <p className="text-xs text-surface-400 dark:text-gray-500 mt-0.5 truncate">{item.subtitle}</p>
-                {item.detail && <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{item.detail}</p>}
+          <div key={item.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+            <div className="w-1 self-stretch rounded-full bg-amber-400 dark:bg-amber-500 flex-shrink-0"/>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                  item._kind === 'admission'
+                    ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                    : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
+                }`}>{item._kind}</span>
+                {item.stepLabel && <span className="text-[10px] text-surface-400">{item.stepLabel}</span>}
               </div>
+              <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">{item.title}</p>
+              <p className="text-[10px] text-surface-400 dark:text-gray-500 truncate">{item.subtitle}</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-1 flex-shrink-0">
               <button onClick={() => act(item, 'approve')} disabled={!!actioning}
-                className="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50 transition-colors">
-                {actioning === `${item.id}_approve` ? '…' : 'Approve'}
+                className="w-7 h-7 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50 transition-colors flex items-center justify-center">
+                {actioning === `${item.id}_approve` ? '…' : '✓'}
               </button>
               <button onClick={() => act(item, 'reject')} disabled={!!actioning}
-                className="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-950/50 text-red-600 dark:text-red-400 disabled:opacity-50 transition-colors">
-                {actioning === `${item.id}_reject` ? '…' : 'Reject'}
+                className="w-7 h-7 rounded-lg text-xs font-bold bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-950/50 text-red-600 dark:text-red-400 disabled:opacity-50 transition-colors flex items-center justify-center">
+                {actioning === `${item.id}_reject` ? '…' : '✗'}
               </button>
               <a href={item._kind === 'admission' ? '/dashboard/admissions' : '/dashboard/leave'}
-                className="py-1.5 px-3 rounded-lg text-xs font-medium text-surface-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
-                View →
+                className="w-7 h-7 rounded-lg text-xs font-medium text-surface-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors flex items-center justify-center">
+                →
               </a>
             </div>
           </div>
@@ -563,27 +562,34 @@ function AdminDashboard({ data, feedReady = true, allowed, pending, userId = '' 
         </div>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
+      {/* Stat cards — 4-column grid for density */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
         <a href="/dashboard/students" className="block">
-          <StatCard title="Total Students" value={stats?.totalStudents || 0}
-            subtext={`${stats?.pendingAdmissions || 0} pending admissions`}
+          <StatCard title="Students" value={stats?.totalStudents || 0}
+            subtext={`${stats?.pendingAdmissions || 0} pending`}
             iconBg="bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
-            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
-          />
-        </a>
-        <a href="/dashboard/admissions" className="block">
-          <StatCard title="Pending Admissions" value={stats?.pendingAdmissions || 0}
-            subtext="Click to review applications"
-            iconBg="bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400"
-            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>}
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
           />
         </a>
         <a href="/dashboard/teachers" className="block">
           <StatCard title="Teachers" value={stats?.totalTeachers || 0}
-            subtext={`${stats?.totalClasses || 0} active classes`}
+            subtext={`${stats?.totalClasses || 0} classes`}
             iconBg="bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400"
-            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>}
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>}
+          />
+        </a>
+        <a href="/dashboard/attendance" className="block">
+          <StatCard title="Attendance" value={`${stats?.todayAttendance?.rate ?? 0}%`}
+            subtext={`${stats?.todayAttendance?.present ?? 0}/${stats?.todayAttendance?.total ?? 0} today`}
+            iconBg="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400"
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>}
+          />
+        </a>
+        <a href="/dashboard/admissions" className="block">
+          <StatCard title="Admissions" value={stats?.pendingAdmissions || 0}
+            subtext="pending review"
+            iconBg="bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400"
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>}
           />
         </a>
       </div>
@@ -596,48 +602,63 @@ function AdminDashboard({ data, feedReady = true, allowed, pending, userId = '' 
         </div>
       )}
 
-      {/* Admission pipeline */}
-      <SectionCard>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Admission Applications</h3>
-          <a href="/dashboard/admissions" className="text-xs text-brand-500 dark:text-brand-400 font-medium hover:underline">View all</a>
-        </div>
-        {(() => {
-          const total    = (stats?.admissions?.approved || 0) + (stats?.admissions?.pending || 0) + (stats?.admissions?.rejected || 0);
-          const approved = stats?.admissions?.approved || 0;
-          const pending  = stats?.admissions?.pending  || 0;
-          const rejected = stats?.admissions?.rejected || 0;
-          const pctA = total > 0 ? Math.round((approved / total) * 100) : 0;
-          const pctP = total > 0 ? Math.round((pending  / total) * 100) : 0;
-          const pctR = total > 0 ? Math.round((rejected / total) * 100) : 0;
-          return (
-            <div className="space-y-3">
-              <div className="flex gap-4 text-sm">
-                <span className="font-bold text-2xl text-gray-900 dark:text-gray-100">{total}</span>
-                <span className="text-xs text-surface-400 dark:text-gray-500 self-end mb-0.5">total applications</span>
+      {/* Admissions + Announcements — same width as calendar */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-600 dark:text-amber-400"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
               </div>
-              <div className="h-3 rounded-full overflow-hidden bg-surface-100 dark:bg-gray-800 flex">
-                <div className="bg-emerald-400 dark:bg-emerald-500 transition-all" style={{ width: `${pctA}%` }}/>
-                <div className="bg-amber-400  dark:bg-amber-500  transition-all" style={{ width: `${pctP}%` }}/>
-                <div className="bg-red-400    dark:bg-red-500    transition-all" style={{ width: `${pctR}%` }}/>
-              </div>
-              <div className="flex gap-4 text-xs text-gray-600 dark:text-gray-400">
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400"/> Approved: {approved}</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400"/>  Pending: {pending}</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400"/>    Rejected: {rejected}</span>
-              </div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Admission Applications</h3>
             </div>
-          );
-        })()}
-      </SectionCard>
+            <a href="/dashboard/admissions" className="text-xs text-brand-500 dark:text-brand-400 font-medium hover:underline">View all →</a>
+          </div>
+          {(() => {
+            const total    = (stats?.admissions?.approved || 0) + (stats?.admissions?.pending || 0) + (stats?.admissions?.rejected || 0);
+            const approved = stats?.admissions?.approved || 0;
+            const pend     = stats?.admissions?.pending  || 0;
+            const rejected = stats?.admissions?.rejected || 0;
+            const pctA = total > 0 ? Math.round((approved / total) * 100) : 0;
+            const pctP = total > 0 ? Math.round((pend     / total) * 100) : 0;
+            const pctR = total > 0 ? Math.round((rejected / total) * 100) : 0;
+            return (
+              <div className="space-y-3">
+                <div className="flex gap-3 items-end">
+                  <span className="font-bold text-2xl text-gray-900 dark:text-gray-100">{total}</span>
+                  <span className="text-xs text-surface-400 dark:text-gray-500 mb-0.5">total applications</span>
+                </div>
+                <div className="h-3 rounded-full overflow-hidden bg-surface-100 dark:bg-gray-800 flex">
+                  <div className="bg-emerald-400 dark:bg-emerald-500 transition-all" style={{ width: `${pctA}%` }}/>
+                  <div className="bg-amber-400  dark:bg-amber-500  transition-all" style={{ width: `${pctP}%` }}/>
+                  <div className="bg-red-400    dark:bg-red-500    transition-all" style={{ width: `${pctR}%` }}/>
+                </div>
+                <div className="flex gap-4 text-xs text-gray-600 dark:text-gray-400 flex-wrap">
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400"/> Approved: {approved}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400"/>  Pending: {pend}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400"/>    Rejected: {rejected}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-2">
+                  {[{l:'Approved',v:approved,c:'text-emerald-600 dark:text-emerald-400'},{l:'Pending',v:pend,c:'text-amber-600 dark:text-amber-400'},{l:'Rejected',v:rejected,c:'text-red-600 dark:text-red-400'}].map(s => (
+                    <div key={s.l} className="text-center p-2 rounded-lg bg-surface-50 dark:bg-gray-800/50">
+                      <p className={`text-lg font-bold ${s.c}`}>{s.v}</p>
+                      <p className="text-[10px] text-surface-400">{s.l}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
 
-      {/* Pending tasks — single card */}
+        {allowed.has('announcements') ? (feedReady
+          ? <AnnouncementsCard announcements={announcements} />
+          : <FeedSkeleton />)
+          : <div/>}
+      </div>
+
+      {/* Pending tasks — full width */}
       <PendingTasksCard pending={pending} />
-
-      {/* Announcements — full width, bigger */}
-      {allowed.has('announcements') && (feedReady
-        ? <AnnouncementsCard announcements={announcements} />
-        : <FeedSkeleton />)}
     </div>
   );
 }
@@ -660,19 +681,33 @@ function TeacherDashboard({ data, feedReady = true, allowed, pending, userId = '
         <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">Your classes and attendance overview.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 stagger-children">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
         <a href="/dashboard/students" className="block">
           <StatCard title="My Students" value={stats?.totalStudents || 0}
-            subtext={`Class${className}${sectionName} · Students in your classes`}
+            subtext={`Class${className}${sectionName}`}
             iconBg="bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
-            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
           />
         </a>
         <a href="/dashboard/attendance" className="block">
-          <StatCard title="Today's Attendance" value={`${stats?.todayAttendance?.rate || 0}%`}
-            subtext={`${stats?.todayAttendance?.present || 0} / ${stats?.todayAttendance?.total || 0} present · Click to mark`}
+          <StatCard title="Attendance" value={`${stats?.todayAttendance?.rate || 0}%`}
+            subtext={`${stats?.todayAttendance?.present || 0}/${stats?.todayAttendance?.total || 0} present`}
             iconBg="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400"
-            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>}
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>}
+          />
+        </a>
+        <a href="/dashboard/homework" className="block">
+          <StatCard title="Homework" value={stats?.pendingHomework || '—'}
+            subtext="pending submissions"
+            iconBg="bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400"
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>}
+          />
+        </a>
+        <a href="/dashboard/exam" className="block">
+          <StatCard title="Exams" value={stats?.upcomingExams || '—'}
+            subtext="upcoming"
+            iconBg="bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400"
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg>}
           />
         </a>
       </div>
@@ -862,21 +897,26 @@ function SuperAdminDashboard({ data }: { data: any }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
-        <StatCard title="Total Schools"      value={s?.totalSchools || 0}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
+        <StatCard title="Schools"    value={s?.totalSchools || 0}
           subtext={`${s?.activeSchools || 0} active`}
           iconBg="bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 22V12h6v10M3 9h18M9 3v6M15 3v6"/></svg>}
+          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 22V12h6v10M3 9h18M9 3v6M15 3v6"/></svg>}
         />
-        <StatCard title="Total Students"     value={s?.totalStudents || 0}
-          subtext={`${s?.totalTeachers || 0} teachers`}
+        <StatCard title="Students"   value={s?.totalStudents || 0}
+          subtext="across all schools"
           iconBg="bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
         />
-        <StatCard title="Today's Attendance" value={`${s?.todayAttendance?.rate || 0}%`}
-          subtext={`${s?.todayAttendance?.present || 0} / ${s?.todayAttendance?.total || 0} present`}
+        <StatCard title="Teachers"   value={s?.totalTeachers || 0}
+          subtext="across all schools"
+          iconBg="bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400"
+          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>}
+        />
+        <StatCard title="Attendance" value={`${s?.todayAttendance?.rate || 0}%`}
+          subtext={`${s?.todayAttendance?.present || 0}/${s?.todayAttendance?.total || 0} today`}
           iconBg="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>}
+          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>}
         />
       </div>
 

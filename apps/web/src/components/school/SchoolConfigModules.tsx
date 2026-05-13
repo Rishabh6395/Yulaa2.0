@@ -149,15 +149,6 @@ const makeModules = (schoolId: string): ConfigModule[] => [
     icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>,
   },
   {
-    id: 'queries',
-    label: 'Queries',
-    description: 'Configure query categories, auto-routing, SLA rules, and escalation policies.',
-    color: 'bg-cyan-50 dark:bg-cyan-950/50 text-cyan-600 dark:text-cyan-400',
-    href: `/dashboard/queries`,
-    status: 'available',
-    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 21 1.9-5.7A8.5 8.5 0 1 1 5.8 17.8z"/></svg>,
-  },
-  {
     id: 'compliance',
     label: 'Compliance',
     description: 'Configure board-wise report templates, data freeze windows, and audit-ready snapshots.',

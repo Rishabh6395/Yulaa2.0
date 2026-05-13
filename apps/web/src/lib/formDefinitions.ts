@@ -213,6 +213,25 @@ export const FORM_DEFINITIONS: FormDef[] = [
       { id: 'attachments', label: 'Attachments', type: 'file' },
     ],
   },
+  {
+    id: 'vendor_form',
+    label: 'Vendor / Product Form',
+    module: 'Vendor',
+    fieldSlotPrefix: 'vendor form',
+    roles: [
+      { id: 'admin', label: 'School Admin / Principal', color: ROLE_COLORS.admin },
+    ],
+    fields: [
+      { id: 'company_name',  label: 'Company Name',     type: 'text' },
+      { id: 'category',      label: 'Product Category', type: 'select' },
+      { id: 'contact_name',  label: 'Contact Name',     type: 'text' },
+      { id: 'email',         label: 'Email',            type: 'email' },
+      { id: 'phone',         label: 'Phone',            type: 'tel' },
+      { id: 'gst_no',        label: 'GST Number',       type: 'text' },
+      { id: 'address',       label: 'Address',          type: 'textarea' },
+      { id: 'contract_end',  label: 'Contract End Date',type: 'date' },
+    ],
+  },
 ];
 
 /** Quick lookup: formId → field definitions */

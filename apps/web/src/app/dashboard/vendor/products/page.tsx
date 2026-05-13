@@ -15,12 +15,15 @@ type Product = {
   created_at: string;
 };
 
+const DEFAULT_CATEGORIES = ['books', 'uniform', 'stationery', 'sports', 'lanyard', 'other'];
+
 export default function VendorProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [saving,   setSaving]   = useState(false);
-  const [error,    setError]    = useState('');
+  const [products,   setProducts]   = useState<Product[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [showForm,   setShowForm]   = useState(false);
+  const [saving,     setSaving]     = useState(false);
+  const [error,      setError]      = useState('');
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [form, setForm] = useState({ name: '', category: 'books', price: '', mrp: '', quantity: '', unit: 'piece', description: '' });
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
@@ -35,6 +38,20 @@ export default function VendorProductsPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch('/api/masters/custom/product_category', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.masterValues?.length) {
+          const vals = d.masterValues.map((v: any) => v.name.toLowerCase());
+          setCategories(vals);
+          setForm(f => ({ ...f, category: vals[0] || 'books' }));
+        }
+      })
+      .catch(() => {});
+  }, [token]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,8 +103,8 @@ export default function VendorProductsPage() {
             <div>
               <label className="label">Category *</label>
               <select required className="input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                {['books', 'uniform', 'stationery', 'sports', 'lanyard', 'other'].map(c => (
-                  <option key={c} value={c}>{c}</option>
+                {categories.map(c => (
+                  <option key={c} value={c} className="capitalize">{c.charAt(0).toUpperCase() + c.slice(1)}</option>
                 ))}
               </select>
             </div>

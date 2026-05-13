@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const role = primaryRole(user);
-    return Response.json(await listQueries(role.school_id!, user.id, role.role_code));
+    return Response.json(await listQueries(role.school_id ?? null, user.id, role.role_code));
   } catch (err) { return handleError(err); }
 }
 
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const role  = primaryRole(user);
-    const query = await submitQuery(role.school_id!, user.id, role.role_code, await request.json());
+    const query = await submitQuery(role.school_id ?? null, user.id, role.role_code, await request.json());
     return Response.json({ query }, { status: 201 });
   } catch (err) { return handleError(err); }
 }
@@ -34,11 +34,11 @@ export async function PATCH(request: Request) {
     const { action, id } = body;
 
     if (action === 'reply') {
-      const reply = await addReply(user.id, role.role_code, body);
+      const reply = await addReply(user.id, role.school_id ?? null, role.role_code, body);
       return Response.json({ reply });
     }
     if (action === 'resolve') {
-      await resolveQuery(user.id, id);
+      await resolveQuery(user.id, role.school_id ?? null, role.role_code, id);
       return Response.json({ ok: true });
     }
     if (action === 'reopen') {
