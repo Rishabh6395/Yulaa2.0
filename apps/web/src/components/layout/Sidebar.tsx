@@ -3,195 +3,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-
-interface MenuItem {
-  label: string;
-  href: string;
-  icon: string;
-  key: string;   // matches the menuKey stored in MenuPermission table
-  children?: MenuItem[]; // for collapsible groups
-}
-
-// All possible menu items per role — key is used for permission lookup
-const menuItems: Record<string, MenuItem[]> = {
-  super_admin: [
-    { label: 'School Library',          href: '/dashboard/schools',              icon: 'Building',     key: 'schools' },
-    { label: 'Default School Settings', href: '/dashboard/schools/default',      icon: 'Settings',     key: 'schools_default' },
-    { label: 'All Consultants',         href: '/dashboard/super-admin/consultants',      icon: 'Briefcase',   key: 'super_consultants' },
-    { label: 'All Vendors',             href: '/dashboard/super-admin/vendors',           icon: 'ShoppingBag', key: 'super_vendors' },
-    { label: 'Online Class Config',     href: '/dashboard/super-admin/online-class-config', icon: 'Monitor',   key: 'super_online_class' },
-    { label: 'Course Approvals',        href: '/dashboard/super-admin/courses',           icon: 'BookOpen',    key: 'super_courses' },
-    { label: 'School Admin Queries',    href: '/dashboard/super-admin/queries',           icon: 'MessageSquare', key: 'super_queries' },
-  ],
-  school_admin: [
-    { label: 'Dashboard',        href: '/dashboard',                  icon: 'LayoutDashboard', key: 'dashboard' },
-    { label: 'Masters',          href: '/dashboard/masters',          icon: 'Database',        key: 'masters' },
-    { label: 'Admissions',       href: '/dashboard/admissions',       icon: 'ClipboardList',   key: 'admissions' },
-    { label: 'Classes',          href: '/dashboard/classes',          icon: 'LayoutGrid',      key: 'classes' },
-    {
-      label: 'Users', href: '', icon: 'Users', key: 'users_group',
-      children: [
-        { label: 'Students', href: '/dashboard/students', icon: 'Users',         key: 'students' },
-        { label: 'Teachers', href: '/dashboard/teachers', icon: 'GraduationCap', key: 'teachers' },
-        { label: 'Parents',  href: '/dashboard/parents',  icon: 'Heart',         key: 'parents' },
-      ],
-    },
-    { label: 'Attendance',       href: '/dashboard/attendance',       icon: 'CalendarCheck',   key: 'attendance' },
-    { label: 'Fees',             href: '/dashboard/fees',             icon: 'CreditCard',      key: 'fees' },
-    {
-      label: 'Academic', href: '', icon: 'CalendarDays', key: 'academic_group',
-      children: [
-        { label: 'Scheduling',     href: '/dashboard/scheduling',     icon: 'CalendarDays', key: 'scheduling' },
-        { label: 'Syllabus',       href: '/dashboard/syllabus',       icon: 'BookMarked',   key: 'syllabus' },
-        { label: 'Online Classes', href: '/dashboard/online-classes', icon: 'Monitor',      key: 'online_classes' },
-      ],
-    },
-    { label: 'Events',           href: '/dashboard/events',           icon: 'CalendarStar',    key: 'events' },
-    {
-      label: 'Assessment', href: '', icon: 'ClipboardCheck', key: 'assessment_group',
-      children: [
-        { label: 'Exam',        href: '/dashboard/exam',           icon: 'ClipboardCheck', key: 'exam' },
-        { label: 'Performance', href: '/dashboard/performance',    icon: 'TrendingUp',     key: 'performance' },
-        { label: 'Courses',     href: '/dashboard/courses/manage', icon: 'BookOpen',       key: 'courses' },
-      ],
-    },
-    { label: 'School Inventory', href: '/dashboard/school-inventory', icon: 'Archive',         key: 'school_inventory' },
-    { label: 'Letter Templates', href: '/dashboard/letter-templates', icon: 'FileTemplate',    key: 'letter_templates' },
-    { label: 'Announcements',    href: '/dashboard/announcements',    icon: 'Megaphone',       key: 'announcements' },
-    { label: 'Leave',            href: '/dashboard/leave',            icon: 'Calendar',        key: 'leave' },
-    { label: 'Queries',          href: '/dashboard/queries',          icon: 'MessageSquare',   key: 'queries' },
-    { label: 'Transport',        href: '/dashboard/transport',        icon: 'Bus',             key: 'transport' },
-    { label: 'Career Sessions',       href: '/dashboard/career-sessions/manage', icon: 'Briefcase',   key: 'sessions' },
-    { label: 'Vendor / Marketplace',  href: '/dashboard/vendor/manage',          icon: 'ShoppingBag', key: 'vendor' },
-    { label: 'Compliance',       href: '/dashboard/compliance',       icon: 'ShieldCheck',     key: 'compliance' },
-    { label: 'Reports',          href: '/dashboard/reports',          icon: 'BarChart',        key: 'reports' },
-    { label: 'Profile',          href: '/dashboard/settings',         icon: 'UserCircle',      key: 'settings' },
-  ],
-  teacher: [
-    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard', key: 'dashboard' },
-    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck',   key: 'attendance' },
-    { label: 'Timetable',      href: '/dashboard/timetable',     icon: 'CalendarList',    key: 'timetable' },
-    { label: 'Performance',    href: '/dashboard/performance',   icon: 'TrendingUp',      key: 'performance' },
-    { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen',        key: 'homework' },
-    { label: 'Syllabus',       href: '/dashboard/syllabus',      icon: 'BookMarked',      key: 'syllabus' },
-    { label: 'Events',         href: '/dashboard/events',        icon: 'CalendarStar',    key: 'events' },
-    { label: 'Exam',           href: '/dashboard/exam',          icon: 'ClipboardCheck',  key: 'exam' },
-    { label: 'Leave',          href: '/dashboard/leave',           icon: 'Calendar',        key: 'leave' },
-    { label: 'Queries',        href: '/dashboard/queries',         icon: 'MessageSquare',   key: 'queries' },
-    { label: 'Online Classes', href: '/dashboard/online-classes',  icon: 'Monitor',         key: 'online_classes' },
-    { label: 'Courses',        href: '/dashboard/courses/manage',  icon: 'BookOpen',        key: 'courses' },
-    { label: 'Profile',        href: '/dashboard/settings',        icon: 'UserCircle',      key: 'settings' },
-  ],
-  student: [
-    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard', key: 'dashboard' },
-    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck',   key: 'attendance' },
-    { label: 'Fees',           href: '/dashboard/fees',          icon: 'CreditCard',      key: 'fees' },
-    { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen',        key: 'homework' },
-    { label: 'Timetable',      href: '/dashboard/timetable',     icon: 'CalendarList',    key: 'timetable' },
-    { label: 'Syllabus',       href: '/dashboard/syllabus',      icon: 'BookMarked',      key: 'syllabus' },
-    { label: 'Exam Schedule',  href: '/dashboard/exam',          icon: 'ClipboardCheck',  key: 'exam' },
-    { label: 'Events',         href: '/dashboard/events',        icon: 'CalendarStar',    key: 'events' },
-    { label: 'Announcements',  href: '/dashboard/announcements',  icon: 'Megaphone',       key: 'announcements' },
-    { label: 'Queries',        href: '/dashboard/queries',        icon: 'MessageSquare',   key: 'queries' },
-    { label: 'Online Classes', href: '/dashboard/online-classes', icon: 'Monitor',         key: 'online_classes' },
-    { label: 'Courses',        href: '/dashboard/courses',        icon: 'BookOpen',        key: 'courses' },
-  ],
-  parent: [
-    { label: 'Dashboard',       href: '/dashboard',                icon: 'LayoutDashboard', key: 'dashboard' },
-    { label: 'Admissions',      href: '/dashboard/admissions',     icon: 'ClipboardList',   key: 'admissions' },
-    { label: 'Attendance',      href: '/dashboard/attendance',     icon: 'CalendarCheck',   key: 'attendance' },
-    { label: 'Fees',            href: '/dashboard/fees',           icon: 'CreditCard',      key: 'fees' },
-    { label: 'Performance',     href: '/dashboard/performance',    icon: 'TrendingUp',      key: 'performance' },
-    { label: 'Homework',        href: '/dashboard/homework',       icon: 'BookOpen',        key: 'homework' },
-    { label: 'Timetable',       href: '/dashboard/timetable',      icon: 'CalendarList',    key: 'timetable' },
-    { label: 'Syllabus',        href: '/dashboard/syllabus',       icon: 'BookMarked',      key: 'syllabus' },
-    { label: 'Exam Schedule',   href: '/dashboard/exam',           icon: 'ClipboardCheck',  key: 'exam' },
-    { label: 'Events',          href: '/dashboard/events',         icon: 'CalendarStar',    key: 'events' },
-    { label: 'Announcements',   href: '/dashboard/announcements',  icon: 'Megaphone',       key: 'announcements' },
-    { label: 'Leave',           href: '/dashboard/leave',          icon: 'Calendar',        key: 'leave' },
-    { label: 'Queries',         href: '/dashboard/queries',        icon: 'MessageSquare',   key: 'queries' },
-    { label: 'Career Sessions',      href: '/dashboard/career-sessions', icon: 'Briefcase',   key: 'sessions' },
-    { label: 'Vendor / Marketplace', href: '/dashboard/vendor',          icon: 'ShoppingBag', key: 'vendor' },
-    { label: 'Online Classes',       href: '/dashboard/online-classes',  icon: 'Monitor',     key: 'online_classes' },
-    { label: 'Courses',              href: '/dashboard/courses',         icon: 'BookOpen',    key: 'courses' },
-    { label: 'Transport',            href: '/dashboard/transport',       icon: 'Bus',         key: 'transport' },
-  ],
-  // HOD and Principal use school_admin items but filtered by their own permissions
-  hod: [
-    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard', key: 'dashboard' },
-    { label: 'Students',       href: '/dashboard/students',      icon: 'Users',           key: 'students' },
-    { label: 'Teachers',       href: '/dashboard/teachers',      icon: 'GraduationCap',   key: 'teachers' },
-    { label: 'Classes',        href: '/dashboard/classes',       icon: 'LayoutGrid',      key: 'classes' },
-    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck',   key: 'attendance' },
-    { label: 'Homework',       href: '/dashboard/homework',      icon: 'BookOpen',        key: 'homework' },
-    { label: 'Syllabus',       href: '/dashboard/syllabus',      icon: 'BookMarked',      key: 'syllabus' },
-    { label: 'Exam',           href: '/dashboard/exam',          icon: 'ClipboardCheck',  key: 'exam' },
-    { label: 'Performance',    href: '/dashboard/performance',   icon: 'TrendingUp',      key: 'performance' },
-    { label: 'Events',         href: '/dashboard/events',        icon: 'CalendarStar',    key: 'events' },
-    { label: 'Announcements',  href: '/dashboard/announcements', icon: 'Megaphone',       key: 'announcements' },
-    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar',        key: 'leave' },
-    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare',   key: 'queries' },
-    { label: 'Reports',        href: '/dashboard/reports',       icon: 'BarChart',        key: 'reports' },
-    { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle',      key: 'settings' },
-  ],
-  principal: [
-    { label: 'Dashboard',        href: '/dashboard',                  icon: 'LayoutDashboard', key: 'dashboard' },
-    { label: 'Admissions',       href: '/dashboard/admissions',       icon: 'ClipboardList',   key: 'admissions' },
-    { label: 'Classes',          href: '/dashboard/classes',          icon: 'LayoutGrid',      key: 'classes' },
-    { label: 'Students',         href: '/dashboard/students',         icon: 'Users',           key: 'students' },
-    { label: 'Teachers',         href: '/dashboard/teachers',         icon: 'GraduationCap',   key: 'teachers' },
-    { label: 'Attendance',       href: '/dashboard/attendance',       icon: 'CalendarCheck',   key: 'attendance' },
-    { label: 'Fees',             href: '/dashboard/fees',             icon: 'CreditCard',      key: 'fees' },
-    { label: 'Events',           href: '/dashboard/events',           icon: 'CalendarStar',    key: 'events' },
-    {
-      label: 'Academic', href: '', icon: 'CalendarDays', key: 'academic_group',
-      children: [
-        { label: 'Syllabus',       href: '/dashboard/syllabus',       icon: 'BookMarked',   key: 'syllabus' },
-        { label: 'Online Classes', href: '/dashboard/online-classes', icon: 'Monitor',      key: 'online_classes' },
-      ],
-    },
-    {
-      label: 'Assessment', href: '', icon: 'ClipboardCheck', key: 'assessment_group',
-      children: [
-        { label: 'Exam',    href: '/dashboard/exam',           icon: 'ClipboardCheck', key: 'exam' },
-        { label: 'Courses', href: '/dashboard/courses/manage', icon: 'BookOpen',       key: 'courses' },
-      ],
-    },
-    { label: 'School Inventory', href: '/dashboard/school-inventory', icon: 'Archive',         key: 'school_inventory' },
-    { label: 'Letter Templates', href: '/dashboard/letter-templates', icon: 'FileTemplate',    key: 'letter_templates' },
-    { label: 'Announcements',    href: '/dashboard/announcements',    icon: 'Megaphone',       key: 'announcements' },
-    { label: 'Leave',            href: '/dashboard/leave',            icon: 'Calendar',        key: 'leave' },
-    { label: 'Queries',          href: '/dashboard/queries',          icon: 'MessageSquare',   key: 'queries' },
-    { label: 'Transport',        href: '/dashboard/transport',        icon: 'Bus',             key: 'transport' },
-    { label: 'Career Sessions',  href: '/dashboard/career-sessions/manage', icon: 'Briefcase', key: 'sessions' },
-    { label: 'Compliance',       href: '/dashboard/compliance',       icon: 'ShieldCheck',     key: 'compliance' },
-    { label: 'Reports',          href: '/dashboard/reports',          icon: 'BarChart',        key: 'reports' },
-    { label: 'Profile',          href: '/dashboard/settings',         icon: 'UserCircle',      key: 'settings' },
-  ],
-  employee: [
-    { label: 'Dashboard',      href: '/dashboard',               icon: 'LayoutDashboard', key: 'dashboard' },
-    { label: 'Attendance',     href: '/dashboard/attendance',    icon: 'CalendarCheck',   key: 'attendance' },
-    { label: 'Leave',          href: '/dashboard/leave',         icon: 'Calendar',        key: 'leave' },
-    { label: 'Queries',        href: '/dashboard/queries',       icon: 'MessageSquare',   key: 'queries' },
-    { label: 'Profile',        href: '/dashboard/settings',      icon: 'UserCircle',      key: 'settings' },
-  ],
-  vendor: [
-    { label: 'Dashboard',   href: '/dashboard',                 icon: 'LayoutDashboard', key: 'dashboard' },
-    { label: 'Products',    href: '/dashboard/vendor/products', icon: 'ShoppingBag',     key: 'products' },
-    { label: 'Orders',      href: '/dashboard/vendor/orders',   icon: 'Package',         key: 'orders' },
-    { label: 'Ratings',     href: '/dashboard/vendor/ratings',  icon: 'Star',            key: 'ratings' },
-    { label: 'My Contract', href: '/dashboard/contracts',       icon: 'FileText',        key: 'contracts' },
-    { label: 'Profile',     href: '/dashboard/settings',        icon: 'UserCircle',      key: 'settings' },
-  ],
-  consultant: [
-    { label: 'Dashboard',     href: '/dashboard',                          icon: 'LayoutDashboard', key: 'dashboard' },
-    { label: 'Sessions',      href: '/dashboard/consultant/sessions',      icon: 'Briefcase',       key: 'sessions' },
-    { label: 'Availability',  href: '/dashboard/consultant/availability',  icon: 'CalendarDays',    key: 'availability' },
-    { label: 'Bookings',      href: '/dashboard/consultant/bookings',      icon: 'CalendarCheck',   key: 'bookings' },
-    { label: 'My Contract',   href: '/dashboard/contracts',                icon: 'FileText',        key: 'contracts' },
-    { label: 'Profile',       href: '/dashboard/settings',                 icon: 'UserCircle',      key: 'settings' },
-  ],
-};
+import { menuItems, type MenuItem } from '@/lib/menuConfig';
 
 const icons: Record<string, React.ReactNode> = {
   Database: (
@@ -418,18 +230,25 @@ const roleLabels: Record<string, string> = {
   consultant:   'Consultant',
 };
 
+function sortByOrder(arr: MenuItem[], orderedKeys: string[]): MenuItem[] {
+  return [...arr].sort((a, b) => {
+    const ai = orderedKeys.indexOf(a.key);
+    const bi = orderedKeys.indexOf(b.key);
+    return (ai === -1 ? 9999 : ai) - (bi === -1 ? 9999 : bi);
+  });
+}
+
 export default function Sidebar({ user, collapsed }: SidebarProps) {
   const pathname = usePathname();
   const role  = user?.primaryRole || 'school_admin';
   const items = menuItems[role] || menuItems.school_admin;
 
-  // null = super_admin (no filtering), [] = loading or no permissions granted
+  // null = super_admin (no filtering), string[] = ordered enabled keys from DB
   const [allowedKeys, setAllowedKeys] = useState<string[] | null>(
     role === 'super_admin' ? null : []
   );
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
 
-  // Clear any previously-cached stale permission keys on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       Object.keys(sessionStorage)
@@ -440,7 +259,6 @@ export default function Sidebar({ user, collapsed }: SidebarProps) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    // super_admin menu is not school-specific, skip permission filtering
     if (role === 'super_admin') { setAllowedKeys(null); return; }
     const token = localStorage.getItem('token');
     if (!token) { setAllowedKeys([]); return; }
@@ -456,13 +274,13 @@ export default function Sidebar({ user, collapsed }: SidebarProps) {
     );
   };
 
-  // null = super_admin (show all items), otherwise filter by granted keys
+  // Apply stored order (allowedKeys is already sorted by sortOrder from the API)
+  const orderedItems = allowedKeys !== null ? sortByOrder(items, allowedKeys) : items;
+
   const visibleItems = allowedKeys === null
-    ? items
-    : items.filter(item => {
-        if (item.children) {
-          return item.children.some(child => allowedKeys.includes(child.key));
-        }
+    ? orderedItems
+    : orderedItems.filter(item => {
+        if (item.children) return item.children.some(c => allowedKeys.includes(c.key));
         return allowedKeys.includes(item.key);
       });
 
@@ -501,9 +319,13 @@ export default function Sidebar({ user, collapsed }: SidebarProps) {
         {visibleItems.map((item) => {
           // Group item with collapsible children
           if (item.children) {
-            const visibleChildren = allowedKeys === null
+            const rawChildren = allowedKeys === null
               ? item.children
-              : item.children.filter(child => allowedKeys.includes(child.key));
+              : item.children.filter(c => allowedKeys.includes(c.key));
+            const visibleChildren = allowedKeys !== null
+              ? sortByOrder(rawChildren, allowedKeys)
+              : rawChildren;
+
             const hasActiveChild = visibleChildren.some(child =>
               pathname === child.href || (child.href !== '/dashboard' && pathname.startsWith(child.href))
             );

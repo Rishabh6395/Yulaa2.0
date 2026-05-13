@@ -1014,6 +1014,7 @@ model MenuPermission {
   roleCode  String   @map("role_code") @db.VarChar(30)
   menuKey   String   @map("menu_key")  @db.VarChar(50)
   enabled   Boolean  @default(true)
+  sortOrder Int      @default(0)       @map("sort_order")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
   school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 

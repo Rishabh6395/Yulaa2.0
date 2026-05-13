@@ -1,17 +1,16 @@
 /**
  * GET  /api/super-admin/schools/[id]/menu-permissions?role=teacher
- *   → returns { menuKeys: string[] } for that role
+ *   → { items: { key, enabled, sortOrder }[] } for that role, ordered by sortOrder
  *
  * POST /api/super-admin/schools/[id]/menu-permissions
- *   body: { role: string, enabledItems: string[] }
- *   → saves the permission set; deletes old records and inserts new ones
+ *   body: { role: string, items: { key: string, enabled: boolean, sortOrder: number }[] }
+ *   → saves the full permission + sequence set (replaces existing records)
  */
 
 import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
-
 
 function assertAdmin(user: any) {
   if (!user) throw new UnauthorizedError();
@@ -29,12 +28,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const role     = new URL(request.url).searchParams.get('role') || 'school_admin';
 
     const saved = await prisma.menuPermission.findMany({
-      where:  { schoolId, roleCode: role },
-      select: { menuKey: true, enabled: true },
+      where:   { schoolId, roleCode: role },
+      select:  { menuKey: true, enabled: true, sortOrder: true },
+      orderBy: { sortOrder: 'asc' },
     });
 
-    const menuKeys = saved.filter(p => p.enabled).map(p => p.menuKey);
-    return Response.json({ menuKeys });
+    return Response.json({
+      items: saved.map(p => ({ key: p.menuKey, enabled: p.enabled, sortOrder: p.sortOrder })),
+    });
   } catch (err) { return handleError(err); }
 }
 
@@ -44,26 +45,30 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     assertAdmin(user!);
 
     const schoolId = (await params).id;
-    const { role, enabledItems } = await request.json();
+    const body     = await request.json();
+    const { role, items } = body as {
+      role: string;
+      items: { key: string; enabled: boolean; sortOrder: number }[];
+    };
 
-    if (!role || !Array.isArray(enabledItems)) {
-      throw new AppError('role and enabledItems[] are required', 400);
+    if (!role || !Array.isArray(items)) {
+      throw new AppError('role and items[] are required', 400);
     }
 
-    // Delete existing permissions for this school+role and re-insert
     await prisma.menuPermission.deleteMany({ where: { schoolId, roleCode: role } });
 
-    if (enabledItems.length > 0) {
+    if (items.length > 0) {
       await prisma.menuPermission.createMany({
-        data: enabledItems.map((menuKey: string) => ({
+        data: items.map(item => ({
           schoolId,
-          roleCode: role,
-          menuKey,
-          enabled: true,
+          roleCode:  role,
+          menuKey:   item.key,
+          enabled:   item.enabled,
+          sortOrder: item.sortOrder,
         })),
       });
     }
 
-    return Response.json({ ok: true, saved: enabledItems.length });
+    return Response.json({ ok: true, saved: items.length });
   } catch (err) { return handleError(err); }
 }
