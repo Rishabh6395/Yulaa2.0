@@ -1,7 +1,7 @@
 /**
  * GET /api/menu-permissions
- * Returns the list of enabled menu keys for the current user's role + school.
- * Always fetched from the DB — no hardcoded defaults.
+ * Returns enabled menu keys for the current user's role + school,
+ * ordered by sortOrder so the sidebar can apply the stored sequence.
  */
 
 import { getUserFromRequest } from '@/lib/auth';
@@ -17,15 +17,14 @@ export async function GET(request: Request) {
     const roleCode = primary.role_code as string;
     const schoolId = primary.school_id as string | null;
 
-    // Super admin has no school-specific permissions — sidebar handles this role separately
     if (!schoolId) {
       return Response.json({ menuKeys: [] });
     }
 
-    // Return only what has been explicitly enabled for this school + role
     const saved = await prisma.menuPermission.findMany({
-      where:  { schoolId, roleCode },
-      select: { menuKey: true, enabled: true },
+      where:   { schoolId, roleCode },
+      select:  { menuKey: true, enabled: true, sortOrder: true },
+      orderBy: { sortOrder: 'asc' },
     });
 
     const menuKeys = saved.filter(p => p.enabled).map(p => p.menuKey);

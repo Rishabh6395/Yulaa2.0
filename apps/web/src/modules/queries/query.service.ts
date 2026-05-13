@@ -49,12 +49,16 @@ function safeParseAttachment(raw: string) {
 export async function submitQuery(
   schoolId: string | null, userId: string, roleCode: string, body: Record<string, any>,
 ) {
-  if (roleCode === 'super_admin') throw new AppError('Super admins cannot raise queries');
-  if (!schoolId) throw new AppError('School context is required to raise a query');
+  if (roleCode === 'super_admin')
+    throw new AppError('Super admins cannot raise queries through this portal. Please contact Yulaa support directly.');
+  if (!schoolId)
+    throw new AppError('Your account is not linked to a school. Please contact your administrator.');
 
   const { subject, description, query_type, priority, attachments } = body;
-  if (!subject?.trim())     throw new AppError('subject is required');
-  if (!description?.trim()) throw new AppError('description is required');
+  if (!subject?.trim())
+    throw new AppError('Subject is required. Please enter a brief summary of your query.');
+  if (!description?.trim())
+    throw new AppError('Description is required. Please describe your issue so it can be resolved promptly.');
 
   let ticketNo = '';
   for (let i = 0; i < 5; i++) {
@@ -81,9 +85,9 @@ export async function addReply(
   userId: string, schoolId: string | null, roleCode: string, body: Record<string, any>,
 ) {
   const { id, message, attachments } = body;
-  if (!id) throw new AppError('id is required');
+  if (!id) throw new AppError('Query ID is required.');
   if (!message?.trim() && (!attachments || attachments.length === 0))
-    throw new AppError('message or attachment is required');
+    throw new AppError('Please enter a message or attach a file before sending the reply.');
 
   const query = await repo.findById(id);
   if (!query) throw new AppError('Query not found', 404);
@@ -99,7 +103,7 @@ export async function addReply(
   const isOwnEscalation = query.raisedById === userId;
 
   if (!isRequester && !isSchoolAdmin && !isSuperAdmin && !isOwnEscalation) {
-    throw new AppError('You are not authorised to reply to this query', 403);
+    throw new AppError('You do not have permission to reply to this query. Only the original submitter or an admin can respond.', 403);
   }
 
   const reply = await repo.createReply({

@@ -88,31 +88,49 @@ export async function POST(request: Request) {
     if (!user) throw new UnauthorizedError();
 
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
-    if (primaryRole.role_code !== 'parent') throw new ForbiddenError('Only parents can book sessions');
+    if (primaryRole.role_code !== 'parent')
+      throw new ForbiddenError('Only parents can book career sessions. Please log in with a parent account.');
 
     const parent = await prisma.parent.findUnique({ where: { userId: user.id } });
-    if (!parent) throw new NotFoundError('Parent profile');
+    if (!parent)
+      throw new AppError('Your parent profile could not be found. Please contact your school administrator to set up your profile.', 404);
 
     const body = await request.json();
     const { consultant_id, availability_id, student_id, session_date, start_time, end_time, mode, notes } = body;
 
-    if (!consultant_id || !session_date || !start_time || !end_time) {
-      throw new AppError('consultant_id, session_date, start_time, and end_time are required');
-    }
+    if (!consultant_id)
+      throw new AppError('Please select a consultant before booking.');
+    if (!session_date)
+      throw new AppError('Please select a date for the session.');
+    if (!start_time || !end_time)
+      throw new AppError('Session time could not be determined. Please go back and select a time slot again.');
+
+    const sessionDateParsed = new Date(session_date);
+    if (isNaN(sessionDateParsed.getTime()))
+      throw new AppError(`The session date "${session_date}" is not valid. Please select a valid date.`);
 
     const consultant = await prisma.consultant.findUnique({ where: { id: consultant_id } });
-    if (!consultant || !consultant.isActive) throw new NotFoundError('Consultant');
+    if (!consultant)
+      throw new AppError('The selected consultant was not found. Please go back and choose a different consultant.', 404);
+    if (!consultant.isActive)
+      throw new AppError('This consultant is not currently accepting bookings. Please choose a different consultant.', 404);
 
     // Check availability slot capacity if provided
     if (availability_id) {
       const slot = await prisma.consultantAvailability.findUnique({ where: { id: availability_id } });
-      if (!slot || !slot.isActive) throw new NotFoundError('Availability slot');
+      if (!slot)
+        throw new AppError('The selected time slot is no longer available. Please go back and choose a different slot.', 404);
+      if (!slot.isActive)
+        throw new AppError('The selected time slot has been deactivated. Please go back and choose an active slot.', 404);
 
       const existingBookings = await prisma.sessionBooking.count({
-        where: { availabilityId: availability_id, sessionDate: new Date(session_date), status: { notIn: ['cancelled'] } },
+        where: { availabilityId: availability_id, sessionDate: sessionDateParsed, status: { notIn: ['cancelled'] } },
       });
       if (existingBookings >= slot.maxBookings) {
-        throw new AppError('This time slot is fully booked', 409);
+        throw new AppError(
+          `This time slot is fully booked for ${new Date(session_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}. Please select a different date or slot.`,
+          409,
+        );
       }
     }
 
@@ -123,7 +141,7 @@ export async function POST(request: Request) {
         availabilityId: availability_id ?? null,
         studentId:     student_id ?? null,
         schoolId:      primaryRole.school_id ?? null,
-        sessionDate:   new Date(session_date),
+        sessionDate:   sessionDateParsed,
         startTime:     start_time,
         endTime:       end_time,
         mode:          mode ?? 'online',

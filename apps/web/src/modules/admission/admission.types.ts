@@ -9,13 +9,15 @@ export interface CreateChildInput {
 }
 
 export interface CreateApplicationInput {
-  schoolId:         string;
-  parentName:       string;
-  parentPhone:      string;
-  parentEmail:      string;
-  parentOccupation?: string;
-  parentUserId?:    string | null;
-  children:         CreateChildInput[];
+  schoolId:             string;
+  parentName:           string;
+  parentPhone:          string;
+  parentEmail:          string;
+  parentOccupation?:    string;
+  parentUserId?:        string | null;
+  residentialAddress?:  string;
+  permanentAddress?:    string;
+  children:             CreateChildInput[];
 }
 
 export interface ValidationFlag {

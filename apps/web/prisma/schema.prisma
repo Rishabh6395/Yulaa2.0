@@ -870,9 +870,11 @@ model AdmissionApplication {
   parentUserId    String?            @map("parent_user_id")
   currentStep     Int                @default(0) @map("current_step")
   status          String             @default("submitted") @db.VarChar(20)
-  riskScore       Int                @default(0) @map("risk_score")
-  validationFlags Json?              @map("validation_flags")
-  submittedAt     DateTime           @default(now()) @map("submitted_at")
+  riskScore            Int                @default(0) @map("risk_score")
+  validationFlags      Json?              @map("validation_flags")
+  residentialAddress   String?            @map("residential_address")
+  permanentAddress     String?            @map("permanent_address")
+  submittedAt          DateTime           @default(now()) @map("submitted_at")
   updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at")
   actions         AdmissionAction[]
   parentUser      User?              @relation("ApplicationParentUser", fields: [parentUserId], references: [id])
@@ -1014,6 +1016,7 @@ model MenuPermission {
   roleCode  String   @map("role_code") @db.VarChar(30)
   menuKey   String   @map("menu_key")  @db.VarChar(50)
   enabled   Boolean  @default(true)
+  sortOrder Int      @default(0)       @map("sort_order")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
   school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 

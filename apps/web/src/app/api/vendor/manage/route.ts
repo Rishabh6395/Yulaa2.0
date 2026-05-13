@@ -1,8 +1,9 @@
 /**
  * School admin — manage vendors linked to their school.
  * GET    - list vendors accessible to this school
- * POST   - create a vendor account (internal or external if allowed)
- * PATCH  - update vendor contract end date, area, or active status
+ * POST   - create an internal vendor for this school (is_external always false)
+ * PATCH  - update vendor contract end date or active status
+ * (External vendor creation is handled by super admin at /api/super-admin/vendors)
  */
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, NotFoundError, AppError } from '@/utils/errors';
@@ -93,43 +94,32 @@ export async function POST(request: Request) {
     const schoolId = role.school_id!;
 
     const body = await request.json();
-    const {
-      first_name, last_name, email, phone, password,
-      company_name, gst_no, address, description, category,
-      is_external, contract_start, contract_end,
-    } = body;
+    const { first_name, last_name, email, phone, password, company_name, gst_no, address, description, category, contract_start, contract_end } = body;
 
-    if (!first_name || !last_name || !email || !company_name) {
-      throw new AppError('first_name, last_name, email, and company_name are required');
-    }
+    if (!first_name?.trim()) throw new AppError('Contact first name is required.');
+    if (!last_name?.trim())  throw new AppError('Contact last name is required.');
+    if (!email?.trim())      throw new AppError('Email address is required.');
+    if (!company_name?.trim()) throw new AppError('Company or shop name is required.');
 
-    if (is_external) {
-      const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { allowExternalVendor: true } });
-      if (!school?.allowExternalVendor) {
-        throw new ForbiddenError('External vendors are not enabled for this school. Contact the super admin.');
-      }
-    }
-
-    let existingUser = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+    const emailNorm = email.toLowerCase().trim();
+    let existingUser = await prisma.user.findUnique({ where: { email: emailNorm } });
     let vendorProfile = existingUser
       ? await prisma.vendor.findUnique({ where: { userId: existingUser.id } })
       : null;
 
     if (!existingUser) {
       const vendorRole = await prisma.role.findUnique({ where: { code: 'vendor' } });
-      if (!vendorRole) throw new AppError('Vendor role not configured in the system');
+      if (!vendorRole) throw new AppError('Vendor role is not configured in the system. Please contact your Yulaa administrator.');
 
       const hash = await bcrypt.hash(password || 'Yulaa@2024', 12);
       existingUser = await prisma.user.create({
         data: {
-          email: email.toLowerCase().trim(),
+          email: emailNorm,
           passwordHash: hash,
-          firstName: first_name,
-          lastName: last_name,
+          firstName: first_name.trim(),
+          lastName: last_name.trim(),
           phone: phone ?? null,
-          userRoles: {
-            create: { roleId: vendorRole.id, schoolId, isPrimary: true },
-          },
+          userRoles: { create: { roleId: vendorRole.id, schoolId, isPrimary: true } },
         },
       });
     }
@@ -137,20 +127,21 @@ export async function POST(request: Request) {
     if (!vendorProfile) {
       vendorProfile = await prisma.vendor.create({
         data: {
-          userId:          existingUser.id,
-          companyName:     company_name,
-          gstNo:           gst_no ?? null,
-          address:         address ?? null,
-          description:     description ?? null,
-          category:        category ?? null,
-          isExternal:      Boolean(is_external),
+          userId:           existingUser.id,
+          companyName:      company_name.trim(),
+          gstNo:            gst_no ?? null,
+          address:          address ?? null,
+          description:      description ?? null,
+          category:         category ?? null,
+          isExternal:       false,
           allowedSchoolIds: [schoolId],
-          contractStart:   contract_start ? new Date(contract_start) : new Date(),
-          contractEnd:     contract_end ? new Date(contract_end) : null,
+          contractStart:    contract_start ? new Date(contract_start) : new Date(),
+          contractEnd:      contract_end ? new Date(contract_end) : null,
         },
       });
+    } else if (vendorProfile.isExternal) {
+      throw new AppError('This email belongs to an external vendor. Internal vendors only can be created here. Contact your Yulaa super admin for external vendor management.');
     } else if (!vendorProfile.allowedSchoolIds.includes(schoolId)) {
-      // Link existing vendor to this school
       vendorProfile = await prisma.vendor.update({
         where: { id: vendorProfile.id },
         data: {

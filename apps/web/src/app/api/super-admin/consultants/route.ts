@@ -1,6 +1,7 @@
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, NotFoundError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
 function assertSuperAdmin(user: Awaited<ReturnType<typeof getUserFromRequest>>) {
   if (!user) throw new UnauthorizedError();
@@ -73,6 +74,97 @@ export async function GET(request: Request) {
     });
 
     return Response.json({ consultants: rows, total: rows.length });
+  } catch (err) { return handleError(err); }
+}
+
+export async function POST(request: Request) {
+  try {
+    const user = await getUserFromRequest(request);
+    assertSuperAdmin(user);
+
+    const body = await request.json();
+    const {
+      first_name, last_name, email, phone, password,
+      specialization, bio, qualifications, experience_years,
+      session_fee, is_external, area_scope, allowed_school_ids,
+      contract_start, contract_end, contract_value, school_id,
+    } = body;
+
+    if (!first_name?.trim()) throw new AppError('Contact first name is required.');
+    if (!last_name?.trim())  throw new AppError('Contact last name is required.');
+    if (!email?.trim())      throw new AppError('Email address is required.');
+
+    const emailNorm = email.toLowerCase().trim();
+    let existingUser = await prisma.user.findUnique({ where: { email: emailNorm } });
+    let consultantProfile = existingUser
+      ? await prisma.consultant.findUnique({ where: { userId: existingUser.id } })
+      : null;
+
+    if (!existingUser) {
+      const consultantRole = await prisma.role.findUnique({ where: { code: 'consultant' } });
+      if (!consultantRole)
+        throw new AppError('Consultant role is not configured in the system. Please contact Yulaa support.');
+
+      const hash = await bcrypt.hash(password || 'Yulaa@2024', 12);
+      existingUser = await prisma.user.create({
+        data: {
+          email: emailNorm,
+          passwordHash: hash,
+          firstName: first_name.trim(),
+          lastName: last_name.trim(),
+          phone: phone ?? null,
+          userRoles: { create: { roleId: consultantRole.id, isPrimary: true } },
+        },
+      });
+    }
+
+    const schoolIds: string[] = Array.isArray(allowed_school_ids) ? allowed_school_ids : [];
+
+    if (!consultantProfile) {
+      consultantProfile = await prisma.consultant.create({
+        data: {
+          userId:           existingUser.id,
+          specialization:   specialization ?? null,
+          bio:              bio ?? null,
+          qualifications:   qualifications ?? null,
+          experienceYears:  experience_years ?? null,
+          sessionFee:       session_fee ?? null,
+          isExternal:       Boolean(is_external),
+          areaScope:        area_scope ?? 'school',
+          allowedSchoolIds: schoolIds,
+        },
+      });
+    } else {
+      const merged = Array.from(new Set([...consultantProfile.allowedSchoolIds, ...schoolIds]));
+      consultantProfile = await prisma.consultant.update({
+        where: { id: consultantProfile.id },
+        data: {
+          allowedSchoolIds: merged,
+          ...(is_external !== undefined && { isExternal: Boolean(is_external) }),
+          ...(area_scope && { areaScope: area_scope }),
+          ...(session_fee !== undefined && { sessionFee: session_fee }),
+        },
+      });
+    }
+
+    // Optionally create a contract if school_id and contract_end supplied
+    let contract = null;
+    if (school_id && contract_end) {
+      const contractNo = `CON-${school_id.slice(0, 6).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+      contract = await prisma.consultantContract.create({
+        data: {
+          consultantId:  consultantProfile.id,
+          schoolId:      school_id,
+          contractNo,
+          startDate:     contract_start ? new Date(contract_start) : new Date(),
+          endDate:       new Date(contract_end),
+          contractValue: contract_value ?? null,
+          status:        'active',
+        },
+      });
+    }
+
+    return Response.json({ consultant: consultantProfile, contract }, { status: 201 });
   } catch (err) { return handleError(err); }
 }
 

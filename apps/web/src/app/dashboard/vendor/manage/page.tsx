@@ -16,7 +16,12 @@ type Vendor = {
   avg_rating: number | null;
 };
 
-const DEFAULT_CATEGORIES = ['Books', 'Uniform', 'Stationery', 'Sports', 'Lanyard', 'Other'];
+const DEFAULT_CATEGORIES = ['books', 'uniform', 'stationery', 'sports', 'lanyard', 'other'];
+
+const BLANK_FORM = {
+  first_name: '', last_name: '', email: '', password: '',
+  company_name: '', category: 'books', contract_end: '',
+};
 
 export default function ManageVendorsPage() {
   const [vendors,    setVendors]    = useState<Vendor[]>([]);
@@ -27,18 +32,10 @@ export default function ManageVendorsPage() {
   const [editId,     setEditId]     = useState<string | null>(null);
   const [newEndDate, setNewEndDate] = useState('');
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [form,       setForm]       = useState(BLANK_FORM);
 
-  const [form, setForm] = useState({
-    first_name: '', last_name: '', email: '', password: '',
-    company_name: '', category: '', is_external: false, contract_end: '',
-  });
-
-  const token    = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-  const userRole = typeof window !== 'undefined'
-    ? (JSON.parse(localStorage.getItem('user') || '{}').primaryRole || '')
-    : '';
-  const isSuperAdmin = userRole === 'super_admin';
-  const headers  = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   const load = () => {
     setLoading(true);
@@ -50,45 +47,44 @@ export default function ManageVendorsPage() {
 
   useEffect(() => { load(); }, []);
 
-  // Load product categories from custom master (slug: product_category)
   useEffect(() => {
     if (!token) return;
     fetch('/api/masters/custom/product_category', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (d?.masterValues?.length) {
-          const vals = d.masterValues.map((v: any) => v.name);
+          const vals = d.masterValues.map((v: any) => v.name.toLowerCase());
           setCategories(vals);
-          setForm(f => ({ ...f, category: vals[0].toLowerCase() || '' }));
-        } else {
-          setForm(f => ({ ...f, category: DEFAULT_CATEGORIES[0].toLowerCase() }));
+          setForm(f => ({ ...f, category: vals[0] }));
         }
       })
-      .catch(() => { setForm(f => ({ ...f, category: DEFAULT_CATEGORIES[0].toLowerCase() })); });
+      .catch(() => {});
   }, [token]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true); setError('');
-    const res = await fetch('/api/vendor/manage', {
-      method: 'POST', headers,
-      body: JSON.stringify({
-        first_name:   form.first_name,
-        last_name:    form.last_name,
-        email:        form.email,
-        password:     form.password || undefined,
-        company_name: form.company_name,
-        category:     form.category,
-        is_external:  isSuperAdmin ? form.is_external : false,
-        contract_end: form.contract_end || undefined,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) { setError(data.error || 'Failed to create vendor.'); setSaving(false); return; }
-    setShowForm(false);
-    setForm(f => ({ first_name: '', last_name: '', email: '', password: '', company_name: '', category: f.category, is_external: false, contract_end: '' }));
-    load();
-    setSaving(false);
+    try {
+      const res = await fetch('/api/vendor/manage', {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          first_name:   form.first_name,
+          last_name:    form.last_name,
+          email:        form.email,
+          password:     form.password || undefined,
+          company_name: form.company_name,
+          category:     form.category,
+          contract_end: form.contract_end || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Failed to create vendor.'); return; }
+      setShowForm(false);
+      setForm(f => ({ ...BLANK_FORM, category: f.category }));
+      load();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const updateContract = async (vendorId: string) => {
@@ -107,14 +103,16 @@ export default function ManageVendorsPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Vendors</h1>
-          <p className="text-sm text-surface-400 mt-0.5">Manage vendors and suppliers for your school.</p>
+          <p className="text-sm text-surface-400 mt-0.5">Manage internal vendors for your school. External vendors are managed by your Yulaa super admin.</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn btn-primary">+ Add Vendor</button>
+        <button onClick={() => setShowForm(s => !s)} className="btn btn-primary">
+          {showForm ? 'Cancel' : '+ Add Vendor'}
+        </button>
       </div>
 
       {showForm && (
         <div className="card p-6 space-y-4 border-2 border-brand-200 dark:border-brand-800">
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100">New Vendor</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">New Internal Vendor</h2>
           <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="label">Company / Shop Name *</label>
@@ -139,9 +137,8 @@ export default function ManageVendorsPage() {
             <div>
               <label className="label">Product Category *</label>
               <select required className="input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                <option value="">— Select Category —</option>
                 {categories.map(c => (
-                  <option key={c} value={c.toLowerCase()}>{c}</option>
+                  <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
                 ))}
               </select>
             </div>
@@ -149,25 +146,12 @@ export default function ManageVendorsPage() {
               <label className="label">Contract End Date</label>
               <input type="date" className="input" value={form.contract_end} onChange={e => setForm(f => ({ ...f, contract_end: e.target.value }))} />
             </div>
-
-            {/* External checkbox — only for super_admin */}
-            {isSuperAdmin && (
-              <div className="col-span-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.is_external}
-                    onChange={e => setForm(f => ({ ...f, is_external: e.target.checked }))}
-                  />
-                  <span className="text-sm">External vendor (not exclusive to this school)</span>
-                </label>
-              </div>
+            {error && (
+              <p className="col-span-2 text-sm text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">{error}</p>
             )}
-
-            {error && <p className="col-span-2 text-sm text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">{error}</p>}
             <div className="col-span-2 flex gap-3">
               <button type="submit" disabled={saving} className="btn btn-primary">{saving ? 'Creating…' : 'Create Vendor'}</button>
-              <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>
+              <button type="button" onClick={() => { setShowForm(false); setError(''); setForm(f => ({ ...BLANK_FORM, category: f.category })); }} className="btn btn-secondary">Cancel</button>
             </div>
           </form>
         </div>
@@ -179,7 +163,7 @@ export default function ManageVendorsPage() {
         </div>
       ) : vendors.length === 0 ? (
         <div className="card p-10 text-center">
-          <p className="text-surface-400 text-sm">No vendors yet. Add your first vendor to get started.</p>
+          <p className="text-surface-400 text-sm">No vendors yet. Add your first internal vendor to get started.</p>
         </div>
       ) : (
         <div className="card overflow-hidden">

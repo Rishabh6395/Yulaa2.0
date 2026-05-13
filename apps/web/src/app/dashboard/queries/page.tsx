@@ -249,15 +249,26 @@ export default function QueriesPage() {
 
   const handleReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selected || (!replyText.trim() && replyAtts.length === 0)) return;
+    if (!selected) return;
+    if (!replyText.trim() && replyAtts.length === 0) return;
     setReplying(true);
-    await fetch('/api/queries', {
-      method: 'PATCH', headers,
-      body: JSON.stringify({ action: 'reply', id: selected.id, message: replyText.trim(), attachments: replyAtts }),
-    });
-    setReplyText(''); setReplyAtts([]);
+    try {
+      const res  = await fetch('/api/queries', {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ action: 'reply', id: selected.id, message: replyText.trim(), attachments: replyAtts }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to send reply. Please try again.');
+        setReplying(false);
+        return;
+      }
+      setReplyText(''); setReplyAtts([]);
+      await load();
+    } catch {
+      alert('Could not send reply. Please check your internet connection.');
+    }
     setReplying(false);
-    await load();
   };
 
   // ── Status actions ────────────────────────────────────────────────────────────
@@ -293,14 +304,30 @@ export default function QueriesPage() {
   const handleNew = async (e: React.FormEvent) => {
     e.preventDefault();
     setNError('');
-    if (!nForm.subject.trim() || !nForm.description.trim()) { setNError('Subject and description are required.'); return; }
+
+    if (!nForm.subject.trim())
+      return setNError('A subject is required. Please enter a brief summary of your query.');
+    if (!nForm.description.trim())
+      return setNError('A description is required. Please describe your issue in detail so it can be resolved faster.');
+    if (nForm.subject.trim().length < 5)
+      return setNError('Subject is too short. Please enter at least 5 characters describing your query.');
+
     setNSave(true);
     try {
       const res  = await fetch('/api/queries', { method: 'POST', headers, body: JSON.stringify({ ...nForm, attachments: nAtts }) });
       const data = await res.json();
-      if (!res.ok) { setNError(data.error || 'Failed'); }
-      else { setShowNew(false); setNForm({ subject: '', description: '', query_type: '', priority: 'normal' }); setNAtts([]); await load(); }
-    } catch { setNError('Network error'); }
+      if (!res.ok) {
+        setNError(data.error || 'Failed to submit query. Please try again.');
+      } else {
+        setShowNew(false);
+        setNForm({ subject: '', description: '', query_type: '', priority: 'normal' });
+        setNAtts([]);
+        if (isAdmin) setTab('mine');
+        await load();
+      }
+    } catch {
+      setNError('Could not connect to the server. Please check your internet connection and try again.');
+    }
     setNSave(false);
   };
 

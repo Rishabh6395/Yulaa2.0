@@ -13,11 +13,13 @@ export async function createApplication(data: CreateApplicationInput, flags: obj
     data: {
       schoolId:        data.schoolId,
       workflowId:      workflowId ?? undefined,
-      parentName:      data.parentName,
-      parentPhone:     data.parentPhone,
-      parentEmail:     data.parentEmail,
-      parentUserId:    data.parentUserId ?? undefined,
-      validationFlags: flags,
+      parentName:           data.parentName,
+      parentPhone:          data.parentPhone,
+      parentEmail:          data.parentEmail,
+      parentUserId:         data.parentUserId ?? undefined,
+      residentialAddress:   data.residentialAddress ?? null,
+      permanentAddress:     data.permanentAddress ?? null,
+      validationFlags:      flags,
       riskScore,
       children: {
         create: data.children.map((c) => ({
