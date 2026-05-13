@@ -9,21 +9,31 @@ import type { ApplicationActionInput, CreateApplicationInput, CreateWorkflowInpu
 // ── Public ────────────────────────────────────────────────────────────────────
 
 export async function submitApplication(data: CreateApplicationInput) {
-  if (!data.children || data.children.length === 0) throw new AppError('At least one child is required');
+  if (!data.children || data.children.length === 0)
+    throw new AppError('Please add at least one child to the application.');
 
   // Phone format validation
   const phoneResult = validatePhone(data.parentPhone ?? '');
-  if (!phoneResult.valid) throw new AppError(phoneResult.error!, 400);
+  if (!phoneResult.valid)
+    throw new AppError(`Invalid phone number: ${phoneResult.error}. Please enter a valid 10-digit mobile number or international format.`, 400);
   const phone = phoneResult.e164!;
 
   // Duplicate phone check
   const phoneExists = await repo.findApplicationByPhone(data.schoolId, phone);
-  if (phoneExists) throw new AppError('An application with this phone number already exists for this school', 409);
+  if (phoneExists)
+    throw new AppError(
+      'An application with this phone number already exists for this school. If this is a mistake, please contact the school admissions office.',
+      409,
+    );
 
   // Duplicate email check (only when email provided)
   if (data.parentEmail?.trim()) {
     const emailExists = await repo.findApplicationByEmail(data.schoolId, data.parentEmail.trim());
-    if (emailExists) throw new AppError('An application with this email address already exists for this school', 409);
+    if (emailExists)
+      throw new AppError(
+        'An application with this email address already exists for this school. Each family can submit only one application per school.',
+        409,
+      );
   }
 
   // AI validation
@@ -32,7 +42,10 @@ export async function submitApplication(data: CreateApplicationInput) {
   // Block only if ALL children have critical errors (Aadhaar duplicate is blocking)
   const blockingErrors = flags.filter((f) => f.severity === 'error' && f.code === 'DUPLICATE_AADHAAR');
   if (blockingErrors.length > 0) {
-    throw new AppError(`Duplicate Aadhaar detected: ${blockingErrors.map((f) => f.message).join('; ')}`, 409);
+    throw new AppError(
+      `Duplicate Aadhaar number detected: ${blockingErrors.map((f) => f.message).join('; ')}. Each child must have a unique Aadhaar number.`,
+      409,
+    );
   }
 
   // Fetch active workflow
