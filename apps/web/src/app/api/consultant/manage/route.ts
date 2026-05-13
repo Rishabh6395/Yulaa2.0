@@ -1,8 +1,9 @@
 /**
  * School admin — manage consultants linked to their school.
  * GET    - list consultants for this school (internal + external if enabled)
- * POST   - create/link a consultant to this school (creates User + Consultant + Contract)
- * PATCH  - update contract end date, or toggle active status
+ * POST   - create an internal consultant for this school (is_external always false)
+ * PATCH  - update contract end date or status
+ * (External consultant creation is handled by super admin at /api/super-admin/consultants)
  */
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, NotFoundError, AppError } from '@/utils/errors';
@@ -78,46 +79,32 @@ export async function POST(request: Request) {
     const schoolId = role.school_id!;
 
     const body = await request.json();
-    const {
-      first_name, last_name, email, phone, password,
-      specialization, bio, qualifications, experience_years,
-      session_fee, is_external,
-      contract_start, contract_end, contract_value,
-    } = body;
+    const { first_name, last_name, email, phone, password, specialization, bio, qualifications, experience_years, session_fee, contract_start, contract_end, contract_value } = body;
 
-    if (!first_name || !last_name || !email || !contract_end) {
-      throw new AppError('first_name, last_name, email, and contract_end are required');
-    }
+    if (!first_name?.trim()) throw new AppError('First name is required.');
+    if (!last_name?.trim())  throw new AppError('Last name is required.');
+    if (!email?.trim())      throw new AppError('Email address is required.');
+    if (!contract_end)       throw new AppError('Contract end date is required.');
 
-    // Check if an external consultant is requested and allowed
-    if (is_external) {
-      const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { allowExternalConsultant: true } });
-      if (!school?.allowExternalConsultant) {
-        throw new ForbiddenError('External consultants are not enabled for this school. Contact the super admin.');
-      }
-    }
-
-    // Check if user already exists
-    let existingUser = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+    const emailNorm = email.toLowerCase().trim();
+    let existingUser = await prisma.user.findUnique({ where: { email: emailNorm } });
     let consultantProfile = existingUser
       ? await prisma.consultant.findUnique({ where: { userId: existingUser.id } })
       : null;
 
     if (!existingUser) {
       const consultantRole = await prisma.role.findUnique({ where: { code: 'consultant' } });
-      if (!consultantRole) throw new AppError('Consultant role not configured in the system');
+      if (!consultantRole) throw new AppError('Consultant role is not configured in the system. Please contact your Yulaa administrator.');
 
       const hash = await bcrypt.hash(password || 'Yulaa@2024', 12);
       existingUser = await prisma.user.create({
         data: {
-          email: email.toLowerCase().trim(),
+          email: emailNorm,
           passwordHash: hash,
-          firstName: first_name,
-          lastName: last_name,
+          firstName: first_name.trim(),
+          lastName: last_name.trim(),
           phone: phone ?? null,
-          userRoles: {
-            create: { roleId: consultantRole.id, schoolId, isPrimary: true },
-          },
+          userRoles: { create: { roleId: consultantRole.id, schoolId, isPrimary: true } },
         },
       });
     }
@@ -125,18 +112,19 @@ export async function POST(request: Request) {
     if (!consultantProfile) {
       consultantProfile = await prisma.consultant.create({
         data: {
-          userId: existingUser.id,
-          specialization: specialization ?? null,
-          bio: bio ?? null,
-          qualifications: qualifications ?? null,
-          experienceYears: experience_years ?? null,
-          sessionFee: session_fee ?? null,
-          isExternal: Boolean(is_external),
+          userId:           existingUser.id,
+          specialization:   specialization ?? null,
+          bio:              bio ?? null,
+          qualifications:   qualifications ?? null,
+          experienceYears:  experience_years ?? null,
+          sessionFee:       session_fee ?? null,
+          isExternal:       false,
           allowedSchoolIds: [schoolId],
         },
       });
+    } else if (consultantProfile.isExternal) {
+      throw new AppError('This email belongs to an external consultant. Only internal consultants can be created here. Contact your Yulaa super admin for external consultant management.');
     } else if (!consultantProfile.allowedSchoolIds.includes(schoolId)) {
-      // Link existing consultant to this school
       consultantProfile = await prisma.consultant.update({
         where: { id: consultantProfile.id },
         data: { allowedSchoolIds: [...consultantProfile.allowedSchoolIds, schoolId] },

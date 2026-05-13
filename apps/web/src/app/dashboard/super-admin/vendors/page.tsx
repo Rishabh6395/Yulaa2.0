@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type Vendor = {
   id: string;
@@ -18,13 +18,37 @@ type Vendor = {
   active_product_count: number;
 };
 
+type BulkResult = {
+  total: number;
+  created: number;
+  linked: number;
+  skipped: number;
+  failed: number;
+  results: { row: number; email: string; status: string; error?: string }[];
+};
+
 const AREA_SCOPES = ['school', 'city', 'state', 'national'];
+const CATEGORIES  = ['books', 'uniform', 'lanyard', 'stationery', 'sports', 'other'];
+
+const BLANK_FORM = {
+  first_name: '', last_name: '', email: '', phone: '', password: '',
+  company_name: '', category: 'books', gst_no: '', address: '', description: '',
+  is_external: false, area_scope: 'school', contract_end: '',
+};
 
 export default function SuperAdminVendorsPage() {
-  const [vendors,  setVendors]  = useState<Vendor[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [saving,   setSaving]   = useState<string | null>(null);
-  const [filter,   setFilter]   = useState('');
+  const [vendors,     setVendors]     = useState<Vendor[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [saving,      setSaving]      = useState<string | null>(null);
+  const [filter,      setFilter]      = useState('');
+  const [showForm,    setShowForm]    = useState(false);
+  const [formSaving,  setFormSaving]  = useState(false);
+  const [formError,   setFormError]   = useState('');
+  const [form,        setForm]        = useState(BLANK_FORM);
+  const [bulkResult,  setBulkResult]  = useState<BulkResult | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkError,   setBulkError]   = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -53,12 +77,177 @@ export default function SuperAdminVendorsPage() {
     setSaving(null);
   };
 
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormSaving(true); setFormError('');
+    try {
+      const res = await fetch('/api/super-admin/vendors', {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          ...form,
+          password:     form.password || undefined,
+          contract_end: form.contract_end || undefined,
+          allowed_school_ids: [],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setFormError(data.error || 'Failed to create vendor.'); return; }
+      setShowForm(false);
+      setForm(BLANK_FORM);
+      load();
+    } finally {
+      setFormSaving(false);
+    }
+  };
+
+  const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBulkLoading(true); setBulkError(''); setBulkResult(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/super-admin/vendors/bulk', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) { setBulkError(data.error || 'Bulk upload failed.'); return; }
+      setBulkResult(data);
+      load();
+    } catch {
+      setBulkError('Network error. Please try again.');
+    } finally {
+      setBulkLoading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">All Vendors</h1>
-        <p className="text-sm text-surface-400 mt-0.5">Manage vendor profiles, area scope, and external access across all schools.</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">All Vendors</h1>
+          <p className="text-sm text-surface-400 mt-0.5">Create and manage vendor profiles, area scope, and external access across all schools.</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={() => setShowForm(s => !s)} className="btn btn-primary">
+            {showForm ? 'Cancel' : '+ Create Vendor'}
+          </button>
+          <label className={`btn btn-secondary cursor-pointer ${bulkLoading ? 'opacity-60 pointer-events-none' : ''}`}>
+            {bulkLoading ? 'Uploading…' : 'Upload CSV'}
+            <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleBulkUpload} />
+          </label>
+          <a
+            href="data:text/csv;charset=utf-8,first_name,last_name,email,phone,company_name,category,gst_no,address,description,is_external,area_scope,allowed_school_ids,contract_start,contract_end"
+            download="vendors_template.csv"
+            className="btn btn-secondary text-sm"
+          >
+            CSV Template
+          </a>
+        </div>
       </div>
+
+      {/* Inline create form */}
+      {showForm && (
+        <div className="card p-6 border-2 border-brand-200 dark:border-brand-800 space-y-4">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">New Vendor Account</h2>
+          <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="label">Company / Shop Name *</label>
+              <input required className="input" value={form.company_name} onChange={e => setForm(f => ({ ...f, company_name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Contact First Name *</label>
+              <input required className="input" value={form.first_name} onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Contact Last Name *</label>
+              <input required className="input" value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Email *</label>
+              <input required type="email" className="input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Phone</label>
+              <input type="tel" className="input" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Password</label>
+              <input type="password" className="input" placeholder="Default: Yulaa@2024" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Category *</label>
+              <select required className="input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">GST No.</label>
+              <input className="input" value={form.gst_no} onChange={e => setForm(f => ({ ...f, gst_no: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Contract End Date</label>
+              <input type="date" className="input" value={form.contract_end} onChange={e => setForm(f => ({ ...f, contract_end: e.target.value }))} />
+            </div>
+            <div className="col-span-2">
+              <label className="label">Address</label>
+              <input className="input" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
+            </div>
+            <div className="col-span-2">
+              <label className="label">Description</label>
+              <textarea rows={2} className="input resize-none" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+            </div>
+            <div className="col-span-2 flex items-center gap-6 flex-wrap">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.is_external} onChange={e => setForm(f => ({ ...f, is_external: e.target.checked }))} />
+                <span className="text-sm">External vendor (not exclusive to one school)</span>
+              </label>
+              {form.is_external && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-surface-400">Area scope:</span>
+                  <select className="input text-sm py-1 px-2 w-32" value={form.area_scope} onChange={e => setForm(f => ({ ...f, area_scope: e.target.value }))}>
+                    {AREA_SCOPES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+            {formError && (
+              <p className="col-span-2 text-sm text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+                {formError}
+              </p>
+            )}
+            <div className="col-span-2 flex gap-3">
+              <button type="submit" disabled={formSaving} className="btn btn-primary">
+                {formSaving ? 'Creating…' : 'Create Vendor'}
+              </button>
+              <button type="button" onClick={() => { setShowForm(false); setFormError(''); setForm(BLANK_FORM); }} className="btn btn-secondary">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Bulk upload result */}
+      {(bulkError || bulkResult) && (
+        <div className={`card p-4 space-y-2 ${bulkResult?.failed ? 'border border-amber-300 dark:border-amber-700' : 'border border-green-300 dark:border-green-700'}`}>
+          {bulkError && <p className="text-sm text-red-600 font-medium">{bulkError}</p>}
+          {bulkResult && (
+            <>
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Bulk upload complete — {bulkResult.created} created, {bulkResult.linked} linked, {bulkResult.skipped} skipped, {bulkResult.failed} failed (of {bulkResult.total})
+              </p>
+              {bulkResult.results.filter(r => r.status === 'failed').map(r => (
+                <p key={r.row} className="text-xs text-red-600">Row {r.row} ({r.email}): {r.error}</p>
+              ))}
+            </>
+          )}
+          <button onClick={() => { setBulkResult(null); setBulkError(''); }} className="text-xs text-surface-400 hover:underline">Dismiss</button>
+        </div>
+      )}
 
       <div className="flex gap-2">
         {[['', 'All'], ['false', 'Internal'], ['true', 'External']].map(([val, label]) => (
@@ -78,7 +267,7 @@ export default function SuperAdminVendorsPage() {
         </div>
       ) : vendors.length === 0 ? (
         <div className="card p-10 text-center">
-          <p className="text-surface-400 text-sm">No vendors found.</p>
+          <p className="text-surface-400 text-sm">No vendors found. Create a vendor above or upload a CSV file.</p>
         </div>
       ) : (
         <div className="card overflow-hidden">
