@@ -35,7 +35,8 @@ const DEFAULT_RULES: FieldRules = {
   parentName: 'required', parentPhone: 'required', parentEmail: 'optional',
   parentOccupation: 'optional', childName: 'required', childDOB: 'required',
   childGender: 'required', previousSchool: 'optional', gradeApplying: 'required',
-  address: 'optional', bloodGroup: 'optional', medicalNotes: 'optional',
+  residentialAddress: 'optional', permanentAddress: 'optional',
+  bloodGroup: 'optional', medicalNotes: 'optional',
   siblings: 'optional', photo: 'optional',
 };
 
@@ -102,11 +103,13 @@ export default function ApplyPage() {
   const [configLoading,  setConfigLoading]  = useState(false);
 
   // Step 0 — parent
-  const [parentName,  setParentName]  = useState('');
-  const [phone,       setPhone]       = useState('');
-  const [email,       setEmail]       = useState('');
-  const [occupation,  setOccupation]  = useState('');
-  const [address,     setAddress]     = useState('');
+  const [parentName,          setParentName]          = useState('');
+  const [phone,               setPhone]               = useState('');
+  const [email,               setEmail]               = useState('');
+  const [occupation,          setOccupation]          = useState('');
+  const [residentialAddress,  setResidentialAddress]  = useState('');
+  const [permanentAddress,    setPermanentAddress]    = useState('');
+  const [sameAsResidential,   setSameAsResidential]   = useState(false);
 
   // Step 1 — children + school
   const [selectedSchool, setSelectedSchool] = useState('');
@@ -162,19 +165,25 @@ export default function ApplyPage() {
 
   const submit = async () => {
     setBusy(true); setError('');
-    const res = await fetch('/api/admission/apply', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        schoolId: selectedSchool,
-        parentName, parentPhone: phone, parentEmail: email,
-        parentOccupation: occupation, address,
-        children,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) return err(data.error || 'Submission failed');
-    setApplicationId(data.applicationId); setStep(3); setBusy(false);
+    try {
+      const res = await fetch('/api/admission/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schoolId: selectedSchool,
+          parentName, parentPhone: phone, parentEmail: email,
+          parentOccupation: occupation,
+          residentialAddress,
+          permanentAddress: sameAsResidential ? residentialAddress : permanentAddress,
+          children,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) return err(data.error || 'Submission failed');
+      setApplicationId(data.applicationId); setStep(3); setBusy(false);
+    } catch {
+      err('Network error. Please check your connection and try again.');
+    }
   };
 
   const updateChild = (i: number, field: keyof ChildForm, value: string) =>
@@ -266,11 +275,35 @@ export default function ApplyPage() {
             </div>
           )}
 
-          {isVisible(fieldRules, 'address') && (
+          {isVisible(fieldRules, 'residentialAddress') && (
             <div>
-              <Label rules={fieldRules} id="address">Residential Address</Label>
-              <textarea className="input-field" rows={2} placeholder="Full address"
-                value={address} onChange={e => setAddress(e.target.value)}/>
+              <Label rules={fieldRules} id="residentialAddress">Residential Address</Label>
+              <textarea className="input-field" rows={2} placeholder="House no., street, city, state, PIN"
+                value={residentialAddress} onChange={e => setResidentialAddress(e.target.value)}/>
+            </div>
+          )}
+
+          {isVisible(fieldRules, 'permanentAddress') && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <Label rules={fieldRules} id="permanentAddress">Permanent Address</Label>
+                <label className="flex items-center gap-1.5 text-xs text-surface-500 cursor-pointer select-none">
+                  <input type="checkbox" className="w-3.5 h-3.5 accent-brand-500"
+                    checked={sameAsResidential}
+                    onChange={e => setSameAsResidential(e.target.checked)}
+                  />
+                  Same as residential
+                </label>
+              </div>
+              {!sameAsResidential && (
+                <textarea className="input-field" rows={2} placeholder="House no., street, city, state, PIN"
+                  value={permanentAddress} onChange={e => setPermanentAddress(e.target.value)}/>
+              )}
+              {sameAsResidential && (
+                <p className="text-xs text-surface-400 py-2 px-3 bg-surface-50 dark:bg-gray-800 rounded-lg">
+                  Same as residential address
+                </p>
+              )}
             </div>
           )}
 
@@ -412,8 +445,13 @@ export default function ApplyPage() {
               {isVisible(fieldRules, 'parentName')       && <><span className="text-surface-400">Name</span><span className="font-medium">{parentName}</span></>}
               {isVisible(fieldRules, 'parentPhone')      && <><span className="text-surface-400">Phone</span><span className="font-medium">{phone}</span></>}
               {isVisible(fieldRules, 'parentEmail')      && email && <><span className="text-surface-400">Email</span><span className="font-medium">{email}</span></>}
-              {isVisible(fieldRules, 'parentOccupation') && occupation && <><span className="text-surface-400">Occupation</span><span className="font-medium">{occupation}</span></>}
-              {isVisible(fieldRules, 'address')          && address && <><span className="text-surface-400">Address</span><span className="font-medium">{address}</span></>}
+              {isVisible(fieldRules, 'parentOccupation')     && occupation          && <><span className="text-surface-400">Occupation</span><span className="font-medium">{occupation}</span></>}
+              {isVisible(fieldRules, 'residentialAddress') && residentialAddress   && <><span className="text-surface-400">Residential Address</span><span className="font-medium">{residentialAddress}</span></>}
+              {isVisible(fieldRules, 'permanentAddress')   && (
+                sameAsResidential
+                  ? <><span className="text-surface-400">Permanent Address</span><span className="font-medium text-surface-400 italic">Same as residential</span></>
+                  : permanentAddress ? <><span className="text-surface-400">Permanent Address</span><span className="font-medium">{permanentAddress}</span></> : null
+              )}
               <span className="text-surface-400">School</span>
               <span className="font-medium">{schools.find(s => s.id === selectedSchool)?.name ?? '—'}</span>
             </div>

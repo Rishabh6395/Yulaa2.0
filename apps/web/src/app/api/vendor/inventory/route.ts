@@ -21,11 +21,12 @@ export async function GET(request: Request) {
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
     const isVendor    = primaryRole.role_code === 'vendor';
     const isAdmin     = ['super_admin', 'school_admin'].includes(primaryRole.role_code);
+    const isViewer    = ['parent', 'student', 'principal', 'teacher', 'hod', 'employee'].includes(primaryRole.role_code);
 
-    if (!isVendor && !isAdmin) throw new ForbiddenError();
+    if (!isVendor && !isAdmin && !isViewer) throw new ForbiddenError();
     const key = isVendor
       ? `inventory:vendor:${user.id}:${category}:${status}`
-      : `inventory:school:${primaryRole.school_id}:${category}:${status}`;
+      : `inventory:school:${primaryRole.school_id ?? 'global'}:${category}:${status}`;
 
     const result = await withCache(key, CacheTTL.list, async () => {
       let vendorId: string | undefined;
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
       const items = await prisma.vendorInventory.findMany({
         where: {
           ...(isVendor && vendorId ? { vendorId } : {}),
-          ...(isAdmin && !isVendor ? { OR: [{ schoolId: primaryRole.school_id! }, { schoolId: null }] } : {}),
+          ...(!isVendor && (isAdmin || isViewer) && primaryRole.school_id ? { OR: [{ schoolId: primaryRole.school_id }, { schoolId: null }] } : {}),
           ...(category && { category }),
           ...(status && { status }),
         },
@@ -69,7 +70,9 @@ export async function GET(request: Request) {
       const allItems = isVendor && vendorId
         ? await prisma.vendorInventory.findMany({ where: { vendorId }, select: { category: true, status: true } })
         : await prisma.vendorInventory.findMany({
-            where: { OR: [{ schoolId: primaryRole.school_id! }, { schoolId: null }] },
+            where: primaryRole.school_id
+              ? { OR: [{ schoolId: primaryRole.school_id }, { schoolId: null }] }
+              : { schoolId: null },
             select: { category: true, status: true },
           });
 

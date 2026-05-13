@@ -80,9 +80,11 @@ function BookPageInner() {
     const res = await fetch('/api/career-sessions/bookings', {
       method: 'POST', headers,
       body: JSON.stringify({
-        consultant_id: consultantId,
-        slot_id: selectedSlot,
-        session_date: date,
+        consultant_id:   consultantId,
+        availability_id: selectedSlot,
+        session_date:    date,
+        start_time:      slot?.start_time ?? '',
+        end_time:        slot?.end_time ?? '',
         mode,
         notes,
       }),

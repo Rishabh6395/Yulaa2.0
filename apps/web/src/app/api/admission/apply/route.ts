@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const authUser = await getUserFromRequest(request).catch(() => null);
 
     const body = await request.json();
-    const { schoolId, parentName, parentPhone, parentEmail, parentOccupation, children } = body;
+    const { schoolId, parentName, parentPhone, parentEmail, parentOccupation, residentialAddress, permanentAddress, children } = body;
 
     if (!schoolId)         throw new AppError('schoolId is required');
     if (!parentName)       throw new AppError('parentName is required');
@@ -41,6 +41,8 @@ export async function POST(request: Request) {
       parentEmail: parentEmail ?? (!isAdmin ? authUser?.email : '') ?? '',
       parentOccupation,
       parentUserId: isAdmin ? null : (authUser?.id ?? null),
+      residentialAddress: residentialAddress ?? undefined,
+      permanentAddress: permanentAddress ?? undefined,
       children,
     });
 

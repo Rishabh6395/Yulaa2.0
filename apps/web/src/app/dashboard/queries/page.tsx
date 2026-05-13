@@ -299,7 +299,13 @@ export default function QueriesPage() {
       const res  = await fetch('/api/queries', { method: 'POST', headers, body: JSON.stringify({ ...nForm, attachments: nAtts }) });
       const data = await res.json();
       if (!res.ok) { setNError(data.error || 'Failed'); }
-      else { setShowNew(false); setNForm({ subject: '', description: '', query_type: '', priority: 'normal' }); setNAtts([]); await load(); }
+      else {
+        setShowNew(false);
+        setNForm({ subject: '', description: '', query_type: '', priority: 'normal' });
+        setNAtts([]);
+        if (isAdmin) setTab('mine');
+        await load();
+      }
     } catch { setNError('Network error'); }
     setNSave(false);
   };
