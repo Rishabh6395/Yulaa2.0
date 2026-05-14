@@ -18,7 +18,8 @@ export async function GET(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    if (!user.roles.some((r: any) => CORE_ADMIN_ROLES.includes(r.role_code))) throw new ForbiddenError();
+    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
+    if (!CORE_ADMIN_ROLES.includes(primary.role_code)) throw new ForbiddenError();
 
     const { searchParams } = new URL(request.url);
     const category  = searchParams.get('category') ?? undefined;
@@ -34,7 +35,8 @@ export async function POST(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    if (!user.roles.some((r: any) => CORE_ADMIN_ROLES.includes(r.role_code))) throw new ForbiddenError();
+    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
+    if (!CORE_ADMIN_ROLES.includes(primary.role_code)) throw new ForbiddenError();
 
     const schoolId = getSchoolId(user);
     const body     = await request.json();

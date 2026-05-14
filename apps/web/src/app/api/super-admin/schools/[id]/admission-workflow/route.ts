@@ -4,7 +4,8 @@ import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 
 function assertSuperAdmin(user: any) {
   if (!user) throw new UnauthorizedError();
-  if (!user.roles.some((r: any) => r.role_code === 'super_admin')) throw new ForbiddenError();
+  const primary = (user.roles as any[]).find((r) => r.is_primary) ?? user.roles[0];
+  if (primary.role_code !== 'super_admin') throw new ForbiddenError();
 }
 
 /** GET /api/super-admin/schools/[id]/admission-workflow */

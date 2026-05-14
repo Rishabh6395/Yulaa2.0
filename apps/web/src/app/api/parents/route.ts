@@ -149,10 +149,16 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const user    = await getUserFromRequest(request);
-    assertAdmin(user!);
+    const primary = assertAdmin(user!);
+    const schoolId = primary.school_id;
+    if (!schoolId) throw new AppError('No school associated with your account', 400);
     const { action, parent_id, student_id } = await request.json();
 
     if (!parent_id || !student_id) throw new AppError('parent_id and student_id are required', 400);
+
+    // Verify student belongs to this school before linking/unlinking
+    const student = await prisma.student.findFirst({ where: { id: student_id, schoolId }, select: { id: true } });
+    if (!student) throw new ForbiddenError('Student not found in your school');
 
     if (action === 'unlink') {
       await prisma.parentStudent.deleteMany({ where: { parentId: parent_id, studentId: student_id } });

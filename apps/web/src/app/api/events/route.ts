@@ -169,6 +169,12 @@ export async function PATCH(request: Request) {
       if (!ADMIN_ROLES.includes(primary.role_code) && primary.role_code !== 'teacher') throw new ForbiddenError();
       const { participantId, attended } = body;
       if (!participantId) throw new AppError('participantId required');
+      // Verify participant belongs to an event in this school
+      const participant = await prisma.eventParticipant.findFirst({
+        where: { id: participantId, event: { schoolId } },
+        select: { id: true },
+      });
+      if (!participant) throw new AppError('Participant not found', 404);
       const updated = await prisma.eventParticipant.update({
         where: { id: participantId },
         data: { attended: !!attended, status: attended ? 'attended' : 'registered' },

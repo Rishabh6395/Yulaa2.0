@@ -16,6 +16,9 @@ export async function GET(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
+    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
+    const INVENTORY_READ_ROLES = [...ADMIN_ROLES, 'hod', 'teacher'];
+    if (!INVENTORY_READ_ROLES.includes(primary.role_code)) throw new ForbiddenError();
     const schoolId = await getSchoolId(user);
     const { searchParams } = new URL(request.url);
     const itemId = searchParams.get('itemId');

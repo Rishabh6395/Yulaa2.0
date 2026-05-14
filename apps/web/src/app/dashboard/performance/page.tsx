@@ -575,132 +575,508 @@ function TeacherView({ token }: { token: string }) {
   );
 }
 
+// ── Report Card Detail ────────────────────────────────────────────────────────
+
+const RATING_COLOR: Record<string, string> = {
+  'Excellent':         'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+  'Good':              'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+  'Average':           'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+  'Below Average':     'bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800',
+  'Needs Improvement': 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
+};
+
+function RatingBadge({ rating }: { rating: string }) {
+  return (
+    <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${RATING_COLOR[rating] ?? ''}`}>
+      {rating}
+    </span>
+  );
+}
+
+function SectionHeader({ icon, title, rating }: { icon: React.ReactNode; title: string; rating?: string }) {
+  return (
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-950/50 flex items-center justify-center">{icon}</div>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+      </div>
+      {rating && <RatingBadge rating={rating} />}
+    </div>
+  );
+}
+
+function ReportCardDetail({ cardId, token, onBack }: { cardId: string; token: string; onBack: () => void }) {
+  const [card, setCard] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/report-cards/${cardId}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setCard(d.reportCard))
+      .finally(() => setLoading(false));
+  }, [cardId, token]);
+
+  if (loading) return <Skeleton rows={8} />;
+  if (!card)   return <div className="card p-6 text-sm text-red-500">Failed to load report card.</div>;
+
+  const academic   = card.academicData;
+  const attendance = card.attendanceData;
+  const behavior   = card.behaviorData;
+
+  return (
+    <div className="space-y-5 animate-fade-in">
+      {/* Back + header */}
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="flex items-center gap-1 text-sm text-brand-500 hover:underline">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15,18 9,12 15,6"/></svg>
+          Report Cards
+        </button>
+      </div>
+
+      {/* Report card letterhead */}
+      <div className="card p-6 border-t-4 border-t-brand-500">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs text-surface-400 uppercase tracking-wider font-semibold">{card.school?.name}</p>
+            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-gray-100 mt-1">Report Card</h2>
+            <p className="text-sm text-surface-400 mt-0.5">{card.term} · {card.academicYear}</p>
+          </div>
+          <div className="text-right text-xs text-surface-400 space-y-0.5">
+            <p className="font-semibold text-gray-700 dark:text-gray-300">
+              {card.student?.firstName} {card.student?.lastName}
+            </p>
+            <p>Admission #{card.student?.admissionNo}</p>
+            {card.student?.class && <p>Class {card.student.class.grade}{card.student.class.section}</p>}
+            <p>Issued: {new Date(card.sentAt).toLocaleDateString()}</p>
+          </div>
+        </div>
+
+        {/* Overall rating pills */}
+        <div className="flex flex-wrap gap-2 mt-5 pt-5 border-t border-surface-100 dark:border-gray-800">
+          {[
+            { label: 'Academic',   rating: card.academicRating },
+            { label: 'Attendance', rating: card.attendanceRating },
+            { label: 'Behavior',   rating: card.behaviorRating },
+          ].map(r => r.rating && (
+            <div key={r.label} className="flex items-center gap-1.5">
+              <span className="text-xs text-surface-400">{r.label}:</span>
+              <RatingBadge rating={r.rating} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Section 1: Academic Performance ── */}
+      {academic && (
+        <div className="card p-5">
+          <SectionHeader
+            title="Academic Performance"
+            rating={card.academicRating}
+            icon={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-brand-600 dark:text-brand-400">
+                <path d="M12 14l9-5-9-5-9 5 9 5z"/><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+              </svg>
+            }
+          />
+
+          {/* Stats row */}
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            <div className="p-3 rounded-xl bg-surface-50 dark:bg-gray-800/50 text-center">
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{academic.overallAvg}%</p>
+              <p className="text-xs text-surface-400 mt-0.5">Overall Average</p>
+            </div>
+            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-center">
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{academic.passedSubjects}</p>
+              <p className="text-xs text-surface-400 mt-0.5">Subjects Passed</p>
+            </div>
+            <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-center">
+              <p className="text-2xl font-bold text-red-500">{academic.failedSubjects}</p>
+              <p className="text-xs text-surface-400 mt-0.5">Needs Improvement</p>
+            </div>
+          </div>
+
+          {/* Subject table */}
+          {academic.subjects?.length > 0 && (
+            <div className="overflow-x-auto rounded-xl border border-surface-100 dark:border-gray-800">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-surface-50 dark:bg-gray-800/50">
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-surface-500 uppercase tracking-wide">Subject</th>
+                    <th className="text-center px-4 py-2 text-xs font-semibold text-surface-500 uppercase tracking-wide">Avg %</th>
+                    <th className="text-center px-4 py-2 text-xs font-semibold text-surface-500 uppercase tracking-wide">Grade</th>
+                    <th className="text-left px-4 py-2 text-xs font-semibold text-surface-500 uppercase tracking-wide">Progress</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-50 dark:divide-gray-800">
+                  {academic.subjects.map((s: any) => (
+                    <tr key={s.subject} className="hover:bg-surface-50/50 dark:hover:bg-gray-800/30">
+                      <td className="px-4 py-3 font-medium text-gray-800 dark:text-gray-200">{s.subject}</td>
+                      <td className="px-4 py-3 text-center font-semibold text-gray-900 dark:text-gray-100">{s.avgPct}%</td>
+                      <td className="px-4 py-3 text-center">
+                        <GradeBadge grade={scoreToGrade(s.avgPct)} />
+                      </td>
+                      <td className="px-4 py-3 w-32">
+                        <ScoreBar pct={s.avgPct} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Section 2: Attendance ── */}
+      {attendance && (
+        <div className="card p-5">
+          <SectionHeader
+            title="Attendance"
+            rating={card.attendanceRating}
+            icon={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-600 dark:text-blue-400">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            }
+          />
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div className="p-3 rounded-xl bg-surface-50 dark:bg-gray-800/50 text-center">
+              <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{attendance.attendancePct}%</p>
+              <p className="text-xs text-surface-400 mt-0.5">Attendance Rate</p>
+            </div>
+            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-center">
+              <p className="text-xl font-bold text-emerald-600">{attendance.presentDays}</p>
+              <p className="text-xs text-surface-400 mt-0.5">Present Days</p>
+            </div>
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-center">
+              <p className="text-xl font-bold text-amber-600">{attendance.lateDays}</p>
+              <p className="text-xs text-surface-400 mt-0.5">Late Arrivals</p>
+            </div>
+            <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-center">
+              <p className="text-xl font-bold text-red-500">{attendance.absentDays}</p>
+              <p className="text-xs text-surface-400 mt-0.5">Absent Days</p>
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <div className="flex justify-between text-xs text-surface-400 mb-1">
+              <span>Attendance</span>
+              <span>{attendance.presentDays + attendance.lateDays} / {attendance.totalDays} days</span>
+            </div>
+            <ScoreBar pct={attendance.attendancePct} />
+          </div>
+
+          {attendance.kpis && (
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {Object.entries(attendance.kpis).map(([key, val]: [string, any]) => (
+                <div key={key} className="flex items-center justify-between p-2.5 rounded-lg bg-surface-50 dark:bg-gray-800/50">
+                  <span className="text-xs text-surface-500 capitalize">{key.replace(/_/g, ' ')}</span>
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{val}%</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Section 3: Behavior ── */}
+      {behavior && (
+        <div className="card p-5">
+          <SectionHeader
+            title="Behavior & Discipline"
+            rating={card.behaviorRating}
+            icon={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-600 dark:text-purple-400">
+                <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+              </svg>
+            }
+          />
+
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-center">
+              <p className="text-xl font-bold text-emerald-600">{behavior.positiveCount}</p>
+              <p className="text-xs text-surface-400 mt-0.5">Positive Records</p>
+            </div>
+            <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-center">
+              <p className="text-xl font-bold text-red-500">{behavior.negativeCount}</p>
+              <p className="text-xs text-surface-400 mt-0.5">Incidents</p>
+            </div>
+            <div className="p-3 rounded-xl bg-surface-50 dark:bg-gray-800/50 text-center">
+              <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{behavior.positiveRatio}%</p>
+              <p className="text-xs text-surface-400 mt-0.5">Positive Ratio</p>
+            </div>
+          </div>
+
+          {behavior.incidents?.length > 0 && (
+            <div className="space-y-2">
+              {behavior.incidents.slice(0, 5).map((inc: any, i: number) => (
+                <div key={i} className={`flex items-start gap-3 p-3 rounded-xl
+                  ${inc.incidentType === 'positive'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900'
+                    : 'bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900'
+                  }`}>
+                  <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${inc.incidentType === 'positive' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">{inc.category}</p>
+                    <p className="text-xs text-surface-400 mt-0.5 line-clamp-2">{inc.description}</p>
+                  </div>
+                  <span className="text-[10px] text-surface-400 flex-shrink-0">
+                    {inc.date ? new Date(inc.date).toLocaleDateString() : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Teacher remarks */}
+      {card.teacherRemarks && (
+        <div className="card p-5 border-l-4 border-l-amber-400">
+          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2">Teacher's Remarks</p>
+          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{card.teacherRemarks}</p>
+          {card.sentBy && (
+            <p className="text-xs text-surface-400 mt-2">— {card.sentBy.firstName} {card.sentBy.lastName}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Report Card List ──────────────────────────────────────────────────────────
+
+function ReportCardList({
+  token, studentId, onView,
+}: { token: string; studentId: string; onView: (id: string) => void }) {
+  const [cards, setCards]     = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/report-cards?studentId=${studentId}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setCards(d.reportCards ?? []))
+      .finally(() => setLoading(false));
+  }, [studentId, token]);
+
+  if (loading) return <Skeleton rows={4} />;
+  if (!cards.length) return (
+    <div className="card p-12 text-center space-y-2">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto text-surface-300 dark:text-gray-600">
+        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      <p className="text-sm text-surface-400">No report cards received yet.</p>
+      <p className="text-xs text-surface-300 dark:text-gray-600">Your school will send report cards here.</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      {cards.map((card: any) => (
+        <button key={card.id} onClick={() => onView(card.id)}
+          className="w-full card p-5 hover:shadow-md transition-all text-left group">
+          <div className="flex items-start gap-4">
+            {/* Icon */}
+            <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950/50 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-100 transition-colors">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-brand-600 dark:text-brand-400">
+                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </div>
+            {/* Details */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{card.term} Report Card</p>
+                <span className="text-xs text-surface-400 bg-surface-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                  {card.academicYear}
+                </span>
+                {card.status !== 'viewed' && (
+                  <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-full">New</span>
+                )}
+              </div>
+              <p className="text-xs text-surface-400 mt-1">
+                Issued {new Date(card.sentAt).toLocaleDateString()} by {card.sentBy?.firstName} {card.sentBy?.lastName}
+              </p>
+              {/* Ratings row */}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {[
+                  { label: 'Academic',   val: card.academicRating },
+                  { label: 'Attendance', val: card.attendanceRating },
+                  { label: 'Behavior',   val: card.behaviorRating },
+                ].filter(r => r.val).map(r => (
+                  <div key={r.label} className="flex items-center gap-1">
+                    <span className="text-[10px] text-surface-400">{r.label}:</span>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${RATING_COLOR[r.val] ?? ''}`}>
+                      {r.val}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-surface-400 flex-shrink-0 mt-1">
+              <polyline points="9,18 15,12 9,6"/>
+            </svg>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Parent View ───────────────────────────────────────────────────────────────
 
 function ParentView({ token, studentId, childName }: { token: string; studentId: string; childName: string }) {
-  const [examIdx, setExamIdx] = useState(0);
-  const { data, loading, error } = usePerf({ view: 'parent', student_id: studentId }, token);
+  const [examIdx,   setExamIdx]   = useState(0);
+  const [tab,       setTab]       = useState<'performance' | 'report_cards'>('performance');
+  const [viewingId, setViewingId] = useState<string | null>(null);
 
+  const { data, loading, error } = usePerf({ view: 'parent', student_id: studentId }, token);
   const exams: any[] = data?.byExam ?? [];
   const exam = exams[examIdx];
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">{childName}&apos;s Performance</h1>
-        <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">
-          {data?.student?.class ? `Class ${data.student.class.grade}${data.student.class.section}` : ''} · Admission #{data?.student?.admissionNo ?? ''}
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">{childName}&apos;s Performance</h1>
+          <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">
+            {data?.student?.class ? `Class ${data.student.class.grade}${data.student.class.section}` : ''} · Admission #{data?.student?.admissionNo ?? ''}
+          </p>
+        </div>
+        {/* Tabs */}
+        <div className="flex gap-1 bg-surface-100 dark:bg-gray-800 rounded-xl p-1">
+          {([['performance', 'Performance'], ['report_cards', 'Report Cards']] as const).map(([key, label]) => (
+            <button key={key} onClick={() => { setTab(key); setViewingId(null); }}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all
+                ${tab === key ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-surface-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {loading && <Skeleton rows={5}/>}
-      {error   && <div className="card p-6 text-sm text-red-500">{error}</div>}
-
-      {data && !loading && (
+      {/* ── Performance tab ── */}
+      {tab === 'performance' && (
         <>
-          {/* Top stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <StatCard title="Latest Score"     value={exams[0]?.avg ? `${exams[0].avg}%` : 'N/A'}   color="brand"   />
-            <StatCard title="Attendance"       value={`${data.attendance?.pct ?? 0}%`}               color={data.attendance?.pct < 75 ? 'red' : 'emerald'} sub={`${data.attendance?.present}/${data.attendance?.total} days`}/>
-            <StatCard title="Homework"         value={`${data.homework?.pct ?? 0}%`}                 color={data.homework?.pct < 60 ? 'amber' : 'emerald'} sub="completion rate"/>
-            <div className={`rounded-2xl border border-surface-100 dark:border-gray-800 p-5 ${RISK_CLS[data.riskLevel as keyof typeof RISK_CLS]?.bg}`}>
-              <p className="text-xs font-semibold uppercase tracking-wider opacity-70">Status</p>
-              <div className="flex items-center gap-2 mt-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${RISK_CLS[data.riskLevel as keyof typeof RISK_CLS]?.dot}`}/>
-                <p className={`text-sm font-bold ${RISK_CLS[data.riskLevel as keyof typeof RISK_CLS]?.text}`}>
-                  {RISK_CLS[data.riskLevel as keyof typeof RISK_CLS]?.label}
-                </p>
-              </div>
-            </div>
-          </div>
+          {loading && <Skeleton rows={5}/>}
+          {error   && <div className="card p-6 text-sm text-red-500">{error}</div>}
 
-          {/* AI remark */}
-          {data.aiRemark && (
-            <div className="card p-5 border-l-4 border-l-brand-400 dark:border-l-brand-500">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-950/50 flex items-center justify-center shrink-0">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-brand-600 dark:text-brand-400">
-                    <path d="M9.663 17h4.673M12 3v1m6.364 1.636-.707.707M21 12h-1M4 12H3m3.343-5.657-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-brand-600 dark:text-brand-400 uppercase tracking-wider mb-1">AI Performance Summary</p>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{data.aiRemark}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Exam selector + subject scores */}
-          {exams.length > 0 ? (
-            <div className="card p-6">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Subject-wise Scores</h3>
-                <div className="flex items-center gap-1">
-                  {exams.map((_: any, i: number) => (
-                    <button key={i} onClick={() => setExamIdx(i)}
-                      className={`px-3 py-1 text-xs rounded-lg font-medium transition-colors ${i === examIdx ? 'bg-brand-500 text-white' : 'text-surface-500 hover:bg-surface-100 dark:hover:bg-gray-800'}`}>
-                      {exams[i].examType}
-                    </button>
-                  ))}
+          {data && !loading && (
+            <>
+              {/* Top stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <StatCard title="Latest Score"     value={exams[0]?.avg ? `${exams[0].avg}%` : 'N/A'}   color="brand"   />
+                <StatCard title="Attendance"       value={`${data.attendance?.pct ?? 0}%`}               color={data.attendance?.pct < 75 ? 'red' : 'emerald'} sub={`${data.attendance?.present}/${data.attendance?.total} days`}/>
+                <StatCard title="Homework"         value={`${data.homework?.pct ?? 0}%`}                 color={data.homework?.pct < 60 ? 'amber' : 'emerald'} sub="completion rate"/>
+                <div className={`rounded-2xl border border-surface-100 dark:border-gray-800 p-5 ${RISK_CLS[data.riskLevel as keyof typeof RISK_CLS]?.bg}`}>
+                  <p className="text-xs font-semibold uppercase tracking-wider opacity-70">Status</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${RISK_CLS[data.riskLevel as keyof typeof RISK_CLS]?.dot}`}/>
+                    <p className={`text-sm font-bold ${RISK_CLS[data.riskLevel as keyof typeof RISK_CLS]?.text}`}>
+                      {RISK_CLS[data.riskLevel as keyof typeof RISK_CLS]?.label}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              {exam && (
-                <>
-                  <div className="flex items-center gap-3 mb-5">
+              {/* AI remark */}
+              {data.aiRemark && (
+                <div className="card p-5 border-l-4 border-l-brand-400 dark:border-l-brand-500">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-950/50 flex items-center justify-center shrink-0">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-brand-600 dark:text-brand-400">
+                        <path d="M9.663 17h4.673M12 3v1m6.364 1.636-.707.707M21 12h-1M4 12H3m3.343-5.657-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                      </svg>
+                    </div>
                     <div>
-                      <p className="text-xs text-surface-400">{exam.examTitle}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">{exam.avg}%</p>
-                        <GradeBadge grade={exam.grade}/>
-                      </div>
+                      <p className="text-xs font-semibold text-brand-600 dark:text-brand-400 uppercase tracking-wider mb-1">AI Performance Summary</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{data.aiRemark}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Exam selector + subject scores */}
+              {exams.length > 0 ? (
+                <div className="card p-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Subject-wise Scores</h3>
+                    <div className="flex items-center gap-1">
+                      {exams.map((_: any, i: number) => (
+                        <button key={i} onClick={() => setExamIdx(i)}
+                          className={`px-3 py-1 text-xs rounded-lg font-medium transition-colors ${i === examIdx ? 'bg-brand-500 text-white' : 'text-surface-500 hover:bg-surface-100 dark:hover:bg-gray-800'}`}>
+                          {exams[i].examType}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    {exam.subjects.map((s: any) => (
-                      <div key={s.subject}>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{s.subject}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-surface-400">{s.marks}/{s.max}</span>
-                            <GradeBadge grade={s.grade}/>
+                  {exam && (
+                    <>
+                      <div className="flex items-center gap-3 mb-5">
+                        <div>
+                          <p className="text-xs text-surface-400">{exam.examTitle}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">{exam.avg}%</p>
+                            <GradeBadge grade={exam.grade}/>
                           </div>
                         </div>
-                        <ScoreBar pct={s.pct}/>
+                      </div>
+
+                      <div className="space-y-4">
+                        {exam.subjects.map((s: any) => (
+                          <div key={s.subject}>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{s.subject}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-surface-400">{s.marks}/{s.max}</span>
+                                <GradeBadge grade={s.grade}/>
+                              </div>
+                            </div>
+                            <ScoreBar pct={s.pct}/>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="card p-10 text-center text-sm text-surface-400">No exam results available yet.</div>
+              )}
+
+              {/* Subject summary across all exams */}
+              {data.subjectSummary?.length > 0 && (
+                <div className="card p-5">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Overall Subject Performance</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {data.subjectSummary.map((s: any) => (
+                      <div key={s.subject} className="p-3 rounded-xl bg-surface-50 dark:bg-gray-800/50">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{s.subject}</span>
+                          <GradeBadge grade={scoreToGrade(s.avg)}/>
+                        </div>
+                        <ScoreBar pct={s.avg}/>
                       </div>
                     ))}
                   </div>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="card p-10 text-center text-sm text-surface-400">No exam results available yet.</div>
-          )}
-
-          {/* Subject summary across all exams */}
-          {data.subjectSummary?.length > 0 && (
-            <div className="card p-5">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Overall Subject Performance</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {data.subjectSummary.map((s: any) => (
-                  <div key={s.subject} className="p-3 rounded-xl bg-surface-50 dark:bg-gray-800/50">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{s.subject}</span>
-                      <GradeBadge grade={scoreToGrade(s.avg)}/>
-                    </div>
-                    <ScoreBar pct={s.avg}/>
+                  <div className="mt-4 flex gap-4 text-xs">
+                    <span className="text-emerald-600 font-medium">Best: {data.subjectSummary[0]?.subject}</span>
+                    <span className="text-red-500 font-medium">Needs work: {data.subjectSummary.at(-1)?.subject}</span>
                   </div>
-                ))}
-              </div>
-              <div className="mt-4 flex gap-4 text-xs">
-                <span className="text-emerald-600 font-medium">Best: {data.subjectSummary[0]?.subject}</span>
-                <span className="text-red-500 font-medium">Needs work: {data.subjectSummary.at(-1)?.subject}</span>
-              </div>
-            </div>
+                </div>
+              )}
+            </>
           )}
         </>
+      )}
+
+      {/* ── Report Cards tab ── */}
+      {tab === 'report_cards' && (
+        viewingId
+          ? <ReportCardDetail cardId={viewingId} token={token} onBack={() => setViewingId(null)} />
+          : <ReportCardList   token={token} studentId={studentId} onView={setViewingId} />
       )}
     </div>
   );

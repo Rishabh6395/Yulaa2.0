@@ -1,4 +1,4 @@
-import { MANAGEMENT_ROLES as ADMIN_ROLES, REVIEWER_ROLES } from '@/lib/roles';
+import { MANAGEMENT_ROLES as ADMIN_ROLES, REVIEWER_ROLES, EMPLOYEE_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { listLeaveRequests, submitLeaveRequest, reviewLeaveStep, withdrawLeave, deleteLeave } from '@/modules/leave/leave.service';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
@@ -83,6 +83,10 @@ export async function PATCH(request: Request) {
     const body    = await request.json();
 
     if (body.action === 'withdraw') {
+      // Only roles that can hold leave records can withdraw them — blocks vendor/consultant callers.
+      // The service further enforces userId ownership so users can only withdraw their own leaves.
+      const WITHDRAW_ROLES = [...EMPLOYEE_ROLES, 'parent', 'student'];
+      if (!WITHDRAW_ROLES.includes(primary.role_code)) throw new ForbiddenError('Not authorised to withdraw leave');
       return Response.json(await withdrawLeave(user.id, body.id));
     }
 

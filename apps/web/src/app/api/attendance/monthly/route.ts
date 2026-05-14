@@ -32,9 +32,13 @@ export async function GET(request: Request) {
     const schoolId = primary.school_id as string | undefined;
     if (!schoolId) throw new AppError('No school associated with your account', 400);
 
+    // Only admins can query other users' attendance; everyone else sees only their own
+    const isAdmin = ['super_admin', 'school_admin', 'principal', 'hod'].includes(primary.role_code);
+    const effectiveTargetUserId = isAdmin ? targetUserId : user.id;
+
     // Resolve teacher record for the target user
     const teacher = await prisma.teacher.findFirst({
-      where: { userId: targetUserId, schoolId },
+      where: { userId: effectiveTargetUserId, schoolId },
       select: { id: true },
     });
 
@@ -72,7 +76,7 @@ export async function GET(request: Request) {
     const leaveRecords = await prisma.leaveRequest.findMany({
       where: {
         schoolId,
-        userId: targetUserId,
+        userId: effectiveTargetUserId,
         status: 'approved',
         startDate: { lte: lastDay },
         endDate:   { gte: firstDay },

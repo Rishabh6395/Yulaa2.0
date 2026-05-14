@@ -12,10 +12,14 @@ import { handleError, UnauthorizedError, AppError } from '@/utils/errors';
  *   ?action=template&class_id=X&date=YYYY-MM-DD  → empty CSV template with student roster
  *   ?action=export&class_id=X&date=YYYY-MM-DD    → filled CSV with current attendance data
  */
+const ATTENDANCE_BULK_ROLES = ['super_admin', 'school_admin', 'principal', 'hod', 'teacher'];
+
 export async function GET(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
+    const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
+    if (!ATTENDANCE_BULK_ROLES.includes(primaryRole.role_code)) throw new AppError('Access denied', 403);
 
     const { searchParams } = new URL(request.url);
     const action  = searchParams.get('action');
@@ -27,14 +31,14 @@ export async function GET(request: Request) {
       throw new AppError('action must be "template" or "export"');
     }
 
+    const schoolId = primaryRole.school_id;
+    if (!schoolId) throw new AppError('No school associated with this account');
+
     if (action === 'template') {
       const csv = await getAttendanceTemplate(classId, date);
       return csvDownloadResponse(csv, `attendance-template-${date}.csv`);
     }
 
-    const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
-    const schoolId    = primaryRole.school_id;
-    if (!schoolId) throw new AppError('No school associated with this account');
     const csv = await exportAttendanceCSV(schoolId, classId, date);
     return csvDownloadResponse(csv, `attendance-${date}.csv`);
   } catch (err) { return handleError(err); }

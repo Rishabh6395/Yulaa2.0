@@ -89,6 +89,12 @@ model School {
   contentTypes        ContentTypeMaster[]
   genericWorkflows    GenericWorkflow[]
   genericMasterTypes  GenericMasterType[]
+  studentSkillRatings    StudentSkillRating[]
+  behaviorIncidents      BehaviorIncident[]
+  performanceRiskConfigs PerformanceRiskConfig[]
+  kpiConfigs             SchoolKpiConfig[]
+  kpiRatingConfigs       KpiRatingConfig[]
+  reportCards            ReportCard[]
 
   @@map("schools")
 }
@@ -133,6 +139,7 @@ model User {
   createdEvents         SchoolEvent[]
   operatedRides         TransportRide[]        @relation("TransportRideEmployee")
   courseEnrollments     CourseEnrollment[]
+  reportCardsSent       ReportCard[]           @relation("ReportCardSentBy")
 
   @@map("users")
 }
@@ -164,6 +171,7 @@ model Teacher {
   qualification   String?
   experienceYears Int?                  @map("experience_years")
   joiningDate     DateTime?             @map("joining_date") @db.Date
+  classId         String?               @map("class_id")
   status          String                @default("active") @db.VarChar(20)
   createdAt       DateTime              @default(now()) @map("created_at")
   attendance      Attendance[]
@@ -178,6 +186,7 @@ model Teacher {
   syllabusItems        SyllabusItem[]
   onlineClasses        OnlineClass[]
   taughtCourses        Course[]
+  skillRatingsGiven    StudentSkillRating[]
 
   @@unique([userId, schoolId])
   @@index([schoolId])
@@ -217,6 +226,9 @@ model Student {
   sessionBookings          SessionBooking[]
   onlineClassAttendances   OnlineClassAttendance[]
   courseEnrollments        CourseEnrollment[]
+  skillRatings             StudentSkillRating[]
+  behaviorIncidents        BehaviorIncident[]
+  reportCards              ReportCard[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -1158,13 +1170,16 @@ model Exam {
   id           String               @id @default(uuid())
   schoolId     String               @map("school_id")
   title        String               @db.VarChar(200)
-  examType     String               @map("exam_type") @db.VarChar(50)
+  examType     String               @map("exam_type") @db.VarChar(50)  // 'exam' | 'class_test' | 'unit_test' | 'midterm' | 'final' | etc.
+  subject      String?              @db.VarChar(100)                   // set for single-subject class tests
   academicYear String               @map("academic_year") @db.VarChar(9)
   classId      String?              @map("class_id")
   startDate    DateTime             @map("start_date") @db.Date
   endDate      DateTime             @map("end_date") @db.Date
   status       String               @default("scheduled") @db.VarChar(20)
   gradingType  String               @default("percentage") @map("grading_type") @db.VarChar(20)
+  maxMarks     Int                  @default(100) @map("max_marks")
+  passingMarks Int                  @default(35) @map("passing_marks")
   createdAt    DateTime             @default(now()) @map("created_at")
   updatedAt    DateTime             @default(now()) @updatedAt @map("updated_at")
   entries      ExamTimetableEntry[]
@@ -1217,6 +1232,114 @@ model ExamResult {
   @@index([examId])
   @@index([studentId])
   @@map("exam_results")
+}
+
+// ─── Performance Risk Configuration ─────────────────────────────────────────
+// Configurable by super_admin (global, schoolId=null) or school_admin (per school).
+// Grade-specific rules override the school-wide default (grade=null).
+model PerformanceRiskConfig {
+  id                  String   @id @default(uuid())
+  schoolId            String?  @map("school_id")           // null = global default
+  grade               String?  @db.VarChar(20)             // null = all grades
+  minMarksPct         Int      @default(40) @map("min_marks_pct")
+  minAttendancePct    Int      @default(75) @map("min_attendance_pct")
+  minHomeworkPct      Int      @default(60) @map("min_homework_pct")
+  weightMarks         Int      @default(40) @map("weight_marks")
+  weightAttendance    Int      @default(35) @map("weight_attendance")
+  weightHomework      Int      @default(25) @map("weight_homework")
+  highRiskThreshold   Int      @default(60) @map("high_risk_threshold")
+  mediumRiskThreshold Int      @default(30) @map("medium_risk_threshold")
+  createdById         String   @map("created_by_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+  school              School?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, grade])
+  @@index([schoolId])
+  @@map("performance_risk_configs")
+}
+
+// ─── KPI Configuration ────────────────────────────────────────────────────────
+
+model SchoolKpiConfig {
+  id               String   @id @default(uuid())
+  schoolId         String   @map("school_id")
+  kpiCode          String   @map("kpi_code") @db.VarChar(60)
+  isEnabled        Boolean  @default(true) @map("is_enabled")
+  targetValue      Decimal? @map("target_value") @db.Decimal(8, 2)
+  targetDirection  String   @default("above") @map("target_direction") @db.VarChar(10)
+  academicYear     String   @map("academic_year") @db.VarChar(9)
+  visibleToRoles   String?  @map("visible_to_roles") @db.Text  // JSON array of role codes; null = use KPI definition default
+  formulaParams    String?  @map("formula_params") @db.Text    // JSON object; school-specific formula thresholds
+  createdById      String   @map("created_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
+  school           School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, kpiCode, academicYear])
+  @@index([schoolId, academicYear])
+  @@map("school_kpi_configs")
+}
+
+// ─── Report Cards ─────────────────────────────────────────────────────────────
+// Sent by school_admin / principal / teacher to parents.
+// Data is snapshotted at send time so the report is immutable.
+
+model ReportCard {
+  id               String    @id @default(uuid())
+  schoolId         String    @map("school_id")
+  studentId        String    @map("student_id")
+  classId          String?   @map("class_id")
+  academicYear     String    @map("academic_year") @db.VarChar(9)
+  term             String    @db.VarChar(60)        // "Term 1" | "Term 2" | "Term 3" | "Mid-term" | "Annual"
+  sentById         String    @map("sent_by_id")
+  sentAt           DateTime  @default(now()) @map("sent_at")
+  viewedAt         DateTime? @map("viewed_at")
+  // Immutable JSON snapshots of data at send time
+  academicData     String?   @map("academic_data")   @db.Text  // subjects, marks, KPIs
+  attendanceData   String?   @map("attendance_data") @db.Text  // attendance stats + KPIs
+  behaviorData     String?   @map("behavior_data")   @db.Text  // incidents + KPIs
+  // Overall section ratings
+  academicRating   String?   @map("academic_rating")   @db.VarChar(30)
+  attendanceRating String?   @map("attendance_rating") @db.VarChar(30)
+  behaviorRating   String?   @map("behavior_rating")   @db.VarChar(30)
+  teacherRemarks   String?   @map("teacher_remarks")   @db.Text
+  templateId       String?   @map("template_id")       // optional LetterTemplate.id
+  status           String    @default("sent") @db.VarChar(20)  // sent | viewed
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  sentBy  User    @relation("ReportCardSentBy", fields: [sentById], references: [id])
+
+  @@index([schoolId, academicYear])
+  @@index([studentId, academicYear])
+  @@map("report_cards")
+}
+
+// ─── KPI Rating Config ────────────────────────────────────────────────────────
+// Per-school configurable rating thresholds for report card sections.
+// segment: 'academic' | 'attendance' | 'behavior'
+
+model KpiRatingConfig {
+  id              String   @id @default(uuid())
+  schoolId        String   @map("school_id")
+  segment         String   @db.VarChar(20)
+  // For academic & attendance: score/percentage thresholds (lower bound for each band)
+  excellentMin    Int      @default(90)  @map("excellent_min")
+  goodMin         Int      @default(75)  @map("good_min")
+  averageMin      Int      @default(60)  @map("average_min")
+  belowAverageMin Int      @default(40)  @map("below_average_min")
+  // For behavior: negative-incident count thresholds (upper bound for each band)
+  behExcellentMax Int      @default(0)   @map("beh_excellent_max")
+  behGoodMax      Int      @default(2)   @map("beh_good_max")
+  behAverageMax   Int      @default(5)   @map("beh_average_max")
+  behBelowAvgMax  Int      @default(10)  @map("beh_below_avg_max")
+  createdById     String   @map("created_by_id")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+  school          School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, segment])
+  @@map("kpi_rating_configs")
 }
 
 // ─── School Inventory ─────────────────────────────────────────────────────────
@@ -1954,4 +2077,46 @@ model CourseProgress {
   @@map("course_progress")
 }
 
+// ─── Student Skill Ratings ────────────────────────────────────────────────────
+model StudentSkillRating {
+  id           String   @id @default(uuid())
+  schoolId     String   @map("school_id")
+  studentId    String   @map("student_id")
+  teacherId    String   @map("teacher_id")
+  skillName    String   @map("skill_name") @db.VarChar(100)
+  rating       Int      // 1–5
+  comments     String?  @db.VarChar(500)
+  academicYear String   @map("academic_year") @db.VarChar(9)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
+  school  School  @relation(fields: [schoolId],  references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+
+  @@unique([schoolId, studentId, teacherId, skillName, academicYear])
+  @@index([schoolId, studentId])
+  @@map("student_skill_ratings")
+}
+
+// ─── Behavior Incidents ───────────────────────────────────────────────────────
+model BehaviorIncident {
+  id           String   @id @default(uuid())
+  schoolId     String   @map("school_id")
+  studentId    String   @map("student_id")
+  reportedBy   String   @map("reported_by")
+  incidentType String   @map("incident_type") @db.VarChar(20) // 'positive' | 'negative'
+  category     String   @db.VarChar(100)
+  description  String
+  severity     String?  @db.VarChar(20) // 'low' | 'medium' | 'high'
+  actionTaken  String?  @map("action_taken")
+  date         DateTime @db.Date
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  school  School  @relation(fields: [schoolId],  references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, studentId])
+  @@index([schoolId, date])
+  @@map("behavior_incidents")
+}

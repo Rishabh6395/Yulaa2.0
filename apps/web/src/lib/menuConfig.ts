@@ -195,7 +195,8 @@ export const menuItems: Record<string, MenuItem[]> = {
     {
       label: 'Academic', href: '', icon: 'CalendarDays', key: 'academic_group',
       children: [
-        { label: 'Syllabus', href: '/dashboard/syllabus', icon: 'BookMarked', key: 'syllabus' },
+        { label: 'Syllabus',       href: '/dashboard/syllabus',       icon: 'BookMarked', key: 'syllabus' },
+        { label: 'Online Classes', href: '/dashboard/online-classes', icon: 'Monitor',    key: 'online_classes' },
       ],
     },
     {

@@ -3,10 +3,14 @@
  * GET    - list online classes (teacher sees own, student/parent sees their class, admin sees all)
  * POST   - teacher/admin creates an online class (optionally linked to a timetable slot)
  * PATCH  - teacher updates status (live/ended) or adds recording URL
+ * DELETE - teacher/admin cancels (soft-deletes) an online class
  */
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
+import { notifyOnlineClassScheduled, notifyOnlineClassLive } from '@/services/notification.service';
+
+const VALID_OC_STATUSES = ['scheduled', 'live', 'ended', 'cancelled'] as const;
 
 export async function GET(request: Request) {
   try {
@@ -121,6 +125,8 @@ export async function POST(request: Request) {
 
     if (!title || !scheduled_at) throw new AppError('title and scheduled_at are required');
     if (!class_id)               throw new AppError('class_id is required');
+    const scheduledDate = new Date(scheduled_at);
+    if (isNaN(scheduledDate.getTime())) throw new AppError('scheduled_at must be a valid ISO datetime');
 
     // Verify class belongs to same school
     const cls = await prisma.class.findFirst({ where: { id: class_id, schoolId } });
@@ -157,6 +163,16 @@ export async function POST(request: Request) {
       },
     });
 
+    // Fire-and-forget notifications — don't block the response
+    if (onlineClass.classId) {
+      notifyOnlineClassScheduled(
+        onlineClass.classId,
+        onlineClass.subject ?? onlineClass.title,
+        onlineClass.scheduledAt,
+        onlineClass.platform,
+      ).catch(() => {});
+    }
+
     return Response.json({ class: onlineClass }, { status: 201 });
   } catch (err) { return handleError(err); }
 }
@@ -171,6 +187,9 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const { id, status, meeting_link, recording_url } = body;
     if (!id) throw new AppError('id is required');
+    if (status !== undefined && !VALID_OC_STATUSES.includes(status)) {
+      throw new AppError(`Invalid status. Must be one of: ${VALID_OC_STATUSES.join(', ')}`);
+    }
 
     // Verify ownership: teacher can only update their own; admin can update any in school
     const existing = await prisma.onlineClass.findFirst({ where: { id, schoolId } });
@@ -192,6 +211,44 @@ export async function PATCH(request: Request) {
       },
     });
 
+    // Notify when class goes live
+    if (status === 'live' && existing.classId) {
+      notifyOnlineClassLive(
+        existing.classId,
+        existing.subject ?? existing.title,
+        updated.meetingLink,
+        existing.platform,
+      ).catch(() => {});
+    }
+
     return Response.json({ class: updated });
+  } catch (err) { return handleError(err); }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const user = await getUserFromRequest(request);
+    if (!user) throw new UnauthorizedError();
+    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
+    const { role_code: role, school_id: schoolId } = primary;
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) throw new AppError('id is required');
+
+    const existing = await prisma.onlineClass.findFirst({ where: { id, schoolId } });
+    if (!existing) throw new AppError('Online class not found');
+
+    if (role === 'teacher') {
+      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id }, select: { id: true } });
+      if (!teacher || existing.teacherId !== teacher.id) throw new ForbiddenError();
+    } else if (!['school_admin', 'principal'].includes(role)) {
+      throw new ForbiddenError();
+    }
+
+    if (existing.status === 'live') throw new AppError('Cannot cancel a class that is currently live. End the class first.');
+
+    await prisma.onlineClass.update({ where: { id }, data: { status: 'cancelled' } });
+    return Response.json({ ok: true });
   } catch (err) { return handleError(err); }
 }

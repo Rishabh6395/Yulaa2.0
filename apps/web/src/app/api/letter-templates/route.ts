@@ -25,6 +25,8 @@ export async function GET(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
+    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
+    if (!ADMIN_ROLES.includes(primary.role_code)) throw new ForbiddenError();
     const schoolId = await getSchoolId(user);
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'fee_invoice';

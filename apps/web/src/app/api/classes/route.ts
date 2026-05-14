@@ -1,14 +1,16 @@
-import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
+import { CORE_ADMIN_ROLES as ADMIN_ROLES, REVIEWER_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { listClasses, createClass, updateClass } from '@/modules/classes/class.service';
 import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 
+const CLASS_READ_ROLES = [...new Set([...REVIEWER_ROLES, 'parent', 'student', 'employee'])];
 
 export async function GET(request: Request) {
   try {
     const user        = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
+    if (!CLASS_READ_ROLES.includes(primaryRole.role_code)) throw new ForbiddenError('Access denied');
     return Response.json({ classes: await listClasses(primaryRole.school_id!) });
   } catch (err) { return handleError(err); }
 }

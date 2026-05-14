@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
@@ -5,7 +6,8 @@ import bcrypt from 'bcryptjs';
 
 function assertSuperAdmin(user: Awaited<ReturnType<typeof getUserFromRequest>>) {
   if (!user) throw new UnauthorizedError();
-  if (!user.roles.some((r) => r.role_code === 'super_admin')) throw new ForbiddenError();
+  const primary = (user.roles as any[]).find((r) => r.is_primary) ?? user.roles[0];
+  if (primary.role_code !== 'super_admin') throw new ForbiddenError();
 }
 
 function parseCSV(text: string): Record<string, string>[] {
@@ -45,11 +47,13 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     if (!file) throw new AppError('Please upload a CSV file. No file was received.');
+    if (file.size > 5 * 1024 * 1024) throw new AppError('File too large. Maximum allowed size is 5 MB.');
 
     const text = await file.text();
     const records = parseCSV(text);
     if (records.length === 0)
       throw new AppError('The uploaded CSV file is empty or has no data rows. Please check the file and try again.');
+    if (records.length > 1000) throw new AppError('CSV exceeds maximum of 1,000 rows per upload. Split the file and upload in batches.');
 
     const vendorRole = await prisma.role.findUnique({ where: { code: 'vendor' } });
     if (!vendorRole)
@@ -74,8 +78,9 @@ export async function POST(request: Request) {
           ? await prisma.vendor.findUnique({ where: { userId: existingUser.id } })
           : null;
 
-        if (!existingUser) {
-          const hash = await bcrypt.hash('Yulaa@2024', 12);
+        const isNewUser = !existingUser;
+        if (isNewUser) {
+          const hash = await bcrypt.hash(randomBytes(12).toString('hex'), 12);
           existingUser = await prisma.user.create({
             data: {
               email,
@@ -86,9 +91,6 @@ export async function POST(request: Request) {
               userRoles: { create: { roleId: vendorRole.id, isPrimary: true } },
             },
           });
-          created++;
-        } else {
-          skipped++;
         }
 
         const schoolIds = r.allowed_school_ids
@@ -111,6 +113,7 @@ export async function POST(request: Request) {
               contractEnd:      r.contract_end ? new Date(r.contract_end) : null,
             },
           });
+          if (isNewUser) created++; else linked++;
         } else {
           const merged = Array.from(new Set([...vendorProfile.allowedSchoolIds, ...schoolIds]));
           await prisma.vendor.update({
@@ -121,6 +124,7 @@ export async function POST(request: Request) {
             },
           });
           linked++;
+          if (!isNewUser) skipped++;
         }
 
         results.push({ row, email, status: 'success' });

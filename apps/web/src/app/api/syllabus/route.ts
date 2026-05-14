@@ -11,11 +11,14 @@ function getSchoolId(user: any, override?: string): string {
   throw new AppError('No school associated with your account');
 }
 
+const SYLLABUS_READ_ROLES = [...ADMIN_ROLES, 'teacher', 'parent', 'student', 'employee'];
+
 export async function GET(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
+    if (!SYLLABUS_READ_ROLES.includes(primary.role_code)) throw new ForbiddenError('Access denied');
     const { searchParams } = new URL(request.url);
     const schoolId = await getSchoolId(user, searchParams.get('schoolId') ?? undefined);
     const academicYear = searchParams.get('academicYear') || undefined;

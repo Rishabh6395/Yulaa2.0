@@ -5,9 +5,7 @@ import Modal from '@/components/ui/Modal';
 import { useApi } from '@/hooks/useApi';
 import { useFormConfig } from '@/hooks/useFormConfig';
 
-const EXAM_TYPES    = ['unit_test', 'mid_term', 'final', 'pre_board', 'internal', 'other'];
 const EXAM_STATUS   = ['scheduled', 'ongoing', 'completed', 'cancelled'];
-const GRADING_TYPES = ['marks', 'grade', 'both'];
 
 const STATUS_CFG: Record<string, { label: string; cls: string }> = {
   scheduled: { label: 'Scheduled', cls: 'badge-primary' },
@@ -16,7 +14,7 @@ const STATUS_CFG: Record<string, { label: string; cls: string }> = {
   cancelled: { label: 'Cancelled', cls: 'badge-danger' },
 };
 
-const EMPTY_EXAM  = { title: '', examType: 'unit_test', academicYear: '', classId: '', startDate: '', endDate: '', gradingType: 'marks' };
+const EMPTY_EXAM  = { title: '', examType: '', academicYear: '', classId: '', startDate: '', endDate: '', gradingType: '' };
 const EMPTY_ENTRY = { classId: '', subject: '', date: '', startTime: '', endTime: '', maxMarks: '100', venue: '' };
 
 function className(c: any) {
@@ -39,13 +37,24 @@ export default function ExamPage() {
   const [saving,      setSaving]      = useState(false);
   const [msg,         setMsg]         = useState<{ type: string; text: string } | null>(null);
   const [role,        setRole]        = useState('');
-  const [tab,         setTab]         = useState<'timetable' | 'results'>('timetable');
+  const [tab,         setTab]         = useState<'timetable' | 'results' | 'gradebook'>('timetable');
+  const [examTypes,   setExamTypes]   = useState<string[]>([]);
+  const [gradingTypes, setGradingTypes] = useState<string[]>([]);
+  const [teacherClassId, setTeacherClassId] = useState('');
 
-  // Bulk upload state
+  // Timetable bulk upload state
   const [bulkClassId,  setBulkClassId]  = useState('');
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkResult,   setBulkResult]   = useState('');
   const bulkFileRef = useRef<HTMLInputElement>(null);
+
+  // Marks bulk upload state
+  const [showMarksBulk,     setShowMarksBulk]     = useState(false);
+  const [marksBulkClassId,  setMarksBulkClassId]  = useState('');
+  const [marksBulkSubject,  setMarksBulkSubject]  = useState('');
+  const [marksBulkUploading, setMarksBulkUploading] = useState(false);
+  const [marksBulkResult,   setMarksBulkResult]   = useState<any>(null);
+  const marksBulkFileRef = useRef<HTMLInputElement>(null);
 
   const fc = useFormConfig('create_exam_form');
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
@@ -76,9 +85,40 @@ export default function ExamPage() {
 
   useEffect(() => {
     const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
-    setRole(user.primaryRole || '');
+    const primaryRole = user.primaryRole || '';
+    setRole(primaryRole);
     fetchExams();
+
+    const tk = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    const authHeaders = { Authorization: `Bearer ${tk}` };
+
+    fetch('/api/masters/exam-types', { headers: authHeaders })
+      .then(r => r.json())
+      .then(d => { if (d.examTypes?.length) setExamTypes(d.examTypes.map((t: any) => t.code ?? t)); })
+      .catch(() => setExamTypes(['unit_test', 'mid_term', 'final', 'pre_board', 'internal', 'other']));
+
+    fetch('/api/masters/grading-types', { headers: authHeaders })
+      .then(r => r.json())
+      .then(d => { if (d.gradingTypes?.length) setGradingTypes(d.gradingTypes.map((t: any) => t.code ?? t)); })
+      .catch(() => setGradingTypes(['marks', 'grade', 'both']));
+
+    if (primaryRole === 'teacher') {
+      fetch('/api/classes', { headers: authHeaders })
+        .then(r => r.json())
+        .then(d => {
+          const cls = (d.classes || []).find((c: any) => c.isMyClass);
+          if (cls) setTeacherClassId(cls.id);
+        });
+    }
   }, [fetchExams]);
+
+  useEffect(() => {
+    if (activeExam) {
+      setMarksBulkClassId(activeExam.classId || '');
+      setMarksBulkSubject('');
+      setMarksBulkResult(null);
+    }
+  }, [activeExam?.id]);
 
   const handleCreateExam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,7 +200,52 @@ export default function ExamPage() {
     URL.revokeObjectURL(url);
   }
 
-  // Bulk upload handler — parses CSV and posts each row as a timetable entry
+  const downloadMarksTemplate = async (classId: string, subject: string) => {
+    if (!activeExam || !classId || !subject) return;
+    try {
+      const params = new URLSearchParams({ exam_id: activeExam.id, class_id: classId, subject });
+      const res = await fetch(`/api/exam/bulk?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) { const d = await res.json(); setMsg({ type: 'error', text: d.error || 'Failed to download template' }); return; }
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      const cd   = res.headers.get('content-disposition');
+      a.download = cd?.match(/filename="?([^"]+)"?/)?.[1] || 'marks-template.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setMsg({ type: 'error', text: err.message });
+    }
+  };
+
+  const handleMarksBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeExam) return;
+    setMarksBulkUploading(true); setMarksBulkResult(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('exam_id', activeExam.id);
+      fd.append('class_id', marksBulkClassId || activeExam.classId || '');
+      fd.append('subject', marksBulkSubject);
+      const res = await fetch('/api/exam/bulk', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const d = await res.json();
+      setMarksBulkResult(d);
+      if (res.ok && d.saved > 0) openExam(activeExam.id);
+    } catch (err: any) {
+      setMarksBulkResult({ error: err.message });
+    } finally {
+      setMarksBulkUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  // Timetable bulk upload — parses CSV and posts each row as a timetable entry
   const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeExam) return;
@@ -224,8 +309,14 @@ export default function ExamPage() {
           <h1 className="text-2xl font-display font-bold">Exam Management</h1>
           <p className="text-sm text-surface-400 dark:text-gray-500 mt-0.5">Schedule exams, enter marks, approve results</p>
         </div>
-        {isAdmin && (
-          <button onClick={() => { setMsg(null); setShowForm(true); }} className="btn-primary flex items-center gap-2">
+        {(isAdmin || isTeacher) && (
+          <button onClick={() => {
+            setMsg(null);
+            const defaultExamType = examTypes[0] || '';
+            const defaultGradingType = gradingTypes[0] || 'marks';
+            setForm({ ...EMPTY_EXAM, examType: defaultExamType, gradingType: defaultGradingType, classId: isTeacher ? teacherClassId : '' });
+            setShowForm(true);
+          }} className="btn-primary flex items-center gap-2">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             New Exam
           </button>
@@ -320,12 +411,12 @@ export default function ExamPage() {
 
               {/* Tabs */}
               <div className="flex gap-1 bg-surface-50 dark:bg-gray-800/40 rounded-xl p-1">
-                {(['timetable', 'results'] as const).map(t => (
+                {(['timetable', 'results', 'gradebook'] as const).map(t => (
                   <button key={t} onClick={() => setTab(t)}
-                    className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors capitalize ${
+                    className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
                       tab === t ? 'bg-white dark:bg-gray-800 shadow-sm text-gray-900 dark:text-gray-100' : 'text-surface-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                     }`}>
-                    {t}
+                    {t === 'gradebook' ? 'Grade Book' : t.charAt(0).toUpperCase() + t.slice(1)}
                   </button>
                 ))}
               </div>
@@ -335,7 +426,7 @@ export default function ExamPage() {
                 <div>
                   <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
                     <h3 className="font-semibold text-sm">Exam Schedule ({activeExam.entries?.length ?? 0} subjects)</h3>
-                    {isAdmin && (
+                    {(isAdmin || isTeacher) && (
                       <div className="flex items-center gap-2">
                         {/* Bulk upload */}
                         <input
@@ -447,6 +538,138 @@ export default function ExamPage() {
                   )}
                 </div>
               )}
+
+              {/* Grade Book tab */}
+              {tab === 'gradebook' && (
+                <div>
+                  <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+                    <h3 className="font-semibold text-sm">Grade Book ({activeExam.results?.length ?? 0} entries)</h3>
+                    {(isAdmin || isTeacher) && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {!activeExam.classId && (
+                          <select
+                            className="input-field text-xs py-1 px-2"
+                            value={marksBulkClassId}
+                            onChange={e => setMarksBulkClassId(e.target.value)}
+                          >
+                            <option value="">Select class</option>
+                            {[...new Set<string>((activeExam.entries || []).map((e: any) => e.classId))].map((cId: string) => (
+                              <option key={cId} value={cId}>{className(classes.find((c: any) => c.id === cId)) || cId}</option>
+                            ))}
+                          </select>
+                        )}
+                        <select
+                          className="input-field text-xs py-1 px-2"
+                          value={marksBulkSubject}
+                          onChange={e => setMarksBulkSubject(e.target.value)}
+                        >
+                          <option value="">Select subject</option>
+                          {[...new Set<string>((activeExam.entries || []).map((e: any) => e.subject))].map((s: string) => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                        <button
+                          disabled={!(marksBulkClassId || activeExam.classId) || !marksBulkSubject}
+                          onClick={() => downloadMarksTemplate(marksBulkClassId || activeExam.classId || '', marksBulkSubject)}
+                          className="btn-secondary text-xs py-1 px-3 flex items-center gap-1.5 disabled:opacity-40"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                          Template
+                        </button>
+                        <button
+                          disabled={!(marksBulkClassId || activeExam.classId) || !marksBulkSubject}
+                          onClick={() => { setMarksBulkResult(null); setShowMarksBulk(true); }}
+                          className="btn-secondary text-xs py-1 px-3 flex items-center gap-1.5 disabled:opacity-40"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/><rect x="3" y="17" width="18" height="4" rx="1"/></svg>
+                          Upload Marks
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {activeExam.results?.length === 0 ? (
+                    <div className="text-center py-8 text-surface-400 dark:text-gray-500">
+                      <p className="text-xs mb-2">No results entered yet.</p>
+                      {(isAdmin || isTeacher) && (
+                        <p className="text-xs">Select a subject above, then download the template and upload marks CSV.</p>
+                      )}
+                    </div>
+                  ) : (() => {
+                    const subjects = [...new Set<string>((activeExam.entries || []).map((e: any) => e.subject))];
+                    const studentMap: Record<string, { student: any; bySubject: Record<string, any> }> = {};
+                    for (const r of (activeExam.results || [])) {
+                      const key = r.student?.admissionNo || r.studentId;
+                      if (!studentMap[key]) studentMap[key] = { student: r.student, bySubject: {} };
+                      studentMap[key].bySubject[r.subject] = r;
+                    }
+                    const rows = Object.values(studentMap).sort((a, b) => {
+                      const na = a.student ? `${a.student.firstName} ${a.student.lastName}` : '';
+                      const nb = b.student ? `${b.student.firstName} ${b.student.lastName}` : '';
+                      return na.localeCompare(nb);
+                    });
+                    return (
+                      <div className="overflow-x-auto -mx-1">
+                        <table className="w-full text-xs min-w-[500px]">
+                          <thead>
+                            <tr className="text-surface-400 dark:text-gray-500 text-left border-b border-surface-100 dark:border-gray-700">
+                              <th className="pb-2 pl-1 font-medium">Student</th>
+                              <th className="pb-2 font-medium">Adm No</th>
+                              {subjects.map(s => <th key={s} className="pb-2 font-medium whitespace-nowrap">{s}</th>)}
+                              <th className="pb-2 font-medium">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-surface-50 dark:divide-gray-800">
+                            {rows.map(({ student, bySubject }, idx) => {
+                              let totalObtained = 0, totalMax = 0;
+                              subjects.forEach(s => {
+                                const r = bySubject[s];
+                                if (r) {
+                                  totalObtained += Number(r.marksObtained);
+                                  totalMax      += Number(r.maxMarks);
+                                } else {
+                                  const entry = (activeExam.entries || []).find((e: any) => e.subject === s);
+                                  if (entry) totalMax += Number(entry.maxMarks);
+                                }
+                              });
+                              const pct = totalMax > 0 ? Math.round((totalObtained / totalMax) * 100) : 0;
+                              return (
+                                <tr key={idx}>
+                                  <td className="py-2 pl-1 font-medium whitespace-nowrap">
+                                    {student ? `${student.firstName} ${student.lastName}` : '—'}
+                                  </td>
+                                  <td className="py-2 text-surface-400 dark:text-gray-500">{student?.admissionNo || '—'}</td>
+                                  {subjects.map(s => {
+                                    const r = bySubject[s];
+                                    return (
+                                      <td key={s} className="py-2 whitespace-nowrap">
+                                        {r ? (
+                                          <span className={r.approved ? 'text-emerald-600 dark:text-emerald-400' : ''}>
+                                            {activeExam.gradingType === 'grades'
+                                              ? r.grade || '—'
+                                              : `${Number(r.marksObtained)}/${r.maxMarks}${r.grade ? ` (${r.grade})` : ''}`}
+                                          </span>
+                                        ) : <span className="text-surface-300 dark:text-gray-600">—</span>}
+                                      </td>
+                                    );
+                                  })}
+                                  <td className="py-2 font-semibold whitespace-nowrap">
+                                    {totalMax > 0 ? (
+                                      <span className={pct >= 75 ? 'text-emerald-600 dark:text-emerald-400' : pct >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-500'}>
+                                        {totalObtained}/{totalMax} ({pct}%)
+                                      </span>
+                                    ) : '—'}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -468,14 +691,16 @@ export default function ExamPage() {
                 <label className="label">{fc.label('examType')} *</label>
                 <select className="input-field" disabled={!fc.editable('examType')} value={form.examType}
                   onChange={e => setForm(f => ({...f, examType: e.target.value}))}>
-                  {EXAM_TYPES.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+                  {examTypes.length === 0 && <option value="">Loading...</option>}
+                  {examTypes.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
                 </select>
               </div>
             )}
             <div>
               <label className="label">Grading Type</label>
               <select className="input-field" value={form.gradingType} onChange={e => setForm(f => ({...f, gradingType: e.target.value}))}>
-                {GRADING_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                {gradingTypes.length === 0 && <option value="">Loading...</option>}
+                {gradingTypes.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
           </div>
@@ -675,6 +900,82 @@ export default function ExamPage() {
           )}
 
           <button type="button" onClick={() => setShowBulk(false)} className="btn-secondary w-full">Close</button>
+        </div>
+      </Modal>
+
+      {/* ── Marks Bulk Upload Modal ───────────────────────────────────────────── */}
+      <Modal open={showMarksBulk} onClose={() => setShowMarksBulk(false)} title="Upload Marks via CSV">
+        <div className="space-y-4">
+          <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-400 space-y-1">
+            <p><span className="font-semibold">Subject:</span> {marksBulkSubject}</p>
+            <p><span className="font-semibold">Class:</span> {className(classes.find((c: any) => c.id === (marksBulkClassId || activeExam?.classId))) || '—'}</p>
+            <p className="mt-1"><span className="font-semibold">CSV columns:</span> <span className="font-mono">admission_no, student_name, marks_obtained, max_marks, grade, remarks</span></p>
+            <p>Grade-based exams use: <span className="font-mono">admission_no, student_name, grade, remarks</span></p>
+          </div>
+
+          <input
+            ref={marksBulkFileRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={handleMarksBulkUpload}
+          />
+
+          <button
+            onClick={() => marksBulkFileRef.current?.click()}
+            disabled={marksBulkUploading}
+            className="btn-primary w-full flex items-center justify-center gap-2"
+          >
+            {marksBulkUploading ? (
+              <>
+                <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                Uploading…
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Select CSV File &amp; Upload
+              </>
+            )}
+          </button>
+
+          {marksBulkResult && (
+            <div className="space-y-2">
+              {marksBulkResult.error ? (
+                <div className="px-3 py-2 rounded-xl text-xs bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400">{marksBulkResult.error}</div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                    <div className="p-2 rounded-lg bg-surface-50 dark:bg-gray-800/40">
+                      <div className="font-bold text-base">{marksBulkResult.total}</div>
+                      <div className="text-surface-400 dark:text-gray-500">Total</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20">
+                      <div className="font-bold text-base text-emerald-600 dark:text-emerald-400">{marksBulkResult.saved}</div>
+                      <div className="text-emerald-600 dark:text-emerald-400">Saved</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/20">
+                      <div className="font-bold text-base text-amber-600 dark:text-amber-400">{marksBulkResult.skipped}</div>
+                      <div className="text-amber-500 dark:text-amber-400">Skipped</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/20">
+                      <div className="font-bold text-base text-red-600 dark:text-red-400">{marksBulkResult.failed}</div>
+                      <div className="text-red-500 dark:text-red-400">Failed</div>
+                    </div>
+                  </div>
+                  {marksBulkResult.failed > 0 && (
+                    <div className="max-h-32 overflow-y-auto space-y-1 border border-red-100 dark:border-red-900 rounded-lg p-2">
+                      {marksBulkResult.results?.filter((r: any) => r.status === 'failed').map((r: any, i: number) => (
+                        <p key={i} className="text-xs text-red-600 dark:text-red-400">Row {r.row} ({r.admission_no}): {r.error}</p>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          <button type="button" onClick={() => setShowMarksBulk(false)} className="btn-secondary w-full">Close</button>
         </div>
       </Modal>
 
