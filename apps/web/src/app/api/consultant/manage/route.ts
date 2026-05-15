@@ -5,6 +5,7 @@
  * PATCH  - update contract end date or status
  * (External consultant creation is handled by super admin at /api/super-admin/consultants)
  */
+import { randomBytes } from 'crypto';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, NotFoundError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
       const consultantRole = await prisma.role.findUnique({ where: { code: 'consultant' } });
       if (!consultantRole) throw new AppError('Consultant role is not configured in the system. Please contact your Yulaa administrator.');
 
-      const hash = await bcrypt.hash(password || 'Yulaa@2024', 12);
+      const hash = await bcrypt.hash(password || randomBytes(12).toString('hex'), 12);
       existingUser = await prisma.user.create({
         data: {
           email: emailNorm,
@@ -129,6 +130,14 @@ export async function POST(request: Request) {
         where: { id: consultantProfile.id },
         data: { allowedSchoolIds: [...consultantProfile.allowedSchoolIds, schoolId] },
       });
+    }
+
+    // Prevent creating a duplicate active contract for the same consultant + school
+    const existingActiveContract = await prisma.consultantContract.findFirst({
+      where: { consultantId: consultantProfile.id, schoolId, status: 'active' },
+    });
+    if (existingActiveContract) {
+      throw new AppError('An active contract already exists for this consultant at your school. Update the existing contract instead.');
     }
 
     const contractNo = `CON-${schoolId.slice(0, 6).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;

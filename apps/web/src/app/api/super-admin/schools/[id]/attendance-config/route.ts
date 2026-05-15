@@ -18,7 +18,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    if (!user.roles.some((r) => r.role_code === 'super_admin')) throw new ForbiddenError();
+    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
+    if (primary.role_code !== 'super_admin') throw new ForbiddenError();
     const { attendanceMode } = await request.json();
     if (!['class', 'daily', 'card', 'face'].includes(attendanceMode)) {
       return Response.json({ error: 'Invalid attendance mode' }, { status: 400 });

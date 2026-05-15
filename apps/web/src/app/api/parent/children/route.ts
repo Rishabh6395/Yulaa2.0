@@ -6,7 +6,8 @@ export async function GET(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    if (!user.roles.some((r) => r.role_code === 'parent')) throw new ForbiddenError();
+    const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
+    if (primaryRole.role_code !== 'parent') throw new ForbiddenError();
     return Response.json(await getChildren(user.id));
   } catch (err) { return handleError(err); }
 }

@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, NotFoundError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
@@ -5,7 +6,8 @@ import bcrypt from 'bcryptjs';
 
 function assertSuperAdmin(user: Awaited<ReturnType<typeof getUserFromRequest>>) {
   if (!user) throw new UnauthorizedError();
-  if (!user.roles.some((r) => r.role_code === 'super_admin')) throw new ForbiddenError();
+  const primary = user.roles.find((r) => r.is_primary) ?? user.roles[0];
+  if (primary.role_code !== 'super_admin') throw new ForbiddenError();
 }
 
 export async function GET(request: Request) {
@@ -105,7 +107,7 @@ export async function POST(request: Request) {
       if (!consultantRole)
         throw new AppError('Consultant role is not configured in the system. Please contact Yulaa support.');
 
-      const hash = await bcrypt.hash(password || 'Yulaa@2024', 12);
+      const hash = await bcrypt.hash(password || randomBytes(12).toString('hex'), 12);
       existingUser = await prisma.user.create({
         data: {
           email: emailNorm,

@@ -17,8 +17,8 @@ export async function POST(request: Request) {
     if (!user_id || !new_password) throw new AppError('user_id and new_password are required', 400);
     if (new_password.length < 6) throw new AppError('Password must be at least 6 characters', 400);
 
-    // For school_admin: verify the target user belongs to their school
-    if (primary.role_code === 'school_admin' && primary.school_id) {
+    // school_admin and principal can only reset passwords for users in their own school
+    if (['school_admin', 'principal'].includes(primary.role_code) && primary.school_id) {
       const belongs = await prisma.userRole.findFirst({
         where: { userId: user_id, schoolId: primary.school_id },
       });

@@ -16,6 +16,8 @@ export async function POST(request: Request) {
     const bytes  = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const ext    = (file.name.split('.').pop() ?? 'bin').toLowerCase();
+    const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'mp4', 'mov', 'zip'];
+    if (!ALLOWED_EXTENSIONS.includes(ext)) return Response.json({ error: 'File type not allowed' }, { status: 400 });
     const safe   = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${ext}`;
 
     try {

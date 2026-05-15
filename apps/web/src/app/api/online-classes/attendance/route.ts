@@ -75,6 +75,18 @@ export async function POST(request: Request) {
       if (!teacher || oc.teacherId !== teacher.id) throw new ForbiddenError();
     }
 
+    // Validate every student_id belongs to the online class's class — prevents cross-school/cross-class injection
+    if (oc.classId && attendance.length > 0) {
+      const requestedIds = attendance.map((a: { student_id: string }) => a.student_id);
+      const validStudents = await prisma.student.findMany({
+        where: { classId: oc.classId, id: { in: requestedIds }, schoolId },
+        select: { id: true },
+      });
+      const validSet = new Set(validStudents.map(s => s.id));
+      const invalid  = requestedIds.filter((id: string) => !validSet.has(id));
+      if (invalid.length > 0) throw new AppError(`Student IDs not found in this class: ${invalid.join(', ')}`);
+    }
+
     // Upsert attendance records
     await Promise.all(
       attendance.map((a: { student_id: string; status: string }) =>

@@ -5,6 +5,7 @@
  * PATCH  - update vendor contract end date or active status
  * (External vendor creation is handled by super admin at /api/super-admin/vendors)
  */
+import { randomBytes } from 'crypto';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, NotFoundError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
@@ -111,7 +112,7 @@ export async function POST(request: Request) {
       const vendorRole = await prisma.role.findUnique({ where: { code: 'vendor' } });
       if (!vendorRole) throw new AppError('Vendor role is not configured in the system. Please contact your Yulaa administrator.');
 
-      const hash = await bcrypt.hash(password || 'Yulaa@2024', 12);
+      const hash = await bcrypt.hash(password || randomBytes(12).toString('hex'), 12);
       existingUser = await prisma.user.create({
         data: {
           email: emailNorm,
@@ -170,11 +171,16 @@ export async function PATCH(request: Request) {
     });
     if (!vendor) throw new NotFoundError('Vendor');
 
+    // School admin cannot change the active status of external vendors — those are managed by super admin
+    if (vendor.isExternal && is_active !== undefined) {
+      throw new AppError('Cannot change active status of an external vendor. Contact your Yulaa super admin.');
+    }
+
     const updated = await prisma.vendor.update({
       where: { id: vendor_id },
       data: {
         ...(contract_end !== undefined && { contractEnd: contract_end ? new Date(contract_end) : null }),
-        ...(is_active !== undefined && { isActive: Boolean(is_active) }),
+        ...(is_active !== undefined && !vendor.isExternal && { isActive: Boolean(is_active) }),
       },
     });
 

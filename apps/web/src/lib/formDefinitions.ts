@@ -10,9 +10,10 @@
  */
 
 export interface FieldDef {
-  id:    string;
-  label: string; // Default label — overridden by form config if set
-  type:  'text' | 'email' | 'tel' | 'date' | 'number' | 'select' | 'textarea' | 'file' | 'password';
+  id:         string;
+  label:      string; // Default label — overridden by form config if set
+  type:       'text' | 'email' | 'tel' | 'date' | 'number' | 'select' | 'textarea' | 'file' | 'password';
+  fromMaster?: string; // If set, select options come from this master table — field type is locked
 }
 
 export interface RoleDef {
@@ -61,10 +62,10 @@ export const FORM_DEFINITIONS: FormDef[] = [
       { id: 'address',          label: 'Residential Address',     type: 'textarea' },
       { id: 'childName',        label: 'Child Full Name',         type: 'text' },
       { id: 'childDOB',         label: 'Child Date of Birth',     type: 'date' },
-      { id: 'childGender',      label: 'Child Gender',            type: 'select' },
-      { id: 'gradeApplying',    label: 'Grade Applying For',      type: 'select' },
+      { id: 'childGender',      label: 'Child Gender',            type: 'select', fromMaster: 'gender' },
+      { id: 'gradeApplying',    label: 'Grade Applying For',      type: 'select', fromMaster: 'grade' },
       { id: 'aadhaarNo',        label: 'Aadhaar Number',          type: 'text' },
-      { id: 'bloodGroup',       label: 'Blood Group',             type: 'select' },
+      { id: 'bloodGroup',       label: 'Blood Group',             type: 'select', fromMaster: 'bloodGroup' },
       { id: 'previousSchool',   label: 'Previous School',         type: 'text' },
       { id: 'medicalNotes',     label: 'Medical / Allergy Notes', type: 'textarea' },
     ],
@@ -81,7 +82,7 @@ export const FORM_DEFINITIONS: FormDef[] = [
     fields: [
       { id: 'grade',        label: 'Grade',         type: 'text' },
       { id: 'section',      label: 'Section',       type: 'text' },
-      { id: 'classTeacher', label: 'Class Teacher', type: 'select' },
+      { id: 'classTeacher', label: 'Class Teacher', type: 'select', fromMaster: 'teacher' },
       { id: 'academicYear', label: 'Academic Year', type: 'text' },
       { id: 'maxStudents',  label: 'Max Students',  type: 'number' },
     ],
@@ -100,10 +101,10 @@ export const FORM_DEFINITIONS: FormDef[] = [
       { id: 'lastName',         label: 'Last Name',         type: 'text' },
       { id: 'admissionNo',      label: 'Admission Number',  type: 'text' },
       { id: 'dob',              label: 'Date of Birth',     type: 'date' },
-      { id: 'gender',           label: 'Gender',            type: 'select' },
-      { id: 'classId',          label: 'Class',             type: 'select' },
+      { id: 'gender',           label: 'Gender',            type: 'select', fromMaster: 'gender' },
+      { id: 'classId',          label: 'Class',             type: 'select', fromMaster: 'class' },
       { id: 'aadhaarNo',        label: 'Aadhaar Number',    type: 'text' },
-      { id: 'bloodGroup',       label: 'Blood Group',       type: 'select' },
+      { id: 'bloodGroup',       label: 'Blood Group',       type: 'select', fromMaster: 'bloodGroup' },
       { id: 'address',          label: 'Address',           type: 'textarea' },
       { id: 'phone',            label: 'Phone',             type: 'tel' },
       { id: 'emergencyContact', label: 'Emergency Contact', type: 'tel' },
@@ -128,7 +129,7 @@ export const FORM_DEFINITIONS: FormDef[] = [
       { id: 'employeeId',   label: 'Employee ID',   type: 'text' },
       { id: 'designation',  label: 'Designation',   type: 'text' },
       { id: 'department',   label: 'Department',    type: 'text' },
-      { id: 'qualification',label: 'Qualification', type: 'select' },
+      { id: 'qualification',label: 'Qualification', type: 'select', fromMaster: 'qualification' },
       { id: 'joiningDate',  label: 'Joining Date',  type: 'date' },
     ],
   },
@@ -163,8 +164,8 @@ export const FORM_DEFINITIONS: FormDef[] = [
     ],
     fields: [
       { id: 'name',         label: 'Exam Title',          type: 'text' },
-      { id: 'examType',     label: 'Exam Type',           type: 'select' },
-      { id: 'classId',      label: 'Class',               type: 'select' },
+      { id: 'examType',     label: 'Exam Type',           type: 'select', fromMaster: 'examType' },
+      { id: 'classId',      label: 'Class',               type: 'select', fromMaster: 'class' },
       { id: 'subject',      label: 'Subject',             type: 'text' },
       { id: 'maxMarks',     label: 'Maximum Marks',       type: 'number' },
       { id: 'passingMarks', label: 'Passing Marks',       type: 'number' },
@@ -191,7 +192,7 @@ export const FORM_DEFINITIONS: FormDef[] = [
       { id: 'avatar',    label: 'Profile Photo', type: 'file' },
       { id: 'address',   label: 'Address',       type: 'textarea' },
       { id: 'dob',       label: 'Date of Birth', type: 'date' },
-      { id: 'gender',    label: 'Gender',        type: 'select' },
+      { id: 'gender',    label: 'Gender',        type: 'select', fromMaster: 'gender' },
     ],
   },
   {

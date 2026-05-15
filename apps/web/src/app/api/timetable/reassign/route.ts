@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date'); // optional filter: active on this date
 
-    const isAdmin = ['school_admin', 'principal', 'super_admin'].includes(primary.role_code);
+    const isAdmin = ['school_admin', 'principal'].includes(primary.role_code);
 
     // Resolve teacher record for non-admin
     let teacherId: string | null = null;
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
     if (!ALLOWED_ROLES.includes(primary.role_code)) throw new ForbiddenError();
     const schoolId = primary.school_id!;
 
-    const isAdmin = ['school_admin', 'principal', 'super_admin'].includes(primary.role_code);
+    const isAdmin = ['school_admin', 'principal'].includes(primary.role_code);
     const { slotId, substituteTeacherId, startDate, endDate, reason, proxyTeacherId } = await request.json();
 
     if (!slotId || !substituteTeacherId || !startDate || !endDate)
@@ -216,7 +216,7 @@ export async function DELETE(request: Request) {
     const id = searchParams.get('id');
     if (!id) throw new AppError('id is required');
 
-    const isAdmin = ['school_admin', 'principal', 'super_admin'].includes(primary.role_code);
+    const isAdmin = ['school_admin', 'principal'].includes(primary.role_code);
 
     // Verify ownership and school scope
     let reassignment: { id: string; substituteTeacherId: string; slotId: string; startDate: Date; endDate: Date } | null = null;
