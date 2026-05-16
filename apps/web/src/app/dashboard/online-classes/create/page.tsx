@@ -27,6 +27,7 @@ export default function CreateOnlineClassPage() {
   const router = useRouter();
   const [slots,    setSlots]    = useState<TimetableSlot[]>([]);
   const [classes,  setClasses]  = useState<Class[]>([]);
+  const [subjects, setSubjects] = useState<string[]>([]);
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState('');
   const [form, setForm] = useState({
@@ -58,6 +59,15 @@ export default function CreateOnlineClassPage() {
       setClasses(cd.classes ?? []);
     }).catch(() => {});
   }, []);
+
+  // Load subjects from stream master when class is chosen
+  useEffect(() => {
+    if (!form.class_id) { setSubjects([]); return; }
+    fetch(`/api/masters/streams?classId=${form.class_id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setSubjects((d.streamMasters || []).map((m: any) => m.name)))
+      .catch(() => setSubjects([]));
+  }, [form.class_id]);
 
   const selectSlot = (slot: TimetableSlot) => {
     const today = new Date().toISOString().slice(0, 10);
@@ -136,7 +146,15 @@ export default function CreateOnlineClassPage() {
           </div>
           <div>
             <label className="label">Subject</label>
-            <input className="input" value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} />
+            {subjects.length > 0 ? (
+              <select className="input" value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}>
+                <option value="">— Select Subject —</option>
+                {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            ) : (
+              <input className="input" value={form.subject} placeholder={form.class_id ? 'Type subject name' : 'Select class first'}
+                onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} />
+            )}
           </div>
           <div>
             <label className="label">For Class</label>
