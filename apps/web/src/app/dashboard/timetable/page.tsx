@@ -46,7 +46,8 @@ export default function TimetablePage() {
 
   // Log modal
   const [activeSlot,  setActiveSlot]  = useState<any | null>(null);
-  const [logForm,     setLogForm]     = useState({ topic: '', notes: '', homeworkId: '' });
+  const [logForm,     setLogForm]     = useState({ topic: '', notes: '' });
+  const [hwForm,      setHwForm]      = useState({ enabled: false, title: '', dueDate: '', maxMarks: '', description: '' });
   const [showLog,     setShowLog]     = useState(false);
   const [saving,      setSaving]      = useState(false);
 
@@ -92,8 +93,16 @@ export default function TimetablePage() {
   // ── Topic log ───────────────────────────────────────────────────────────────
   const openLog = (slot: any) => {
     const existingLog = slot.logs?.[0];
+    const existingHw  = existingLog?.homework;
     setActiveSlot(slot);
-    setLogForm({ topic: existingLog?.topic || '', notes: existingLog?.notes || '', homeworkId: existingLog?.homeworkId || '' });
+    setLogForm({ topic: existingLog?.topic || '', notes: existingLog?.notes || '' });
+    setHwForm({
+      enabled:     !!existingHw,
+      title:       existingHw?.title || '',
+      dueDate:     existingHw?.dueDate ? existingHw.dueDate.split('T')[0] : '',
+      maxMarks:    existingHw?.maxMarks?.toString() || '',
+      description: existingHw?.description || '',
+    });
     setShowLog(true);
   };
 
@@ -102,9 +111,18 @@ export default function TimetablePage() {
     if (!activeSlot) return;
     setSaving(true); setMsg(null);
     try {
+      const payload: any = { slotId: activeSlot.id, date, ...logForm };
+      if (hwForm.enabled && hwForm.title && hwForm.dueDate) {
+        payload.homework = {
+          title:       hwForm.title,
+          dueDate:     hwForm.dueDate,
+          maxMarks:    hwForm.maxMarks || null,
+          description: hwForm.description || null,
+        };
+      }
       const res = await fetch('/api/timetable/log', {
         method: 'POST', headers: authH,
-        body: JSON.stringify({ slotId: activeSlot.id, date, ...logForm }),
+        body: JSON.stringify(payload),
       });
       const d = await res.json();
       if (!res.ok) { setMsg({ type: 'error', text: d.error || 'Failed to save' }); return; }
@@ -271,6 +289,12 @@ export default function TimetablePage() {
                       <div className="space-y-0.5">
                         <p className="text-sm text-gray-700 dark:text-gray-300"><span className="font-medium">Topic:</span> {log.topic}</p>
                         {log.notes && <p className="text-xs text-surface-400">{log.notes}</p>}
+                        {log.homework && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-0.5">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                            HW: {log.homework.title} · Due {new Date(log.homework.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <p className="text-xs text-surface-400 italic">No topic logged yet</p>
@@ -356,16 +380,57 @@ export default function TimetablePage() {
           </div>
           <div>
             <label className="label">Notes / Observations</label>
-            <textarea className="input-field" rows={3} value={logForm.notes}
+            <textarea className="input-field" rows={2} value={logForm.notes}
               onChange={e => setLogForm(f => ({...f, notes: e.target.value}))}
               placeholder="Any class notes, student queries, etc." />
           </div>
-          <div>
-            <label className="label">Homework ID (optional)</label>
-            <input className="input-field" value={logForm.homeworkId}
-              onChange={e => setLogForm(f => ({...f, homeworkId: e.target.value}))}
-              placeholder="Link to homework entry if any" />
+
+          {/* Homework section */}
+          <div className="border border-surface-200 dark:border-gray-700 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setHwForm(f => ({ ...f, enabled: !f.enabled }))}
+              className="w-full flex items-center justify-between px-4 py-3 bg-surface-50 dark:bg-gray-800/60 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-surface-100 dark:hover:bg-gray-700/60 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                {hwForm.enabled ? 'Homework assigned' : 'Assign homework (optional)'}
+              </span>
+              <span className={`w-8 h-4 rounded-full transition-colors relative ${hwForm.enabled ? 'bg-brand-500' : 'bg-surface-300 dark:bg-gray-600'}`}>
+                <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${hwForm.enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </span>
+            </button>
+            {hwForm.enabled && (
+              <div className="px-4 pb-4 pt-3 space-y-3 border-t border-surface-200 dark:border-gray-700">
+                <div>
+                  <label className="label">Homework Title *</label>
+                  <input className="input-field" value={hwForm.title}
+                    onChange={e => setHwForm(f => ({...f, title: e.target.value}))}
+                    placeholder="e.g. Exercise 3.2 — solve Q1 to Q10" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Due Date *</label>
+                    <input type="date" className="input-field" value={hwForm.dueDate}
+                      onChange={e => setHwForm(f => ({...f, dueDate: e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className="label">Max Marks</label>
+                    <input type="number" className="input-field" value={hwForm.maxMarks}
+                      onChange={e => setHwForm(f => ({...f, maxMarks: e.target.value}))}
+                      placeholder="e.g. 10" min="0" />
+                  </div>
+                </div>
+                <div>
+                  <label className="label">Instructions</label>
+                  <textarea className="input-field" rows={2} value={hwForm.description}
+                    onChange={e => setHwForm(f => ({...f, description: e.target.value}))}
+                    placeholder="Any specific instructions for students..." />
+                </div>
+              </div>
+            )}
           </div>
+
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={() => setShowLog(false)} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving...' : 'Save Log'}</button>

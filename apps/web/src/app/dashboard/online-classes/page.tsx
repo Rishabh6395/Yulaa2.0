@@ -138,10 +138,10 @@ export default function OnlineClassesPage() {
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                  {c.meeting_link && !isPast && (
+                  {c.meeting_link && c.status !== 'ended' && c.status !== 'cancelled' && (
                     <a href={c.meeting_link} target="_blank" rel="noopener noreferrer"
                       className={`btn btn-sm ${isLive ? 'btn-primary' : 'btn-secondary'}`}>
-                      {isLive ? '▶ Join Live Class' : 'Open Meeting Link'}
+                      {isLive ? '▶ Join Live Class' : '🔗 Join Class'}
                     </a>
                   )}
                   {c.isRecorded && c.recordingUrl && (

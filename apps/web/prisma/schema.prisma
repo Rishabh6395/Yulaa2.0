@@ -26,6 +26,7 @@ model School {
   boardType             String?                @map("board_type") @db.VarChar(30)
   isDefault                Boolean                @default(false) @map("is_default")
   attendanceMode           String                 @default("class") @map("attendance_mode") @db.VarChar(20)
+  attendancePunchEnabled   Boolean                @default(false) @map("attendance_punch_enabled")
   latitude                 Float?
   longitude                Float?
   allowExternalConsultant  Boolean                @default(false) @map("allow_external_consultant")

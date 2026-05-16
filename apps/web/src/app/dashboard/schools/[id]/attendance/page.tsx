@@ -77,6 +77,9 @@ export default function AttendanceConfigPage({}) {
   // Attendance mode
   const [mode, setMode] = useState('class');
 
+  // Punch popup
+  const [punchEnabled, setPunchEnabled] = useState(false);
+
   // Geo controls
   const [geoTagging, setGeoTagging] = useState(false);
   const [geoFencing, setGeoFencing] = useState(false);
@@ -106,7 +109,8 @@ export default function AttendanceConfigPage({}) {
     })
       .then(r => r.json())
       .then(d => {
-        if (d.attendanceMode)        setMode(d.attendanceMode);
+        if (d.attendanceMode)            setMode(d.attendanceMode);
+        if (d.attendancePunchEnabled != null) setPunchEnabled(d.attendancePunchEnabled);
         if (d.geoTaggingEnabled)     setGeoTagging(d.geoTaggingEnabled);
         if (d.geoFencingEnabled)     setGeoFencing(d.geoFencingEnabled);
         if (d.latitude  != null)     setLatitude(String(d.latitude));
@@ -135,6 +139,7 @@ export default function AttendanceConfigPage({}) {
 
     const payload: Record<string, unknown> = {
       attendanceMode:           mode,
+      attendancePunchEnabled:   punchEnabled,
       geoTaggingEnabled:        geoTagging,
       geoFencingEnabled:        geoFencing,
       latitude:                 latitude  ? parseFloat(latitude)  : null,
@@ -207,6 +212,26 @@ export default function AttendanceConfigPage({}) {
               {mode === 'card'  && 'ID Card Scan requires RFID/barcode hardware. Configure the integration endpoint below.'}
               {mode === 'face'  && 'Face Recognition requires camera hardware and the face recognition API. Configure the endpoint below.'}
             </span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Punch-In / Punch-Out Popup ───────────────────────────────────────── */}
+      <div className="card p-6 space-y-4">
+        <div>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Punch-In / Punch-Out Popup</h2>
+          <p className="text-xs text-surface-400 mt-0.5">When enabled, employees see a popup on the dashboard to mark their school entry and exit time.</p>
+        </div>
+        <Toggle
+          checked={punchEnabled}
+          onChange={setPunchEnabled}
+          label="Enable Punch-In / Punch-Out Popup"
+          desc="Teachers, principals, and school admins will see a daily prompt to punch in when they arrive and punch out when they leave. Users can skip the popup."
+        />
+        {punchEnabled && (
+          <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-700 dark:text-emerald-400 flex items-start gap-2">
+            <svg width="14" height="14" className="shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>Popup is active. Employees will be prompted to punch in on first login each day. Punch-in is allowed once; punch-out can be updated multiple times (last value counts).</span>
           </div>
         )}
       </div>
