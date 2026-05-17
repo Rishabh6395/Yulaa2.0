@@ -13,6 +13,7 @@ export async function POST(request: Request) {
     const {
       schoolId, parentName, parentPhone, parentEmail,
       parentOccupation, residentialAddress, permanentAddress, children,
+      customFieldValues,
     } = body;
 
     if (!schoolId)
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
       residentialAddress:  residentialAddress ?? undefined,
       permanentAddress:    permanentAddress   ?? undefined,
       children,
+      customFieldValues:   customFieldValues  ?? undefined,
     });
 
     return Response.json(result, { status: 201 });

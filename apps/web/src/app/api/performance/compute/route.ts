@@ -29,6 +29,20 @@ function getBehaviorRating(score: number, cfg: { excellentMin: number; goodMin: 
   return getRating(score, cfg);
 }
 
+const DEFAULT_RATING_SCALE = [
+  { min: 90, max: 100, label: 'Outstanding',   color: '#22c55e' },
+  { min: 75, max: 89,  label: 'Excellent',     color: '#84cc16' },
+  { min: 60, max: 74,  label: 'Good',          color: '#eab308' },
+  { min: 40, max: 59,  label: 'Average',       color: '#f97316' },
+  { min:  0, max: 39,  label: 'Below Average', color: '#ef4444' },
+];
+
+function getCompositeRating(score: number, ratingScale: any): { label: string; color: string } {
+  const scale = Array.isArray(ratingScale) && ratingScale.length > 0 ? ratingScale : DEFAULT_RATING_SCALE;
+  const band = scale.find((b: any) => score >= b.min && score <= b.max);
+  return band ? { label: band.label, color: band.color } : { label: 'Below Average', color: '#ef4444' };
+}
+
 function stdDev(values: number[]): number {
   if (values.length < 2) return 0;
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
@@ -286,10 +300,10 @@ async function computeCycle(cycleId: string, triggeredBy: string) {
 
     const ecoPoints = ecoByStudent[s.id] ?? 0;
     const ecoScore  = ecoCfg
-      ? ecoPoints >= ecoCfg.excellentMin ? 100
-      : ecoPoints >= ecoCfg.goodMin      ? 75
-      : ecoPoints >= ecoCfg.averageMin   ? 50
-      : ecoPoints >= ecoCfg.belowAverageMin ? 25 : 0
+      ? ecoPoints >= ecoCfg.ecoExcellentMin ? 100
+      : ecoPoints >= ecoCfg.ecoGoodMin      ? 75
+      : ecoPoints >= ecoCfg.ecoAverageMin   ? 50
+      : ecoPoints >= ecoCfg.ecoBelowAvgMin  ? 25 : 0
       : Math.min(100, ecoPoints * 5);
 
     const acaScore = acaSum?.overallPercentage ?? 50;
@@ -301,7 +315,9 @@ async function computeCycle(cycleId: string, triggeredBy: string) {
       ecoScore * wEco / 100,
     );
 
-    // Update AttendancePeriodSummary with behavior + ECO for report card (store composite in academic summary)
+    const { label: compositeLabel, color: compositeColor } = getCompositeRating(composite, comCfg?.ratingScale);
+    log.push(`student ${s.id}: composite=${composite} (${compositeLabel})`);
+
     if (acaSum) {
       // Parse weak subjects and create recommendations
       const weakSubjs = (acaSum.weakSubjects ?? '').split(',').map((s: string) => s.trim()).filter(Boolean);

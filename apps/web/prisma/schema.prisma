@@ -955,6 +955,8 @@ model AdmissionApplication {
   waitlistedAt        DateTime?          @map("waitlisted_at")
   // Aadhaar dedup (store hash only, never raw)
   parentAadhaarHash   String?            @map("parent_aadhaar_hash") @db.VarChar(64)
+  // Custom fields defined by super admin via ContentTypeMaster
+  customFieldValues   Json?              @map("custom_field_values")
   submittedAt         DateTime           @default(now()) @map("submitted_at")
   updatedAt           DateTime           @default(now()) @updatedAt @map("updated_at")
 
@@ -985,6 +987,7 @@ model AdmissionChild {
   previousSchool String?              @map("previous_school") @db.VarChar(200)
   photoUrl       String?              @map("photo_url")
   studentId      String?              @unique @map("student_id")
+  customFieldValues Json?             @map("custom_field_values")
   createdAt      DateTime             @default(now()) @map("created_at")
   application    AdmissionApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   student        Student?             @relation("CreatedFromAdmission", fields: [studentId], references: [id])
@@ -1435,6 +1438,11 @@ model KpiRatingConfig {
   behGoodMax      Int      @default(2)   @map("beh_good_max")
   behAverageMax   Int      @default(5)   @map("beh_average_max")
   behBelowAvgMax  Int      @default(10)  @map("beh_below_avg_max")
+  // ECO (extracurricular) point thresholds — used when segment='extracurricular'
+  ecoExcellentMin Int      @default(85)  @map("eco_excellent_min")
+  ecoGoodMin      Int      @default(70)  @map("eco_good_min")
+  ecoAverageMin   Int      @default(50)  @map("eco_average_min")
+  ecoBelowAvgMin  Int      @default(30)  @map("eco_below_avg_min")
   // Composite weights (sum must equal 100, used when segment='composite')
   weightAcademic      Int  @default(40)  @map("weight_academic")
   weightAttendance    Int  @default(30)  @map("weight_attendance")
@@ -1442,6 +1450,8 @@ model KpiRatingConfig {
   weightEco           Int  @default(10)  @map("weight_eco")
   // Custom rating labels (JSON: {"excellent":"Outstanding","good":"Good",...})
   ratingLabels    String?  @map("rating_labels") @db.VarChar(500)
+  // Rating scale with colors — [{min,max,label,color}] used for composite output
+  ratingScale     Json?    @map("rating_scale")
   createdById     String   @map("created_by_id")
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
   school          School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)

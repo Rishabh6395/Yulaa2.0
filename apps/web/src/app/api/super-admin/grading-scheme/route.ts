@@ -14,7 +14,7 @@ import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/util
 import prisma from '@/lib/prisma';
 
 const SUPER_ADMIN_ROLES = ['super_admin'];
-const READ_ROLES = ['super_admin', 'school_admin', 'principal', 'hod'];
+const READ_ROLES = ['super_admin', 'school_admin', 'principal', 'hod', 'teacher', 'employee'];
 
 const DEFAULT_SCHEME = [
   { label: 'A+', minPct: 90, maxPct: 100, gpaPoints: 10.0, remark: 'Outstanding' },

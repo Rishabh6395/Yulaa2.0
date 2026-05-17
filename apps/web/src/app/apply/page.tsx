@@ -19,6 +19,14 @@ interface ChildForm {
 type FieldRule = 'required' | 'optional' | 'hidden';
 type FieldRules = Record<string, FieldRule>;
 
+interface CustomFieldDef {
+  fieldSlot: string;
+  fieldType: string;
+  label:     string;
+  options:   string[];
+  sortOrder: number;
+}
+
 const emptyChild = (): ChildForm => ({
   firstName: '', lastName: '', dateOfBirth: '', gender: '',
   aadhaarNo: '', classApplying: '', previousSchool: '',
@@ -102,6 +110,8 @@ export default function ApplyPage() {
   const errorRef = useRef<HTMLDivElement>(null);
 
   const [fieldRules,    setFieldRules]    = useState<FieldRules>(DEFAULT_RULES);
+  const [customFields,  setCustomFields]  = useState<CustomFieldDef[]>([]);
+  const [customValues,  setCustomValues]  = useState<Record<string, string>>({});
   const [configLoading, setConfigLoading] = useState(false);
 
   // Step 0 — parent
@@ -124,12 +134,16 @@ export default function ApplyPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedSchool) { setFieldRules(DEFAULT_RULES); return; }
+    if (!selectedSchool) { setFieldRules(DEFAULT_RULES); setCustomFields([]); setCustomValues({}); return; }
     setConfigLoading(true);
     fetch(`/api/form-config/public?schoolId=${selectedSchool}&formId=admission`)
       .then(r => r.json())
-      .then(d => setFieldRules(d.fieldRules ? { ...DEFAULT_RULES, ...d.fieldRules } : DEFAULT_RULES))
-      .catch(() => setFieldRules(DEFAULT_RULES))
+      .then(d => {
+        setFieldRules(d.fieldRules ? { ...DEFAULT_RULES, ...d.fieldRules } : DEFAULT_RULES);
+        setCustomFields(d.customFields ?? []);
+        setCustomValues({});
+      })
+      .catch(() => { setFieldRules(DEFAULT_RULES); setCustomFields([]); })
       .finally(() => setConfigLoading(false));
   }, [selectedSchool]);
 
@@ -217,6 +231,7 @@ export default function ApplyPage() {
           residentialAddress,
           permanentAddress:  sameAsResidential ? residentialAddress : permanentAddress,
           children,
+          customFieldValues: Object.keys(customValues).length > 0 ? customValues : undefined,
         }),
       });
       const data = await res.json();
@@ -511,6 +526,34 @@ export default function ApplyPage() {
               )}
             </div>
           ))}
+
+          {customFields.length > 0 && (
+            <div className="card p-6 space-y-4">
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Additional Information</h2>
+              {customFields.map(f => (
+                <div key={f.fieldSlot}>
+                  <label className="label">{f.label}</label>
+                  {f.fieldType === 'select' ? (
+                    <select className="input-field"
+                      value={customValues[f.fieldSlot] ?? ''}
+                      onChange={e => setCustomValues(v => ({ ...v, [f.fieldSlot]: e.target.value }))}>
+                      <option value="">— Select —</option>
+                      {f.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  ) : f.fieldType === 'textarea' ? (
+                    <textarea className="input-field" rows={3}
+                      value={customValues[f.fieldSlot] ?? ''}
+                      onChange={e => setCustomValues(v => ({ ...v, [f.fieldSlot]: e.target.value }))}/>
+                  ) : (
+                    <input className="input-field"
+                      type={f.fieldType === 'date' ? 'date' : f.fieldType === 'number' ? 'number' : 'text'}
+                      value={customValues[f.fieldSlot] ?? ''}
+                      onChange={e => setCustomValues(v => ({ ...v, [f.fieldSlot]: e.target.value }))}/>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           <button onClick={addChild} className="btn-secondary w-full flex items-center justify-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

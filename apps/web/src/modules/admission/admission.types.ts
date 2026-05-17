@@ -1,12 +1,13 @@
 export interface CreateChildInput {
-  firstName:      string;
-  lastName:       string;
-  dateOfBirth:    string;   // ISO date "YYYY-MM-DD"
-  gender:         string;
-  aadhaarNo?:     string;
-  classApplying:  string;   // e.g. "Grade 5"
-  previousSchool?: string;
-  photoUrl?:       string;
+  firstName:         string;
+  lastName:          string;
+  dateOfBirth:       string;   // ISO date "YYYY-MM-DD"
+  gender:            string;
+  aadhaarNo?:        string;
+  classApplying:     string;   // e.g. "Grade 5"
+  previousSchool?:   string;
+  photoUrl?:         string;
+  customFieldValues?: Record<string, string>;
 }
 
 export interface CreateApplicationInput {
@@ -19,6 +20,7 @@ export interface CreateApplicationInput {
   residentialAddress?:  string;
   permanentAddress?:    string;
   children:             CreateChildInput[];
+  customFieldValues?:   Record<string, string>;
 }
 
 export interface ValidationFlag {
