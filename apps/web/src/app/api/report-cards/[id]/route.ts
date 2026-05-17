@@ -11,15 +11,14 @@ function canSend(user: any) {
 }
 
 // ── GET /api/report-cards/[id] ───────────────────────────────────────────────
-// Returns a single report card with parsed JSON sections.
-
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
+    const { id } = await params;
 
     const card = await prisma.reportCard.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         student: {
           select: {
@@ -35,7 +34,6 @@ export async function GET(request: Request, { params }: { params: { id: string }
     });
     if (!card) throw new NotFoundError('Report card');
 
-    // Parent: verify they own this student
     if (isParent(user)) {
       const parentRecord = await prisma.parent.findUnique({
         where: { userId: user.id },
@@ -52,7 +50,6 @@ export async function GET(request: Request, { params }: { params: { id: string }
       throw new ForbiddenError('Access denied');
     }
 
-    // Mark as viewed if parent first view
     if (isParent(user) && !card.viewedAt) {
       await prisma.reportCard.update({
         where: { id: card.id },
@@ -60,7 +57,6 @@ export async function GET(request: Request, { params }: { params: { id: string }
       });
     }
 
-    // Parse JSON sections
     function safe(s: string | null) {
       if (!s) return null;
       try { return JSON.parse(s); } catch { return null; }
@@ -69,24 +65,23 @@ export async function GET(request: Request, { params }: { params: { id: string }
     return Response.json({
       reportCard: {
         ...card,
-        academicData:    safe(card.academicData),
-        attendanceData:  safe(card.attendanceData),
-        behaviorData:    safe(card.behaviorData),
+        academicData:   safe(card.academicData),
+        attendanceData: safe(card.attendanceData),
+        behaviorData:   safe(card.behaviorData),
       },
     });
   } catch (err) { return handleError(err); }
 }
 
 // ── PATCH /api/report-cards/[id] ─────────────────────────────────────────────
-// Update teacher remarks (school admin / teacher only, only if not yet viewed).
-
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     if (!canSend(user)) throw new ForbiddenError('Access denied');
+    const { id } = await params;
 
-    const card = await prisma.reportCard.findUnique({ where: { id: params.id } });
+    const card = await prisma.reportCard.findUnique({ where: { id } });
     if (!card) throw new NotFoundError('Report card');
 
     const schoolId = getPrimary(user)?.school_id;
@@ -94,7 +89,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     const { teacherRemarks } = await request.json();
     const updated = await prisma.reportCard.update({
-      where: { id: params.id },
+      where: { id },
       data:  { teacherRemarks: teacherRemarks ?? card.teacherRemarks },
     });
     return Response.json({ reportCard: updated });
