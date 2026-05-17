@@ -97,6 +97,7 @@ async function computeCycle(cycleId: string, triggeredBy: string) {
 
   const attByStudent: Record<string, typeof attRows> = {};
   for (const a of attRows) {
+    if (!a.studentId) continue;
     if (!attByStudent[a.studentId]) attByStudent[a.studentId] = [];
     attByStudent[a.studentId].push(a);
   }
@@ -411,11 +412,11 @@ export async function GET(request: Request) {
 
     const [attSummaries, acaSummaries] = await Promise.all([
       prisma.attendancePeriodSummary.findMany({
-        where: { cycleId, schoolId, ...(studentId ? { studentId } : {}) },
+        where: { cycleId, ...(schoolId ? { schoolId } : {}), ...(studentId ? { studentId } : {}) },
         include: { student: { select: { firstName: true, lastName: true, admissionNo: true } } },
       }),
       prisma.cycleAcademicSummary.findMany({
-        where: { cycleId, schoolId, ...(studentId ? { studentId } : {}) },
+        where: { cycleId, ...(schoolId ? { schoolId } : {}), ...(studentId ? { studentId } : {}) },
         include: { student: { select: { firstName: true, lastName: true, admissionNo: true } } },
       }),
     ]);

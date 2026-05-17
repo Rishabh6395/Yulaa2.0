@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     // Upsert so admins can call POST to update existing entries
     const entry = await prisma.ecoPointsMatrix.upsert({
       where:  { schoolId_level_achievement: { schoolId, level, achievement } },
-      create: { schoolId, level, achievement, points },
+      create: { schoolId, level, achievement, points, createdById: user.id },
       update: { points },
     });
 
