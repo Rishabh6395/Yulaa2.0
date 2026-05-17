@@ -137,7 +137,11 @@ export async function POST(request: Request) {
       results.push({ teacherId: cfg.teacherId, payrollId: payroll.id, status: 'created', netSalary: net });
     }
 
-    return Response.json({ results, generated: results.filter(r => r.status === 'created').length });
+    return Response.json({
+      results,
+      generated: results.filter(r => r.status === 'created').length,
+      skipped:   results.filter(r => r.status === 'skipped').length,
+    });
   } catch (err) { return handleError(err); }
 }
 

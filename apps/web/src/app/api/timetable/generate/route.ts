@@ -76,16 +76,22 @@ export async function POST(request: Request) {
       }
     }
 
-    // Upsert all slots
-    const upserted = await prisma.$transaction(
-      slots.map(s =>
-        prisma.timetableSlot.upsert({
-          where: { timetableId_dayOfWeek_periodNo: { timetableId: timetable!.id, dayOfWeek: s.dayOfWeek, periodNo: s.periodNo } },
-          create: { timetableId: timetable!.id, dayOfWeek: s.dayOfWeek, periodNo: s.periodNo, startTime: s.startTime, endTime: s.endTime, subject: s.subject, teacherId: s.teacherId },
-          update: { subject: s.subject, teacherId: s.teacherId, startTime: s.startTime, endTime: s.endTime },
-        })
-      )
-    );
+    // Upsert slots in small batches to avoid connection timeout on serverless DBs
+    const BATCH = 10;
+    const upserted: any[] = [];
+    for (let i = 0; i < slots.length; i += BATCH) {
+      const batch = slots.slice(i, i + BATCH);
+      const results = await prisma.$transaction(
+        batch.map(s =>
+          prisma.timetableSlot.upsert({
+            where: { timetableId_dayOfWeek_periodNo: { timetableId: timetable!.id, dayOfWeek: s.dayOfWeek, periodNo: s.periodNo } },
+            create: { timetableId: timetable!.id, dayOfWeek: s.dayOfWeek, periodNo: s.periodNo, startTime: s.startTime, endTime: s.endTime, subject: s.subject, teacherId: s.teacherId },
+            update: { subject: s.subject, teacherId: s.teacherId, startTime: s.startTime, endTime: s.endTime },
+          })
+        )
+      );
+      upserted.push(...results);
+    }
 
     return Response.json({ timetableId: timetable.id, slotsGenerated: upserted.length, slots: upserted });
   } catch (err) { return handleError(err); }

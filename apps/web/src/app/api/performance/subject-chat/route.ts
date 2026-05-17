@@ -119,12 +119,15 @@ export async function POST(request: Request) {
     if (!studentId || !teacherId || !subject || !message)
       throw new AppError('studentId, teacherId, subject, message required');
 
+    // Prisma upsert cannot match NULL in compound unique — use findFirst + create/update
+    const existingThread = await prisma.subjectChatThread.findFirst({
+      where: { studentId, teacherId, subject, cycleId: cycleId ?? null },
+    });
+
     const [thread, msg] = await prisma.$transaction(async (tx) => {
-      const t = await tx.subjectChatThread.upsert({
-        where:  { studentId_teacherId_subject_cycleId: { studentId, teacherId, subject, cycleId: cycleId ?? null } },
-        create: { schoolId, studentId, teacherId, subject, cycleId: cycleId ?? null, status: 'open' },
-        update: { status: 'open', updatedAt: new Date() },
-      });
+      const t = existingThread
+        ? await tx.subjectChatThread.update({ where: { id: existingThread.id }, data: { status: 'open' } })
+        : await tx.subjectChatThread.create({ data: { schoolId, studentId, teacherId, subject, cycleId: cycleId ?? null, status: 'open' } });
       const m = await tx.subjectChatMessage.create({
         data: { threadId: t.id, senderId: user.id, senderRole, message, attachments: attachments ?? null },
       });
