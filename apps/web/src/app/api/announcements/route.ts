@@ -48,7 +48,9 @@ export async function DELETE(request: Request) {
     if (!['super_admin', 'school_admin'].includes(primaryRole.role_code)) throw new ForbiddenError();
     const { id } = await request.json();
     if (!id) throw new AppError('id required');
-    await prisma.announcement.delete({ where: { id } });
+    const schoolId = await resolveSchoolId(primaryRole, undefined);
+    const deleted  = await prisma.announcement.deleteMany({ where: { id, schoolId } });
+    if (deleted.count === 0) throw new AppError('Announcement not found or access denied', 403);
     return Response.json({ ok: true });
   } catch (err) { return handleError(err); }
 }

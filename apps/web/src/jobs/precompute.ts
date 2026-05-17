@@ -51,6 +51,7 @@ export async function computeAdminDashboard(schoolId: string) {
     totalStudents, approvedStudents, pendingStudents,
     totalTeachers, totalClasses,
     todayAttendanceRows, feeInvoices, recentAnnouncements, recentHomework,
+    appApproved, appPending, appRejected,
   ] = await Promise.all([
     prisma.student.count({ where: { schoolId } }),
     prisma.student.count({ where: { schoolId, status: 'active' } }),
@@ -68,6 +69,9 @@ export async function computeAdminDashboard(schoolId: string) {
       include: { class: true, teacher: { include: { user: true } } },
       orderBy: { createdAt: 'desc' }, take: parseInt(process.env.PRECOMPUTE_LIMIT || '5', 10),
     }),
+    prisma.admissionApplication.count({ where: { schoolId, status: 'approved' } }),
+    prisma.admissionApplication.count({ where: { schoolId, status: { in: ['submitted', 'under_review'] } } }),
+    prisma.admissionApplication.count({ where: { schoolId, status: 'rejected' } }),
   ]);
 
   const present = todayAttendanceRows.filter((a) => a.status === 'present').length;
@@ -87,6 +91,7 @@ export async function computeAdminDashboard(schoolId: string) {
       totalTeachers, totalClasses,
       todayAttendance: { present, absent, late, total, rate: total > 0 ? Math.round((present / total) * 100) : 0 },
       fees: { totalFees: feeTotal, collected: feeCollected, pending: feePending, overdueCount: feeInvoices.filter((i) => i.status === 'overdue').length },
+      admissions: { approved: appApproved, pending: appPending, rejected: appRejected },
     },
     recentAnnouncements,
     recentHomework: recentHomework.map((h) => ({
@@ -120,7 +125,7 @@ export async function computeTeacherDashboard(userId: string, schoolId: string) 
     where: { classTeacherId: teacher.id, schoolId },
   });
 
-  const [totalStudents, todayAttendanceRows, announcements] = await Promise.all([
+  const [totalStudents, todayAttendanceRows, announcements, pendingHomeworkCount, upcomingExamsCount] = await Promise.all([
     myClass
       ? prisma.student.count({ where: { classId: myClass.id } })
       : prisma.student.count({ where: { schoolId } }),
@@ -129,6 +134,10 @@ export async function computeTeacherDashboard(userId: string, schoolId: string) 
       where: { schoolId }, orderBy: { createdAt: 'desc' }, take: parseInt(process.env.PRECOMPUTE_LIMIT || '5', 10),
       select: { id: true, title: true, content: true, priority: true, createdAt: true },
     }),
+    myClass
+      ? prisma.homework.count({ where: { classId: myClass.id, submissions: { none: {} } } })
+      : prisma.homework.count({ where: { schoolId } }),
+    prisma.exam.count({ where: { schoolId, examDate: { gte: today } } }),
   ]);
 
   const present = (todayAttendanceRows as { status: string }[]).filter((a) => a.status === 'present').length;
@@ -139,9 +148,11 @@ export async function computeTeacherDashboard(userId: string, schoolId: string) 
   return {
     stats: {
       totalStudents,
-      className:   myClass ? `${myClass.grade} ${myClass.section}` : null,
-      sectionName: myClass?.section ?? null,
+      className:      myClass ? `${myClass.grade} ${myClass.section}` : null,
+      sectionName:    myClass?.section ?? null,
       todayAttendance: { present, absent, late, total, rate: total > 0 ? Math.round((present / total) * 100) : 0 },
+      pendingHomework: pendingHomeworkCount,
+      upcomingExams:   upcomingExamsCount,
     },
     recentAnnouncements: announcements,
   };
