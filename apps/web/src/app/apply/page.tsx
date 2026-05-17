@@ -136,7 +136,7 @@ export default function ApplyPage() {
   useEffect(() => {
     if (!selectedSchool) { setFieldRules(DEFAULT_RULES); setCustomFields([]); setCustomValues({}); return; }
     setConfigLoading(true);
-    fetch(`/api/form-config/public?schoolId=${selectedSchool}&formId=admission`)
+    fetch(`/api/form-config/public?schoolId=${selectedSchool}&formId=admission_form`)
       .then(r => r.json())
       .then(d => {
         setFieldRules(d.fieldRules ? { ...DEFAULT_RULES, ...d.fieldRules } : DEFAULT_RULES);

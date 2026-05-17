@@ -91,6 +91,8 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
   const [children,      setChildren]      = useState<ChildEntry[]>([emptyChild()]);
   const [loading,       setLoading]       = useState(false);
   const [error,         setError]         = useState('');
+  const [customFields,  setCustomFields]  = useState<{ fieldSlot: string; label: string; fieldType: string; options: string[] }[]>([]);
+  const [customValues,  setCustomValues]  = useState<Record<string, string>>({});
 
   // Detect role on open
   const [isParentRole, setIsParentRole] = useState(false);
@@ -147,7 +149,8 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
       fetch(`/api/masters/gender${qs}`,       { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch(`/api/masters/blood-groups${qs}`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch(`/api/masters/grades${qs}`,       { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([cfgRes, genderRes, bloodRes, gradeRes]) => {
+      fetch(`/api/masters/content-types?schoolId=${schoolId}&formName=admission_form`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([cfgRes, genderRes, bloodRes, gradeRes, ctRes]) => {
       const cfgVal = cfgRes.status === 'fulfilled' ? cfgRes.value : null;
       const rules  = cfgVal?.configs?.['admission_form']?.[configRole]
                   ?? cfgVal?.configs?.['admission_form']?.org
@@ -162,6 +165,9 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
 
       const grItems = parseMasterNames(gradeRes.status === 'fulfilled' ? gradeRes.value : null, 'gradeMasters');
       if (grItems.length > 0) setGradeOptions(grItems);
+
+      const ctVal = ctRes.status === 'fulfilled' ? ctRes.value : null;
+      setCustomFields((ctVal?.contentTypes ?? []).filter((f: any) => f.isActive !== false).sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)));
     }).finally(() => setConfigReady(true));
   }, [open]);
 
@@ -191,6 +197,7 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
       setParentName(''); setParentPhone(''); setParentEmail('');
       setParentOcc('');  setAddress('');     setChildren([emptyChild()]);
       setSelectedSchool(''); setSchools([]); setError(''); setIsParentRole(false);
+      setCustomFields([]); setCustomValues({});
     }
   }, [open]);
 
@@ -215,6 +222,7 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
           parentName, parentPhone, parentEmail,
           parentOccupation: parentOcc,
           address,
+          ...(Object.keys(customValues).length > 0 ? { customFieldValues: customValues } : {}),
           children: children.map(c => {
             const nameParts = c.name.trim().split(/\s+/);
             const firstName = nameParts[0] || '';
@@ -438,6 +446,37 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
                 </div>
               ))}
             </div>
+
+            {/* Custom fields configured by super admin */}
+            {customFields.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Additional Information</p>
+                <div className="space-y-3">
+                  {customFields.map(f => (
+                    <div key={f.fieldSlot}>
+                      <label className="label">{f.label}</label>
+                      {f.fieldType === 'dropdown' || f.fieldType === 'select' ? (
+                        <select className="input-field"
+                          value={customValues[f.fieldSlot] ?? ''}
+                          onChange={e => setCustomValues(v => ({ ...v, [f.fieldSlot]: e.target.value }))}>
+                          <option value="">— Select —</option>
+                          {(f.options ?? []).map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
+                        </select>
+                      ) : f.fieldType === 'textarea' ? (
+                        <textarea className="input-field" rows={2}
+                          value={customValues[f.fieldSlot] ?? ''}
+                          onChange={e => setCustomValues(v => ({ ...v, [f.fieldSlot]: e.target.value }))} />
+                      ) : (
+                        <input className="input-field"
+                          type={f.fieldType === 'date' ? 'date' : f.fieldType === 'number' ? 'number' : 'text'}
+                          value={customValues[f.fieldSlot] ?? ''}
+                          onChange={e => setCustomValues(v => ({ ...v, [f.fieldSlot]: e.target.value }))} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
 
