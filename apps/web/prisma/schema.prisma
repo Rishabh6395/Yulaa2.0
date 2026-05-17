@@ -122,6 +122,8 @@ model School {
   boardExamTrackers        BoardExamTracker[]
   subjectChatThreads       SubjectChatThread[]
   riskFlags                RiskFlag[]
+  gradingSchemes           GradingScheme[]
+  subjectCatalog           SubjectCatalog[]
 
   @@map("schools")
 }
@@ -2927,4 +2929,64 @@ model RiskFlag {
   @@index([schoolId, riskLevel])
   @@index([studentId])
   @@map("risk_flags")
+}
+
+// ─── Grading Scheme (Super Admin configures per school) ───────────────────────
+
+model GradingScheme {
+  id        String  @id @default(uuid())
+  schoolId  String  @map("school_id")
+  gradeLevel String @default("all") @map("grade_level") @db.VarChar(10)  // '1'–'12', 'KG', 'all'
+  label     String  @db.VarChar(10)   // 'A+', 'A', 'B+', 'B', 'C', 'D', 'F'
+  minPct    Int     @map("min_pct")   // lower bound (inclusive)
+  maxPct    Int     @map("max_pct")   // upper bound (inclusive, 100 for top band)
+  gpaPoints Decimal @default(0) @map("gpa_points") @db.Decimal(4, 2)
+  remark    String? @db.VarChar(100)  // "Outstanding", "Excellent", "Good"
+  createdById String @map("created_by_id")
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, gradeLevel, label])
+  @@index([schoolId])
+  @@map("grading_schemes")
+}
+
+// ─── Subject Catalog (Super Admin defines subjects per grade per school) ──────
+
+model SubjectCatalog {
+  id        String  @id @default(uuid())
+  schoolId  String  @map("school_id")
+  gradeLevel String @default("all") @map("grade_level") @db.VarChar(10)  // '1'–'12', 'KG', 'all'
+  subject   String  @db.VarChar(100)
+  code      String? @db.VarChar(20)   // Subject code e.g. 'MATH10'
+  isCore    Boolean @default(true) @map("is_core")
+  maxMarks  Int     @default(100) @map("max_marks")
+  passMarks Int     @default(33) @map("pass_marks")
+  createdById String @map("created_by_id")
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, gradeLevel, subject])
+  @@index([schoolId, gradeLevel])
+  @@map("subject_catalogs")
+}
+
+// ─── Performance Template (Super Admin defines cycle templates for schools) ───
+
+model PerformanceTemplate {
+  id              String   @id @default(uuid())
+  name            String   @db.VarChar(100)   // "Quarterly Assessment", "Monthly Check-in"
+  description     String?  @db.Text
+  cycleType       String   @db.VarChar(20)    // 'monthly' | 'quarterly' | 'half_yearly' | 'yearly'
+  isActive        Boolean  @default(true) @map("is_active")
+  // Default weights (can be overridden per school)
+  weightAcademic  Int      @default(40) @map("weight_academic")
+  weightAttendance Int     @default(30) @map("weight_attendance")
+  weightBehavior  Int      @default(20) @map("weight_behavior")
+  weightEco       Int      @default(10) @map("weight_eco")
+  reportCardTemplate String @default("standard") @map("report_card_template") @db.VarChar(30)
+  createdById     String   @map("created_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("performance_templates")
 }

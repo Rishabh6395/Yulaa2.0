@@ -406,17 +406,31 @@ export async function GET(request: Request) {
     const cycleId   = searchParams.get('cycle_id');
     const studentId = searchParams.get('student_id');
     const primary   = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    const schoolId  = primary.school_id;
+
+    // Resolve schoolId — never allow unscoped cross-school access
+    let schoolId: string;
+    if (primary.role_code === 'super_admin') {
+      const paramSchoolId = searchParams.get('school_id');
+      if (!paramSchoolId) throw new AppError('school_id is required for super_admin');
+      schoolId = paramSchoolId;
+    } else {
+      if (!primary.school_id) throw new AppError('school_id required');
+      schoolId = primary.school_id;
+    }
 
     if (!cycleId) throw new AppError('cycle_id required');
 
+    // Verify cycle belongs to this school to prevent cross-school access
+    const cycle = await prisma.performanceCycle.findFirst({ where: { id: cycleId, schoolId } });
+    if (!cycle) throw new AppError('Cycle not found', 404);
+
     const [attSummaries, acaSummaries] = await Promise.all([
       prisma.attendancePeriodSummary.findMany({
-        where: { cycleId, ...(schoolId ? { schoolId } : {}), ...(studentId ? { studentId } : {}) },
+        where: { cycleId, schoolId, ...(studentId ? { studentId } : {}) },
         include: { student: { select: { firstName: true, lastName: true, admissionNo: true } } },
       }),
       prisma.cycleAcademicSummary.findMany({
-        where: { cycleId, ...(schoolId ? { schoolId } : {}), ...(studentId ? { studentId } : {}) },
+        where: { cycleId, schoolId, ...(studentId ? { studentId } : {}) },
         include: { student: { select: { firstName: true, lastName: true, admissionNo: true } } },
       }),
     ]);
