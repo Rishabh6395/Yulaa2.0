@@ -111,6 +111,17 @@ model School {
   lateFeeConfigs           LateFeeConfig[]
   transferCertificates     TransferCertificate[]
   earlyWarningLogs         EarlyWarningLog[]
+  libraryBooks             LibraryBook[]
+  libraryIssues            LibraryIssue[]
+  hostelBlocks             HostelBlock[]
+  hostelRooms              HostelRoom[]
+  hostelAllocations        HostelAllocation[]
+  diaryEntries             DiaryEntry[]
+  staffSalaryConfigs       StaffSalaryConfig[]
+  staffPayrolls            StaffPayroll[]
+  boardExamTrackers        BoardExamTracker[]
+  subjectChatThreads       SubjectChatThread[]
+  riskFlags                RiskFlag[]
 
   @@map("schools")
 }
@@ -205,6 +216,11 @@ model Teacher {
   taughtCourses        Course[]
   skillRatingsGiven    StudentSkillRating[]
   invigilatedEntries   ExamTimetableEntry[]   @relation("ExamInvigilator")
+  libraryIssues        LibraryIssue[]
+  salaryConfig         StaffSalaryConfig?
+  payrolls             StaffPayroll[]
+  subjectChatThreads   SubjectChatThread[]
+  diaryEntries         DiaryEntry[]
 
   @@unique([userId, schoolId])
   @@index([schoolId])
@@ -251,6 +267,11 @@ model Student {
   courseRecommendations      CourseRecommendation[]
   attendancePeriodSummaries  AttendancePeriodSummary[]
   cycleAcademicSummaries     CycleAcademicSummary[]
+  libraryIssues              LibraryIssue[]
+  hostelAllocations          HostelAllocation[]
+  boardExamTrackers          BoardExamTracker[]
+  subjectChatThreads         SubjectChatThread[]
+  riskFlags                  RiskFlag[]
   attendanceRegularizations  AttendanceRegularization[]
   gatePasses                 GatePass[]
   feeConcessions             FeeConcession[]
@@ -316,6 +337,7 @@ model Class {
   examEntries    ExamTimetableEntry[]
   streamMasters  StreamMaster[]
   onlineClasses  OnlineClass[]
+  diaryEntries   DiaryEntry[]
 
   @@unique([schoolId, grade, section, academicYear])
   @@map("classes")
@@ -2599,4 +2621,310 @@ model EarlyWarningLog {
   @@index([schoolId, studentId])
   @@index([cycleId])
   @@map("early_warning_logs")
+}
+
+// ─── Library ──────────────────────────────────────────────────────────────────
+
+model LibraryBook {
+  id              String   @id @default(uuid())
+  schoolId        String   @map("school_id")
+  isbn            String?  @db.VarChar(20)
+  title           String   @db.VarChar(300)
+  author          String?  @db.VarChar(200)
+  publisher       String?  @db.VarChar(200)
+  genre           String?  @db.VarChar(50)
+  subject         String?  @db.VarChar(100)
+  language        String   @default("English") @db.VarChar(30)
+  totalCopies     Int      @default(1) @map("total_copies")
+  availableCopies Int      @default(1) @map("available_copies")
+  location        String?  @db.VarChar(100)  // shelf/rack
+  coverUrl        String?  @map("cover_url")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdById     String   @map("created_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  school  School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  issues  LibraryIssue[]
+
+  @@unique([schoolId, isbn])
+  @@index([schoolId, subject])
+  @@map("library_books")
+}
+
+model LibraryIssue {
+  id          String    @id @default(uuid())
+  schoolId    String    @map("school_id")
+  bookId      String    @map("book_id")
+  studentId   String?   @map("student_id")
+  teacherId   String?   @map("teacher_id")
+  issueDate   DateTime  @map("issue_date") @db.Date
+  dueDate     DateTime  @map("due_date")   @db.Date
+  returnDate  DateTime? @map("return_date") @db.Date
+  fine        Decimal?  @db.Decimal(8, 2)
+  status      String    @default("issued") @db.VarChar(20)  // 'issued' | 'returned' | 'overdue' | 'lost'
+  issuedById  String    @map("issued_by_id")
+  remarks     String?   @db.VarChar(300)
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  school    School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  book      LibraryBook  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  student   Student?     @relation(fields: [studentId], references: [id])
+  teacher   Teacher?     @relation(fields: [teacherId], references: [id])
+
+  @@index([schoolId, status])
+  @@index([bookId])
+  @@index([studentId])
+  @@map("library_issues")
+}
+
+// ─── Hostel / Boarding ────────────────────────────────────────────────────────
+
+model HostelBlock {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  name      String   @db.VarChar(100)
+  gender    String   @db.VarChar(10)   // 'boys' | 'girls' | 'mixed'
+  wardenId  String?  @map("warden_id")
+  capacity  Int      @default(0)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  school School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  rooms  HostelRoom[]
+
+  @@index([schoolId])
+  @@map("hostel_blocks")
+}
+
+model HostelRoom {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  blockId   String   @map("block_id")
+  roomNo    String   @map("room_no") @db.VarChar(20)
+  roomType  String   @default("shared") @map("room_type") @db.VarChar(20)  // 'single' | 'double' | 'shared'
+  capacity  Int      @default(4)
+  floor     Int?
+  amenities String?  @db.VarChar(300)  // CSV: wifi, ac, attached_bath
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  school      School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  block       HostelBlock        @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  allocations HostelAllocation[]
+
+  @@unique([blockId, roomNo])
+  @@index([schoolId])
+  @@map("hostel_rooms")
+}
+
+model HostelAllocation {
+  id           String    @id @default(uuid())
+  schoolId     String    @map("school_id")
+  studentId    String    @map("student_id")
+  roomId       String    @map("room_id")
+  bedNo        String?   @map("bed_no") @db.VarChar(10)
+  academicYear String    @map("academic_year") @db.VarChar(9)
+  joinDate     DateTime  @map("join_date") @db.Date
+  leaveDate    DateTime? @map("leave_date") @db.Date
+  mealPlan     String?   @map("meal_plan") @db.VarChar(20)  // 'veg' | 'non_veg' | 'jain'
+  status       String    @default("active") @db.VarChar(20)  // 'active' | 'vacated' | 'transferred'
+  createdById  String    @map("created_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  school  School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  room    HostelRoom @relation(fields: [roomId], references: [id])
+
+  @@unique([studentId, academicYear])
+  @@index([schoolId, roomId])
+  @@map("hostel_allocations")
+}
+
+// ─── School Diary / Circular ──────────────────────────────────────────────────
+
+model DiaryEntry {
+  id              String   @id @default(uuid())
+  schoolId        String   @map("school_id")
+  classId         String   @map("class_id")
+  teacherId       String   @map("teacher_id")
+  date            DateTime @db.Date
+  subject         String?  @db.VarChar(100)
+  content         String   @db.Text
+  homeworkDetails String?  @map("homework_details") @db.Text
+  attachments     Json?    // [{url, name, type}]
+  isPublished     Boolean  @default(true) @map("is_published")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+
+  @@index([schoolId, classId, date])
+  @@index([teacherId])
+  @@map("diary_entries")
+}
+
+// ─── Staff HRMS ───────────────────────────────────────────────────────────────
+
+model StaffSalaryConfig {
+  id               String   @id @default(uuid())
+  schoolId         String   @map("school_id")
+  teacherId        String   @unique @map("teacher_id")
+  basic            Decimal  @db.Decimal(10, 2)
+  hra              Decimal  @default(0) @db.Decimal(10, 2)
+  da               Decimal  @default(0) @db.Decimal(10, 2)
+  ta               Decimal  @default(0) @db.Decimal(10, 2)
+  otherAllowances  Decimal  @default(0) @map("other_allowances") @db.Decimal(10, 2)
+  pfPercent        Decimal  @default(12) @map("pf_percent") @db.Decimal(5, 2)   // employee PF %
+  pfEmployer       Decimal  @default(12) @map("pf_employer") @db.Decimal(5, 2)
+  esiPercent       Decimal  @default(0.75) @map("esi_percent") @db.Decimal(5, 2)
+  esiEmployer      Decimal  @default(3.25) @map("esi_employer") @db.Decimal(5, 2)
+  tdsMonthly       Decimal  @default(0) @map("tds_monthly") @db.Decimal(10, 2)
+  effectiveFrom    DateTime @map("effective_from") @db.Date
+  createdById      String   @map("created_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
+
+  school   School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher  Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  payrolls StaffPayroll[]
+
+  @@index([schoolId])
+  @@map("staff_salary_configs")
+}
+
+model StaffPayroll {
+  id              String    @id @default(uuid())
+  schoolId        String    @map("school_id")
+  teacherId       String    @map("teacher_id")
+  configId        String?   @map("config_id")
+  month           Int       // 1–12
+  year            Int
+  workingDays     Int       @default(0) @map("working_days")
+  presentDays     Int       @default(0) @map("present_days")
+  leaveDays       Int       @default(0) @map("leave_days")
+  lopDays         Decimal   @default(0) @map("lop_days") @db.Decimal(4, 1)  // loss-of-pay
+  basic           Decimal   @db.Decimal(10, 2)
+  hra             Decimal   @default(0) @db.Decimal(10, 2)
+  da              Decimal   @default(0) @db.Decimal(10, 2)
+  ta              Decimal   @default(0) @db.Decimal(10, 2)
+  otherAllowances Decimal   @default(0) @map("other_allowances") @db.Decimal(10, 2)
+  grossSalary     Decimal   @map("gross_salary") @db.Decimal(10, 2)
+  pfEmployee      Decimal   @default(0) @map("pf_employee") @db.Decimal(10, 2)
+  pfEmployer      Decimal   @default(0) @map("pf_employer") @db.Decimal(10, 2)
+  esiEmployee     Decimal   @default(0) @map("esi_employee") @db.Decimal(10, 2)
+  esiEmployer     Decimal   @default(0) @map("esi_employer") @db.Decimal(10, 2)
+  tds             Decimal   @default(0) @db.Decimal(10, 2)
+  otherDeductions Decimal   @default(0) @map("other_deductions") @db.Decimal(10, 2)
+  netSalary       Decimal   @map("net_salary") @db.Decimal(10, 2)
+  status          String    @default("draft") @db.VarChar(20)  // 'draft' | 'approved' | 'paid'
+  paidAt          DateTime? @map("paid_at")
+  paidById        String?   @map("paid_by_id")
+  payslipUrl      String?   @map("payslip_url")
+  remarks         String?   @db.VarChar(300)
+  createdById     String    @map("created_by_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  school  School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher Teacher            @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  config  StaffSalaryConfig? @relation(fields: [configId], references: [id])
+
+  @@unique([teacherId, month, year])
+  @@index([schoolId, month, year])
+  @@map("staff_payrolls")
+}
+
+// ─── Board Exam Tracker ───────────────────────────────────────────────────────
+
+model BoardExamTracker {
+  id                String    @id @default(uuid())
+  schoolId          String    @map("school_id")
+  studentId         String    @map("student_id")
+  classId           String?   @map("class_id")
+  subject           String    @db.VarChar(100)
+  boardExamType     String    @map("board_exam_type") @db.VarChar(20)  // 'class10' | 'class12' | 'entrance'
+  examDate          DateTime? @map("exam_date") @db.Date
+  syllabusCoverage  Int       @default(0) @map("syllabus_coverage")   // 0–100 %
+  practiceTestScore Decimal?  @map("practice_test_score") @db.Decimal(5, 2)
+  targetScore       Decimal?  @map("target_score") @db.Decimal(5, 2)
+  weakTopics        String?   @map("weak_topics") @db.Text   // JSON array
+  strongTopics      String?   @map("strong_topics") @db.Text
+  notes             String?   @db.Text
+  updatedById       String    @map("updated_by_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, subject, boardExamType])
+  @@index([schoolId, boardExamType])
+  @@map("board_exam_trackers")
+}
+
+// ─── Subject Chat (Parent-Teacher on weak subjects) ───────────────────────────
+
+model SubjectChatThread {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  studentId String   @map("student_id")
+  teacherId String   @map("teacher_id")
+  subject   String   @db.VarChar(100)
+  cycleId   String?  @map("cycle_id")
+  status    String   @default("open") @db.VarChar(20)  // 'open' | 'resolved'
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  school   School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student  Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher  Teacher              @relation(fields: [teacherId], references: [id])
+  messages SubjectChatMessage[]
+
+  @@unique([studentId, teacherId, subject, cycleId])
+  @@index([schoolId])
+  @@map("subject_chat_threads")
+}
+
+model SubjectChatMessage {
+  id          String    @id @default(uuid())
+  threadId    String    @map("thread_id")
+  senderId    String    @map("sender_id")
+  senderRole  String    @map("sender_role") @db.VarChar(20)  // 'teacher' | 'parent' | 'student'
+  message     String    @db.Text
+  attachments Json?
+  readAt      DateTime? @map("read_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  thread SubjectChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@map("subject_chat_messages")
+}
+
+// ─── Risk Flag (Predictive Risk Scoring) ─────────────────────────────────────
+
+model RiskFlag {
+  id              String    @id @default(uuid())
+  schoolId        String    @map("school_id")
+  studentId       String    @map("student_id")
+  riskLevel       String    @map("risk_level") @db.VarChar(20)  // 'low' | 'medium' | 'high' | 'critical'
+  riskScore       Int       @map("risk_score")  // 0–100
+  triggers        Json      // [{type, detail}] — e.g. [{type:'attendance', detail:'68%'}]
+  attendancePct   Decimal?  @map("attendance_pct") @db.Decimal(5, 2)
+  decliningExams  Int       @default(0) @map("declining_exams")
+  behaviorScore   Int?      @map("behavior_score")
+  recommendedAction String? @map("recommended_action") @db.VarChar(300)
+  resolvedAt      DateTime? @map("resolved_at")
+  resolvedById    String?   @map("resolved_by_id")
+  computedAt      DateTime  @default(now()) @map("computed_at")
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, riskLevel])
+  @@index([studentId])
+  @@map("risk_flags")
 }
