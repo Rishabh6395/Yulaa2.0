@@ -30,6 +30,7 @@ export async function createApplication(data: CreateApplicationInput, flags: obj
           aadhaarNo:      c.aadhaarNo ?? null,
           classApplying:  c.classApplying,
           previousSchool: c.previousSchool ?? null,
+          photoUrl:       c.photoUrl       ?? null,
         })),
       },
     },

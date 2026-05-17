@@ -28,7 +28,8 @@ export async function createTeacherWithUser(data: CreateTeacherInput & { passwor
       passwordHash: data.passwordHash,
       firstName:    data.firstName,
       lastName:     data.lastName,
-      phone:        data.phone || null,
+      phone:        data.phone     || null,
+      avatarUrl:    data.avatarUrl || null,
       userRoles: {
         create: { roleId: data.roleId, schoolId: data.schoolId, isPrimary: true },
       },

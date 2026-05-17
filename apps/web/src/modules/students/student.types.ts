@@ -18,6 +18,7 @@ export interface CreateStudentInput {
   gender?:     string | null;
   address?:    string | null;
   bloodGroup?: string | null;
+  photoUrl?:   string | null;
 }
 
 export interface UpdateStudentInput {

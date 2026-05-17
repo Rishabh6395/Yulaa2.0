@@ -6,6 +6,7 @@ export interface CreateChildInput {
   aadhaarNo?:     string;
   classApplying:  string;   // e.g. "Grade 5"
   previousSchool?: string;
+  photoUrl?:       string;
 }
 
 export interface CreateApplicationInput {

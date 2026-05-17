@@ -61,6 +61,7 @@ export const FORM_DEFINITIONS: FormDef[] = [
       { id: 'parentOccupation', label: 'Parent Occupation',       type: 'text' },
       { id: 'address',          label: 'Residential Address',     type: 'textarea' },
       { id: 'childName',        label: 'Child Full Name',         type: 'text' },
+      { id: 'childPhoto',       label: 'Child Photo',             type: 'file' },
       { id: 'childDOB',         label: 'Child Date of Birth',     type: 'date' },
       { id: 'childGender',      label: 'Child Gender',            type: 'select', fromMaster: 'gender' },
       { id: 'gradeApplying',    label: 'Grade Applying For',      type: 'select', fromMaster: 'grade' },
@@ -97,6 +98,7 @@ export const FORM_DEFINITIONS: FormDef[] = [
       { id: 'teacher', label: 'Teacher',                  color: ROLE_COLORS.teacher },
     ],
     fields: [
+      { id: 'photo',            label: 'Profile Photo',     type: 'file' },
       { id: 'firstName',        label: 'First Name',        type: 'text' },
       { id: 'lastName',         label: 'Last Name',         type: 'text' },
       { id: 'admissionNo',      label: 'Admission Number',  type: 'text' },
@@ -122,6 +124,7 @@ export const FORM_DEFINITIONS: FormDef[] = [
       { id: 'admin', label: 'School Admin / Principal', color: ROLE_COLORS.admin },
     ],
     fields: [
+      { id: 'photo',         label: 'Profile Photo', type: 'file' },
       { id: 'firstName',    label: 'First Name',    type: 'text' },
       { id: 'lastName',     label: 'Last Name',     type: 'text' },
       { id: 'email',        label: 'Email',         type: 'email' },
@@ -143,6 +146,7 @@ export const FORM_DEFINITIONS: FormDef[] = [
       { id: 'teacher', label: 'Teacher',                  color: ROLE_COLORS.teacher },
     ],
     fields: [
+      { id: 'photo',        label: 'Profile Photo',           type: 'file' },
       { id: 'firstName',    label: 'First Name',              type: 'text' },
       { id: 'lastName',     label: 'Last Name',               type: 'text' },
       { id: 'email',        label: 'Email',                   type: 'email' },

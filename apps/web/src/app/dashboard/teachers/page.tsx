@@ -5,6 +5,7 @@ import Modal from '@/components/ui/Modal';
 import PageError from '@/components/ui/PageError';
 import PageLoader from '@/components/ui/PageLoader';
 import EmptyState from '@/components/ui/EmptyState';
+import PhotoUpload from '@/components/ui/PhotoUpload';
 import { useFormConfig } from '@/hooks/useFormConfig';
 
 export default function TeachersPage() {
@@ -15,7 +16,7 @@ export default function TeachersPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [form, setForm] = useState({ first_name: '', last_name: '', email: '', password: '', phone: '', employee_id: '', qualification: '', joining_date: '' });
+  const [form, setForm] = useState({ first_name: '', last_name: '', email: '', password: '', phone: '', employee_id: '', qualification: '', joining_date: '', avatar_url: '' });
 
   // Bulk upload state
   const [uploadFile, setUploadFile]     = useState<File | null>(null);
@@ -55,7 +56,7 @@ export default function TeachersPage() {
     const data = await res.json();
     if (!res.ok) { setSaveError(data.error || 'Failed to add teacher'); setSaving(false); return; }
     setShowAddModal(false);
-    setForm({ first_name: '', last_name: '', email: '', password: '', phone: '', employee_id: '', qualification: '', joining_date: '' });
+    setForm({ first_name: '', last_name: '', email: '', password: '', phone: '', employee_id: '', qualification: '', joining_date: '', avatar_url: '' });
     fetchTeachers();
     setSaving(false);
   };
@@ -200,6 +201,17 @@ export default function TeachersPage() {
 
       <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add Teacher">
         <form onSubmit={handleAdd} className="space-y-4">
+          {fc.visible('photo') && (
+            <div className="flex justify-center pb-2">
+              <PhotoUpload
+                value={form.avatar_url}
+                onChange={url => setForm({ ...form, avatar_url: url })}
+                label={fc.label('photo')}
+                required={fc.required('photo')}
+                size={96}
+              />
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             {fc.visible('firstName') && (
               <div>
@@ -275,9 +287,13 @@ function TeacherCard({ teacher: t, isAdmin, onToggle }: { teacher: any; isAdmin:
   return (
     <div className={`card p-5 ${!isActive ? 'opacity-60' : ''}`}>
       <div className="flex items-start gap-4">
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold flex-shrink-0 ${isActive ? 'bg-brand-50 text-brand-600' : 'bg-surface-100 text-surface-400'}`}>
-          {t.first_name[0]}{t.last_name[0]}
-        </div>
+        {t.avatar_url ? (
+          <img src={t.avatar_url} alt={`${t.first_name} ${t.last_name}`} className={`w-12 h-12 rounded-xl object-cover flex-shrink-0 ${!isActive ? 'opacity-60' : ''}`} />
+        ) : (
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold flex-shrink-0 ${isActive ? 'bg-brand-50 text-brand-600' : 'bg-surface-100 text-surface-400'}`}>
+            {t.first_name[0]}{t.last_name[0]}
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.first_name} {t.last_name}</h3>

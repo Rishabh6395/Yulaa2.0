@@ -912,6 +912,7 @@ model AdmissionChild {
   classApplying  String?              @map("class_applying") @db.VarChar(30)
   section        String?              @db.VarChar(10)
   previousSchool String?              @map("previous_school") @db.VarChar(200)
+  photoUrl       String?              @map("photo_url")
   studentId      String?              @unique @map("student_id")
   createdAt      DateTime             @default(now()) @map("created_at")
   application    AdmissionApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)

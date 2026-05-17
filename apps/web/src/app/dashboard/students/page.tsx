@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import PageError from '@/components/ui/PageError';
+import PhotoUpload from '@/components/ui/PhotoUpload';
 import { useApi } from '@/hooks/useApi';
 import { useFormConfig } from '@/hooks/useFormConfig';
 
@@ -22,7 +23,7 @@ export default function StudentsPage() {
   const [statusFilter,  setStatusFilter]  = useState('');
   const [classFilter,   setClassFilter]   = useState('');
   const [showAddModal,  setShowAddModal]  = useState(false);
-  const [form,          setForm]          = useState({ admission_no: '', first_name: '', last_name: '', dob: '', gender: '', class_id: '', address: '', parent_name: '', parent_phone: '', parent_email: '' });
+  const [form,          setForm]          = useState({ admission_no: '', first_name: '', last_name: '', dob: '', gender: '', class_id: '', address: '', parent_name: '', parent_phone: '', parent_email: '', photo_url: '' });
   const [saving,        setSaving]        = useState(false);
 
   const [parentTarget, setParentTarget] = useState<{ id: string; name: string } | null>(null);
@@ -75,7 +76,7 @@ export default function StudentsPage() {
       const d = await res.json();
       if (!res.ok) { setSaveError(d.error || 'Failed to add student — please try again.'); return; }
       setShowAddModal(false);
-      setForm({ admission_no: '', first_name: '', last_name: '', dob: '', gender: '', class_id: '', address: '', parent_name: '', parent_phone: '', parent_email: '' });
+      setForm({ admission_no: '', first_name: '', last_name: '', dob: '', gender: '', class_id: '', address: '', parent_name: '', parent_phone: '', parent_email: '', photo_url: '' });
       mutate();
     } catch { setSaveError('Network error — please check your connection and try again.'); }
     finally { setSaving(false); }
@@ -213,9 +214,13 @@ export default function StudentsPage() {
                 <tr key={s.id}>
                   <td>
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 text-xs font-bold">
-                        {s.first_name[0]}{s.last_name[0]}
-                      </div>
+                      {s.photo_url ? (
+                        <img src={s.photo_url} alt={`${s.first_name} ${s.last_name}`} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 text-xs font-bold shrink-0">
+                          {s.first_name[0]}{s.last_name[0]}
+                        </div>
+                      )}
                       <span className="font-medium text-gray-900 dark:text-gray-100">{s.first_name} {s.last_name}</span>
                     </div>
                   </td>
@@ -330,6 +335,17 @@ export default function StudentsPage() {
 
       <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Student">
         <form onSubmit={handleAdd} className="space-y-4">
+          {fc.visible('photo') && (
+            <div className="flex justify-center pb-2">
+              <PhotoUpload
+                value={form.photo_url}
+                onChange={url => setForm({ ...form, photo_url: url })}
+                label={fc.label('photo')}
+                required={fc.required('photo')}
+                size={96}
+              />
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             {fc.visible('firstName') && (
               <div>

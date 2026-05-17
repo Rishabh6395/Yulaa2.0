@@ -6,6 +6,7 @@ import { useApi } from '@/hooks/useApi';
 import { validatePhone } from '@/utils/phone';
 import Modal from '@/components/ui/Modal';
 import PageError from '@/components/ui/PageError';
+import PhotoUpload from '@/components/ui/PhotoUpload';
 
 const STATUS_COLORS: Record<string, string> = {
   submitted:    'badge-warning',
@@ -43,11 +44,11 @@ const FALLBACK_BLOODS  = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
 
 interface ChildEntry {
   name: string; grade: string; dob: string;
-  gender: string; bloodGroup: string; previousSchool: string; medicalNotes: string;
+  gender: string; bloodGroup: string; previousSchool: string; medicalNotes: string; photoUrl: string;
 }
 
 function emptyChild(): ChildEntry {
-  return { name: '', grade: '', dob: '', gender: '', bloodGroup: '', previousSchool: '', medicalNotes: '' };
+  return { name: '', grade: '', dob: '', gender: '', bloodGroup: '', previousSchool: '', medicalNotes: '', photoUrl: '' };
 }
 
 function FieldLabel({ label, req }: { label: string; req: FieldRule }) {
@@ -227,6 +228,7 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
               bloodGroup:     c.bloodGroup     || undefined,
               previousSchool: c.previousSchool || undefined,
               medicalNotes:   c.medicalNotes   || undefined,
+              photoUrl:       c.photoUrl       || undefined,
             };
           }),
         }),
@@ -370,6 +372,16 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
                       </button>
                     )}
                   </div>
+                  {isVisible(fieldRules, 'childPhoto') && (
+                    <div className="flex justify-center pb-2">
+                      <PhotoUpload
+                        value={ch.photoUrl}
+                        onChange={url => updateChild(i, 'photoUrl', url)}
+                        label="Child Photo"
+                        size={80}
+                      />
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-3">
                     {isVisible(fieldRules, 'childName') && (
                       <div className="col-span-2">

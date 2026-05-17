@@ -31,7 +31,7 @@ export async function listTeachers(schoolId: string): Promise<TeacherRow[]> {
 }
 
 export async function createTeacher(schoolId: string, body: Record<string, any>) {
-  const { email, password, first_name, last_name, phone, employee_id, qualification, joining_date } = body;
+  const { email, password, first_name, last_name, phone, employee_id, qualification, joining_date, avatar_url } = body;
 
   if (!email || !password || !first_name || !last_name) {
     throw new AppError('email, password, first_name, and last_name are required');
@@ -54,6 +54,7 @@ export async function createTeacher(schoolId: string, body: Record<string, any>)
     employeeId:    employee_id   || null,
     qualification: qualification || null,
     joiningDate:   joining_date  || null,
+    avatarUrl:     avatar_url    || null,
   });
 
   return newUser.teachers[0];
