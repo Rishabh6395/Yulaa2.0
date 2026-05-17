@@ -32,6 +32,30 @@ interface RatingConfig {
   isDirty:         boolean;
 }
 
+interface EcoRatingConfig {
+  ecoExcellentMin: number;
+  ecoGoodMin:      number;
+  ecoAverageMin:   number;
+  ecoBelowAvgMin:  number;
+  isDirty:         boolean;
+}
+
+interface RatingScaleBand {
+  min:   number;
+  max:   number;
+  label: string;
+  color: string;
+}
+
+interface CompositeConfig {
+  weightAcademic:   number;
+  weightAttendance: number;
+  weightBehavior:   number;
+  weightEco:        number;
+  ratingScale:      RatingScaleBand[];
+  isDirty:          boolean;
+}
+
 interface ExamTypeMaster {
   id: string; name: string; code: string; termOrder?: number; isActive: boolean;
 }
@@ -79,6 +103,23 @@ const DEFAULT_RATING: Record<string, Omit<RatingConfig, 'isDirty'>> = {
   behavior:   { excellentMin: 90, goodMin: 75, averageMin: 60, belowAverageMin: 40, behExcellentMax: 0, behGoodMax: 2, behAverageMax: 5, behBelowAvgMax: 10 },
 };
 
+const DEFAULT_RATING_SCALE: RatingScaleBand[] = [
+  { min: 90, max: 100, label: 'Outstanding',   color: '#22c55e' },
+  { min: 75, max: 89,  label: 'Excellent',     color: '#84cc16' },
+  { min: 60, max: 74,  label: 'Good',          color: '#eab308' },
+  { min: 40, max: 59,  label: 'Average',       color: '#f97316' },
+  { min:  0, max: 39,  label: 'Below Average', color: '#ef4444' },
+];
+
+const DEFAULT_ECO: Omit<EcoRatingConfig, 'isDirty'> = {
+  ecoExcellentMin: 85, ecoGoodMin: 70, ecoAverageMin: 50, ecoBelowAvgMin: 30,
+};
+
+const DEFAULT_COMPOSITE: Omit<CompositeConfig, 'isDirty'> = {
+  weightAcademic: 40, weightAttendance: 30, weightBehavior: 20, weightEco: 10,
+  ratingScale: DEFAULT_RATING_SCALE,
+};
+
 function currentAcademicYear() {
   const y = new Date().getFullYear();
   const m = new Date().getMonth() + 1;
@@ -113,7 +154,9 @@ export default function KpiConfigPage() {
   const [expandedParams, setExpandedParams] = useState<Set<string>>(new Set());
 
   // Rating Logic state
-  const [ratingConfigs, setRatingConfigs] = useState<Record<string, RatingConfig>>({});
+  const [ratingConfigs,    setRatingConfigs]    = useState<Record<string, RatingConfig>>({});
+  const [ecoConfig,        setEcoConfig]        = useState<EcoRatingConfig>({ ...DEFAULT_ECO, isDirty: false });
+  const [compositeConfig,  setCompositeConfig]  = useState<CompositeConfig>({ ...DEFAULT_COMPOSITE, isDirty: false });
 
   // Masters state
   const [examTypes,    setExamTypes]    = useState<ExamTypeMaster[]>([]);
@@ -184,6 +227,28 @@ export default function KpiConfigPage() {
         next[seg.key] = { ...(DEFAULT_RATING[seg.key] as RatingConfig), ...stored, isDirty: false };
       }
       setRatingConfigs(next);
+
+      const ecoCfg = (data.configs ?? []).find((c: any) => c.segment === 'extracurricular');
+      if (ecoCfg) {
+        setEcoConfig({
+          ecoExcellentMin: ecoCfg.ecoExcellentMin ?? DEFAULT_ECO.ecoExcellentMin,
+          ecoGoodMin:      ecoCfg.ecoGoodMin      ?? DEFAULT_ECO.ecoGoodMin,
+          ecoAverageMin:   ecoCfg.ecoAverageMin   ?? DEFAULT_ECO.ecoAverageMin,
+          ecoBelowAvgMin:  ecoCfg.ecoBelowAvgMin  ?? DEFAULT_ECO.ecoBelowAvgMin,
+          isDirty: false,
+        });
+      }
+      const compCfg = (data.configs ?? []).find((c: any) => c.segment === 'composite');
+      if (compCfg) {
+        setCompositeConfig({
+          weightAcademic:   compCfg.weightAcademic   ?? DEFAULT_COMPOSITE.weightAcademic,
+          weightAttendance: compCfg.weightAttendance ?? DEFAULT_COMPOSITE.weightAttendance,
+          weightBehavior:   compCfg.weightBehavior   ?? DEFAULT_COMPOSITE.weightBehavior,
+          weightEco:        compCfg.weightEco        ?? DEFAULT_COMPOSITE.weightEco,
+          ratingScale:      (compCfg.ratingScale as RatingScaleBand[] | null) ?? DEFAULT_RATING_SCALE,
+          isDirty: false,
+        });
+      }
     } catch { /* keep defaults */ }
   }, [schoolId]);
 
@@ -251,10 +316,47 @@ export default function KpiConfigPage() {
     }));
   };
 
+  const updateRatingScaleBand = (i: number, field: keyof RatingScaleBand, value: string | number) => {
+    setCompositeConfig(prev => {
+      const scale = [...prev.ratingScale];
+      scale[i] = { ...scale[i], [field]: value };
+      return { ...prev, ratingScale: scale, isDirty: true };
+    });
+  };
+
   const saveRatings = async () => {
-    const dirty = Object.entries(ratingConfigs)
+    const dirty: any[] = Object.entries(ratingConfigs)
       .filter(([, v]) => v.isDirty)
       .map(([segment, v]) => ({ segment, ...v }));
+
+    if (ecoConfig.isDirty) {
+      dirty.push({
+        segment:         'extracurricular',
+        ecoExcellentMin: ecoConfig.ecoExcellentMin,
+        ecoGoodMin:      ecoConfig.ecoGoodMin,
+        ecoAverageMin:   ecoConfig.ecoAverageMin,
+        ecoBelowAvgMin:  ecoConfig.ecoBelowAvgMin,
+      });
+    }
+
+    if (compositeConfig.isDirty) {
+      const total = compositeConfig.weightAcademic + compositeConfig.weightAttendance +
+                    compositeConfig.weightBehavior  + compositeConfig.weightEco;
+      if (total !== 100) {
+        setMsg(`Composite weights must sum to 100 (current: ${total})`);
+        setTimeout(() => setMsg(''), 3000);
+        return;
+      }
+      dirty.push({
+        segment:          'composite',
+        weightAcademic:   compositeConfig.weightAcademic,
+        weightAttendance: compositeConfig.weightAttendance,
+        weightBehavior:   compositeConfig.weightBehavior,
+        weightEco:        compositeConfig.weightEco,
+        ratingScale:      compositeConfig.ratingScale,
+      });
+    }
+
     if (!dirty.length) return;
     setSaving(true);
     const res = await fetch('/api/super-admin/kpi-rating-config', {
@@ -317,7 +419,8 @@ export default function KpiConfigPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   const dirtyKpiCount    = Object.values(configs).filter(v => v.isDirty).length;
-  const dirtyRatingCount = Object.values(ratingConfigs).filter(v => v.isDirty).length;
+  const dirtyRatingCount = Object.values(ratingConfigs).filter(v => v.isDirty).length
+    + (ecoConfig.isDirty ? 1 : 0) + (compositeConfig.isDirty ? 1 : 0);
 
   const segmentCategoryOrder = activeSegment === 'academic_performance'
     ? ACADEMIC_CATEGORY_ORDER
@@ -561,6 +664,109 @@ export default function KpiConfigPage() {
                 </div>
               );
             })}
+
+            {/* ── ECO (Extracurricular) thresholds ───────────────────────── */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <h3 className="font-medium text-gray-900">Extracurricular (ECO)</h3>
+                <span className="text-xs text-gray-400">Points threshold → rating (higher is better)</span>
+              </div>
+              <div className="p-5 space-y-3">
+                <p className="text-xs text-gray-500 mb-3">Minimum ECO points required for each rating band.</p>
+                {[
+                  { label: 'Excellent',     field: 'ecoExcellentMin', color: 'text-emerald-600' },
+                  { label: 'Good',          field: 'ecoGoodMin',      color: 'text-blue-600' },
+                  { label: 'Average',       field: 'ecoAverageMin',   color: 'text-amber-600' },
+                  { label: 'Below Average', field: 'ecoBelowAvgMin',  color: 'text-orange-600' },
+                ].map(band => (
+                  <div key={band.field} className="flex items-center gap-4">
+                    <span className={`w-28 text-sm font-medium ${band.color}`}>{band.label}</span>
+                    <span className="text-sm text-gray-500">Points ≥</span>
+                    <input
+                      type="number" min={0}
+                      value={(ecoConfig as any)[band.field] ?? 0}
+                      onChange={e => setEcoConfig(prev => ({ ...prev, [band.field]: Number(e.target.value), isDirty: true }))}
+                      className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                ))}
+                <div className="flex items-center gap-4 opacity-60">
+                  <span className="w-28 text-sm font-medium text-red-600">Needs Improvement</span>
+                  <span className="text-sm text-gray-500">Below ecoBelowAvgMin threshold</span>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Composite weights + rating scale ───────────────────────── */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <h3 className="font-medium text-gray-900">Composite Score Weights</h3>
+                {(() => {
+                  const total = compositeConfig.weightAcademic + compositeConfig.weightAttendance + compositeConfig.weightBehavior + compositeConfig.weightEco;
+                  return (
+                    <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${total === 100 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      Total: {total}% {total === 100 ? '✓' : '(must equal 100)'}
+                    </span>
+                  );
+                })()}
+              </div>
+              <div className="p-5 space-y-5">
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Academic',              field: 'weightAcademic' },
+                    { label: 'Attendance',            field: 'weightAttendance' },
+                    { label: 'Behavior',              field: 'weightBehavior' },
+                    { label: 'Extracurricular (ECO)', field: 'weightEco' },
+                  ].map(w => (
+                    <div key={w.field} className="flex items-center gap-3">
+                      <label className="w-40 text-sm text-gray-700">{w.label}</label>
+                      <input
+                        type="number" min={0} max={100}
+                        value={(compositeConfig as any)[w.field] ?? 0}
+                        onChange={e => setCompositeConfig(prev => ({ ...prev, [w.field]: Number(e.target.value), isDirty: true }))}
+                        className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      />
+                      <span className="text-xs text-gray-400">%</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-gray-800 mb-3">Composite Rating Scale</h4>
+                  <div className="grid grid-cols-[60px_12px_60px_1fr_36px] gap-2 items-center text-xs text-gray-500 font-medium mb-1 px-1">
+                    <span>Min</span><span></span><span>Max</span><span>Label</span><span>Color</span>
+                  </div>
+                  <div className="space-y-2">
+                    {compositeConfig.ratingScale.map((band, i) => (
+                      <div key={i} className="grid grid-cols-[60px_12px_60px_1fr_36px] gap-2 items-center">
+                        <input
+                          type="number" min={0} max={100} value={band.min}
+                          onChange={e => updateRatingScaleBand(i, 'min', Number(e.target.value))}
+                          className="text-sm border border-gray-300 rounded px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        />
+                        <span className="text-center text-gray-400">–</span>
+                        <input
+                          type="number" min={0} max={100} value={band.max}
+                          onChange={e => updateRatingScaleBand(i, 'max', Number(e.target.value))}
+                          className="text-sm border border-gray-300 rounded px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        />
+                        <input
+                          value={band.label}
+                          onChange={e => updateRatingScaleBand(i, 'label', e.target.value)}
+                          className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          placeholder="Label"
+                        />
+                        <input
+                          type="color" value={band.color}
+                          onChange={e => updateRatingScaleBand(i, 'color', e.target.value)}
+                          className="w-8 h-8 border border-gray-300 rounded cursor-pointer p-0.5"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
