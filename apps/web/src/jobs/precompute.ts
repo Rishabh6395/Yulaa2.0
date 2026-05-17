@@ -125,10 +125,19 @@ export async function computeTeacherDashboard(userId: string, schoolId: string) 
     where: { classTeacherId: teacher.id, schoolId },
   });
 
+  // Classes where this teacher teaches as subject teacher (via timetable slots)
+  const subjectClassIds = myClass ? [] : await prisma.timetableSlot.findMany({
+    where:  { teacherId: teacher.id, timetable: { schoolId } },
+    select: { timetable: { select: { classId: true } } },
+    distinct: ['timetableId'],
+  }).then((rows) => [...new Set(rows.map((r) => r.timetable.classId))]);
+
   const [totalStudents, todayAttendanceRows, announcements, pendingHomeworkCount, upcomingExamsCount] = await Promise.all([
     myClass
       ? prisma.student.count({ where: { classId: myClass.id } })
-      : prisma.student.count({ where: { schoolId } }),
+      : subjectClassIds.length > 0
+        ? prisma.student.count({ where: { classId: { in: subjectClassIds } } })
+        : 0,
     myClass ? prisma.attendance.findMany({ where: { classId: myClass.id, date: today }, select: { status: true } }) : [],
     prisma.announcement.findMany({
       where: { schoolId }, orderBy: { createdAt: 'desc' }, take: parseInt(process.env.PRECOMPUTE_LIMIT || '5', 10),
@@ -136,8 +145,10 @@ export async function computeTeacherDashboard(userId: string, schoolId: string) 
     }),
     myClass
       ? prisma.homework.count({ where: { classId: myClass.id, submissions: { none: {} } } })
-      : prisma.homework.count({ where: { schoolId } }),
-    prisma.exam.count({ where: { schoolId, examDate: { gte: today } } }),
+      : subjectClassIds.length > 0
+        ? prisma.homework.count({ where: { classId: { in: subjectClassIds }, submissions: { none: {} } } })
+        : Promise.resolve(0),
+    prisma.exam.count({ where: { schoolId, startDate: { gte: today } } }),
   ]);
 
   const present = (todayAttendanceRows as { status: string }[]).filter((a) => a.status === 'present').length;
