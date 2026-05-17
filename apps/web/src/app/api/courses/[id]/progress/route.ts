@@ -8,9 +8,10 @@ import prisma from '@/lib/prisma';
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
 
@@ -20,7 +21,7 @@ export async function PATCH(
 
     // Get enrollment
     const enrollment = await prisma.courseEnrollment.findUnique({
-      where: { courseId_userId: { courseId: params.id, userId: user.id } },
+      where: { courseId_userId: { courseId: id, userId: user.id } },
     });
     if (!enrollment || enrollment.paymentStatus !== 'paid') {
       throw new AppError('Not enrolled in this course');
@@ -44,7 +45,7 @@ export async function PATCH(
     // Compute overall progress
     const [totalLessons, completedLessons] = await Promise.all([
       prisma.courseLesson.count({
-        where: { module: { courseId: params.id } },
+        where: { module: { courseId: id } },
       }),
       prisma.courseProgress.count({
         where: { enrollmentId: enrollment.id, completedAt: { not: null } },
@@ -54,11 +55,11 @@ export async function PATCH(
     const progressPct = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
     const isComplete  = progressPct >= 100;
 
-    const course = await prisma.course.findUnique({ where: { id: params.id }, select: { certificateEnabled: true, title: true } });
+    const course = await prisma.course.findUnique({ where: { id }, select: { certificateEnabled: true, title: true } });
 
     let certificateNo: string | null = null;
     if (isComplete && course?.certificateEnabled && !enrollment.certificateNo) {
-      certificateNo = `CERT-${params.id.slice(0, 6).toUpperCase()}-${user.id.slice(0, 6).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+      certificateNo = `CERT-${id.slice(0, 6).toUpperCase()}-${user.id.slice(0, 6).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
     }
 
     const updated = await prisma.courseEnrollment.update({

@@ -49,10 +49,16 @@ export interface ApplicationListParams {
   skip:      number;
 }
 
+export interface ChecklistItemInput {
+  label:      string;
+  actionRole: string;
+}
+
 export interface WorkflowStepInput {
-  stepOrder:    number;
-  label:        string;
-  approverRole: string;
+  stepOrder:      number;
+  label:          string;
+  approverRole:   string;
+  checklistItems?: ChecklistItemInput[];
 }
 
 export interface CreateWorkflowInput {

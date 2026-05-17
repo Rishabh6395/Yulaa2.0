@@ -864,6 +864,7 @@ model AdmissionWorkflowStep {
   notifyEnabled  Boolean           @default(true)  @map("notify_enabled")
   notifyMessage  String?           @map("notify_message") @db.VarChar(300)
   isFinal        Boolean           @default(false) @map("is_final")
+  checklistItems Json?             @map("checklist_items")
   createdAt      DateTime          @default(now()) @map("created_at")
   workflow       AdmissionWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 

@@ -4,10 +4,16 @@ import { useState, useEffect } from 'react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface ChecklistItem {
+  label:      string;
+  actionRole: string;
+}
+
 interface Step {
-  stepOrder:    number;
-  label:        string;
-  approverRole: string;
+  stepOrder:      number;
+  label:          string;
+  approverRole:   string;
+  checklistItems: ChecklistItem[];
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -19,13 +25,20 @@ const APPROVER_ROLES = [
   { value: 'super_admin',  label: 'Super Admin' },
 ];
 
+const ACTION_ROLES = [
+  { value: 'school_admin', label: 'School Admin' },
+  { value: 'principal',    label: 'Principal' },
+  { value: 'teacher',      label: 'Teacher' },
+  { value: 'parent',       label: 'Parent / Applicant' },
+];
+
 const PRESETS: { id: string; label: string; description: string; steps: Omit<Step, 'stepOrder'>[] }[] = [
   {
     id:          'direct',
     label:       'Direct Approval',
     description: 'School Admin reviews and approves in one step.',
     steps: [
-      { label: 'Admin Review',  approverRole: 'school_admin' },
+      { label: 'Admin Review', approverRole: 'school_admin', checklistItems: [] },
     ],
   },
   {
@@ -33,8 +46,8 @@ const PRESETS: { id: string; label: string; description: string; steps: Omit<Ste
     label:       'Standard (2 Steps)',
     description: 'School Admin reviews, then Principal gives final approval.',
     steps: [
-      { label: 'Admin Review',        approverRole: 'school_admin' },
-      { label: 'Principal Approval',  approverRole: 'principal' },
+      { label: 'Admin Review',       approverRole: 'school_admin', checklistItems: [] },
+      { label: 'Principal Approval', approverRole: 'principal',    checklistItems: [] },
     ],
   },
   {
@@ -42,9 +55,9 @@ const PRESETS: { id: string; label: string; description: string; steps: Omit<Ste
     label:       'Full Review (3 Steps)',
     description: 'Teacher pre-screens, Admin reviews, Principal gives final approval.',
     steps: [
-      { label: 'Teacher Pre-screen',  approverRole: 'teacher' },
-      { label: 'Admin Review',        approverRole: 'school_admin' },
-      { label: 'Principal Approval',  approverRole: 'principal' },
+      { label: 'Teacher Pre-screen', approverRole: 'teacher',      checklistItems: [] },
+      { label: 'Admin Review',       approverRole: 'school_admin', checklistItems: [] },
+      { label: 'Principal Approval', approverRole: 'principal',    checklistItems: [] },
     ],
   },
 ];
@@ -52,7 +65,7 @@ const PRESETS: { id: string; label: string; description: string; steps: Omit<Ste
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function toSteps(raw: Omit<Step, 'stepOrder'>[]): Step[] {
-  return raw.map((s, i) => ({ ...s, stepOrder: i + 1 }));
+  return raw.map((s, i) => ({ ...s, stepOrder: i + 1, checklistItems: s.checklistItems ?? [] }));
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -65,11 +78,12 @@ export default function WorkflowPage() {
   const [saved,         setSaved]         = useState(false);
   const [error,         setError]         = useState('');
   const [existingId,    setExistingId]    = useState<string | null>(null);
+  const [expandedStep,  setExpandedStep]  = useState<number | null>(null);
 
   // Super admin: school picker
-  const [isSuperAdmin,  setIsSuperAdmin]  = useState(false);
-  const [schools,       setSchools]       = useState<{ id: string; name: string }[]>([]);
-  const [schoolId,      setSchoolId]      = useState('');
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [schools,      setSchools]      = useState<{ id: string; name: string }[]>([]);
+  const [schoolId,     setSchoolId]     = useState('');
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') ?? '' : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -110,9 +124,10 @@ export default function WorkflowPage() {
         setExistingId(wf.id ?? null);
         setWorkflowName(wf.name ?? 'Default Workflow');
         const loaded: Step[] = (wf.steps ?? []).map((s: any) => ({
-          stepOrder:    s.stepOrder,
-          label:        s.label,
-          approverRole: s.approverRole,
+          stepOrder:      s.stepOrder,
+          label:          s.label,
+          approverRole:   s.approverRole,
+          checklistItems: (s.checklistItems as ChecklistItem[] | null) ?? [],
         }));
         if (loaded.length > 0) {
           setSteps(loaded);
@@ -126,22 +141,57 @@ export default function WorkflowPage() {
     setSteps(toSteps(preset.steps));
     setActivePreset(preset.id);
     setWorkflowName(preset.label);
+    setExpandedStep(null);
   }
 
   function addStep() {
-    setSteps(s => [...s, { stepOrder: s.length + 1, label: '', approverRole: 'school_admin' }]);
+    setSteps(s => [...s, { stepOrder: s.length + 1, label: '', approverRole: 'school_admin', checklistItems: [] }]);
     setActivePreset('');
   }
 
   function removeStep(i: number) {
     setSteps(s => s.filter((_, idx) => idx !== i).map((st, idx) => ({ ...st, stepOrder: idx + 1 })));
     setActivePreset('');
+    setExpandedStep(null);
   }
 
-  function updateStep(i: number, field: keyof Step, val: string) {
+  function updateStep(i: number, field: keyof Omit<Step, 'checklistItems'>, val: string) {
     setSteps(s => s.map((st, idx) => idx === i ? { ...st, [field]: val } : st));
     setActivePreset('');
   }
+
+  // ── Checklist helpers ─────────────────────────────────────────────────────
+
+  function addChecklistItem(stepIdx: number) {
+    setSteps(s => s.map((st, idx) =>
+      idx === stepIdx
+        ? { ...st, checklistItems: [...st.checklistItems, { label: '', actionRole: 'school_admin' }] }
+        : st,
+    ));
+  }
+
+  function updateChecklistItem(stepIdx: number, itemIdx: number, field: keyof ChecklistItem, val: string) {
+    setSteps(s => s.map((st, idx) =>
+      idx === stepIdx
+        ? {
+            ...st,
+            checklistItems: st.checklistItems.map((it, iIdx) =>
+              iIdx === itemIdx ? { ...it, [field]: val } : it,
+            ),
+          }
+        : st,
+    ));
+  }
+
+  function removeChecklistItem(stepIdx: number, itemIdx: number) {
+    setSteps(s => s.map((st, idx) =>
+      idx === stepIdx
+        ? { ...st, checklistItems: st.checklistItems.filter((_, iIdx) => iIdx !== itemIdx) }
+        : st,
+    ));
+  }
+
+  // ── Save ──────────────────────────────────────────────────────────────────
 
   async function save() {
     if (!schoolId) return setError('Please select a school first.');
@@ -151,7 +201,7 @@ export default function WorkflowPage() {
       const url = isSuperAdmin
         ? `/api/super-admin/schools/${schoolId}/admission-workflow`
         : '/api/admission/workflow';
-      const res  = await fetch(url, {
+      const res = await fetch(url, {
         method: 'POST',
         headers,
         body: JSON.stringify({ name: workflowName, steps }),
@@ -166,13 +216,13 @@ export default function WorkflowPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-2xl">
+    <div className="space-y-6 animate-fade-in max-w-3xl">
 
       {/* Header */}
       <div>
         <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Admission Workflow</h1>
         <p className="text-sm text-surface-400 mt-0.5">
-          Set up who reviews and approves admission applications, step by step.
+          Configure approval steps and per-step checklists for admission applications.
         </p>
       </div>
 
@@ -195,10 +245,7 @@ export default function WorkflowPage() {
         <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Quick Templates</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {PRESETS.map(p => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => applyPreset(p)}
+            <button key={p.id} type="button" onClick={() => applyPreset(p)}
               className={`text-left p-4 rounded-xl border-2 transition-all ${
                 activePreset === p.id
                   ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/30'
@@ -223,7 +270,7 @@ export default function WorkflowPage() {
 
       {/* Step builder */}
       <div className="card p-6 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h2 className="font-semibold text-gray-900 dark:text-gray-100">Approval Steps</h2>
             <p className="text-xs text-surface-400 mt-0.5">
@@ -239,66 +286,157 @@ export default function WorkflowPage() {
         </div>
 
         {/* Steps */}
-        <div className="space-y-2">
-          {steps.map((step, i) => (
-            <div key={i} className="flex items-center gap-3">
-              {/* Step number + connector */}
-              <div className="flex flex-col items-center shrink-0">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                  i === steps.length - 1
-                    ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300'
-                    : 'bg-brand-100 dark:bg-brand-950/50 text-brand-700 dark:text-brand-300'
-                }`}>
-                  {i === steps.length - 1 ? '✓' : i + 1}
-                </div>
-                {i < steps.length - 1 && (
-                  <div className="w-px h-4 bg-surface-200 dark:bg-gray-700" />
-                )}
-              </div>
+        <div className="space-y-3">
+          {steps.map((step, i) => {
+            const isFinal    = i === steps.length - 1;
+            const isExpanded = expandedStep === i;
 
-              {/* Step fields */}
-              <div className="flex-1 flex items-center gap-2">
-                <input
-                  className="input-field flex-1 text-sm"
-                  placeholder="Step name (e.g. Principal Approval)"
-                  value={step.label}
-                  onChange={e => updateStep(i, 'label', e.target.value)}
-                />
-                <select
-                  className="input-field w-40 text-sm shrink-0"
-                  value={step.approverRole}
-                  onChange={e => updateStep(i, 'approverRole', e.target.value)}
-                >
-                  {APPROVER_ROLES.map(r => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
-                  ))}
-                </select>
-                {i === steps.length - 1 && (
-                  <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded-full whitespace-nowrap shrink-0 font-medium">
-                    Final
-                  </span>
-                )}
-                {steps.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeStep(i)}
-                    className="text-surface-300 hover:text-red-500 transition-colors shrink-0 p-1"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                  </button>
+            return (
+              <div key={i} className={`rounded-xl border transition-colors ${
+                isExpanded
+                  ? 'border-brand-200 dark:border-brand-800 bg-brand-50/30 dark:bg-brand-950/10'
+                  : 'border-surface-100 dark:border-gray-700'
+              }`}>
+                {/* Step header row */}
+                <div className="flex items-center gap-3 p-3">
+                  {/* Step number */}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    isFinal
+                      ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300'
+                      : 'bg-brand-100 dark:bg-brand-950/50 text-brand-700 dark:text-brand-300'
+                  }`}>
+                    {isFinal ? '✓' : i + 1}
+                  </div>
+
+                  {/* Step name + approver */}
+                  <div className="flex-1 flex items-center gap-2 flex-wrap">
+                    <input
+                      className="input-field flex-1 min-w-40 text-sm"
+                      placeholder="Step name (e.g. Principal Approval)"
+                      value={step.label}
+                      onChange={e => updateStep(i, 'label', e.target.value)}
+                    />
+                    <select
+                      className="input-field w-40 text-sm shrink-0"
+                      value={step.approverRole}
+                      onChange={e => updateStep(i, 'approverRole', e.target.value)}
+                    >
+                      {APPROVER_ROLES.map(r => (
+                        <option key={r.value} value={r.value}>{r.label}</option>
+                      ))}
+                    </select>
+                    {isFinal && (
+                      <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded-full whitespace-nowrap shrink-0 font-medium">
+                        Final
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Checklist toggle + delete */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedStep(isExpanded ? null : i)}
+                      title={isExpanded ? 'Hide checklist' : 'Show checklist'}
+                      className={`flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg transition-colors ${
+                        isExpanded
+                          ? 'bg-brand-100 dark:bg-brand-950/50 text-brand-700 dark:text-brand-300'
+                          : step.checklistItems.length > 0
+                            ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
+                            : 'text-surface-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/20'
+                      }`}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                      </svg>
+                      {step.checklistItems.length > 0 ? `${step.checklistItems.length} item${step.checklistItems.length > 1 ? 's' : ''}` : 'Checklist'}
+                    </button>
+                    {steps.length > 1 && (
+                      <button type="button" onClick={() => removeStep(i)}
+                        className="text-surface-300 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Checklist panel */}
+                {isExpanded && (
+                  <div className="border-t border-surface-100 dark:border-gray-700/50 px-4 pb-4 pt-3 space-y-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                        </svg>
+                        Checklist — {step.label || `Step ${i + 1}`}
+                      </p>
+                      <p className="text-[10px] text-surface-400">Items the action taker must complete before proceeding</p>
+                    </div>
+
+                    {/* Checklist items */}
+                    {step.checklistItems.length > 0 && (
+                      <div className="space-y-1.5">
+                        {step.checklistItems.map((item, iIdx) => (
+                          <div key={iIdx} className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded border border-surface-300 dark:border-gray-600 shrink-0 flex items-center justify-center">
+                              <div className="w-1.5 h-1.5 rounded-full bg-surface-300 dark:bg-gray-600" />
+                            </div>
+                            <input
+                              className="flex-1 text-sm border border-surface-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                              placeholder="Checklist item (e.g. Verify birth certificate)"
+                              value={item.label}
+                              onChange={e => updateChecklistItem(i, iIdx, 'label', e.target.value)}
+                            />
+                            <select
+                              className="text-xs border border-surface-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-400 shrink-0"
+                              value={item.actionRole}
+                              onChange={e => updateChecklistItem(i, iIdx, 'actionRole', e.target.value)}
+                              title="Who needs to complete this item"
+                            >
+                              {ACTION_ROLES.map(r => (
+                                <option key={r.value} value={r.value}>{r.label}</option>
+                              ))}
+                            </select>
+                            <button type="button"
+                              onClick={() => removeChecklistItem(i, iIdx)}
+                              className="text-surface-300 hover:text-red-500 transition-colors p-1 shrink-0"
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add item button */}
+                    <button type="button"
+                      onClick={() => addChecklistItem(i)}
+                      className="flex items-center gap-1.5 text-xs text-brand-600 dark:text-brand-400 hover:text-brand-700 font-medium transition-colors mt-1"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      Add checklist item
+                    </button>
+
+                    {step.checklistItems.length === 0 && (
+                      <p className="text-[11px] text-surface-300 dark:text-gray-600 italic">
+                        No checklist items yet — add items that must be verified before this step can be approved.
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        <button
-          type="button"
-          onClick={addStep}
-          className="btn-secondary text-sm flex items-center gap-2 w-full justify-center"
-        >
+        <button type="button" onClick={addStep}
+          className="btn-secondary text-sm flex items-center gap-2 w-full justify-center">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
@@ -306,22 +444,19 @@ export default function WorkflowPage() {
         </button>
 
         {/* How it works */}
-        <div className="bg-surface-50 dark:bg-gray-800/50 rounded-xl px-4 py-3 text-sm text-surface-500 space-y-1">
+        <div className="bg-surface-50 dark:bg-gray-800/50 rounded-xl px-4 py-3 space-y-1">
           <p className="font-medium text-gray-700 dark:text-gray-300 text-xs uppercase tracking-wider">How it works</p>
-          <p className="text-xs">A new application starts at Step 1. The assigned reviewer can advance it or reject it.</p>
-          <p className="text-xs">After the <span className="font-medium text-emerald-600 dark:text-emerald-400">final step</span> is approved, the system automatically creates the student record, parent account, and admission invoice.</p>
+          <p className="text-xs text-surface-500">A new application starts at Step 1. The assigned reviewer can advance it or reject it.</p>
+          <p className="text-xs text-surface-500">After the <span className="font-medium text-emerald-600 dark:text-emerald-400">final step</span> is approved, the system automatically creates the student record, parent account, and admission invoice.</p>
+          <p className="text-xs text-surface-500">Checklist items are shown to the action taker on each step — they must verify each item before proceeding.</p>
         </div>
 
         {error && (
           <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-3 py-2 rounded-lg">{error}</p>
         )}
 
-        <button
-          type="button"
-          onClick={save}
-          disabled={saving || !schoolId}
-          className="btn-primary w-full disabled:opacity-50"
-        >
+        <button type="button" onClick={save} disabled={saving || !schoolId}
+          className="btn-primary w-full disabled:opacity-50">
           {saving ? 'Saving…' : saved ? '✓ Workflow Saved!' : existingId ? 'Update Workflow' : 'Save Workflow'}
         </button>
       </div>

@@ -30,14 +30,15 @@ async function resolveOwnership(courseId: string, user: any) {
   return { course, role };
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    await resolveOwnership(params.id, user);
+    await resolveOwnership(id, user);
 
     const modules = await prisma.courseModule.findMany({
-      where: { courseId: params.id },
+      where: { courseId: id },
       orderBy: { sortOrder: 'asc' },
       include: {
         lessons: { orderBy: { sortOrder: 'asc' } },
@@ -47,24 +48,25 @@ export async function GET(request: Request, { params }: { params: { id: string }
   } catch (err) { return handleError(err); }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    await resolveOwnership(params.id, user);
+    await resolveOwnership(id, user);
 
     const { title, description } = await request.json();
     if (!title) throw new AppError('title is required');
 
     const last = await prisma.courseModule.findFirst({
-      where: { courseId: params.id },
+      where: { courseId: id },
       orderBy: { sortOrder: 'desc' },
       select: { sortOrder: true },
     });
 
     const mod = await prisma.courseModule.create({
       data: {
-        courseId:    params.id,
+        courseId:    id,
         title,
         description: description ?? null,
         sortOrder:   (last?.sortOrder ?? 0) + 1,
@@ -74,11 +76,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
   } catch (err) { return handleError(err); }
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    await resolveOwnership(params.id, user);
+    await resolveOwnership(id, user);
 
     const { module_id, title, description, sort_order } = await request.json();
     if (!module_id) throw new AppError('module_id is required');
@@ -95,11 +98,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   } catch (err) { return handleError(err); }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    await resolveOwnership(params.id, user);
+    await resolveOwnership(id, user);
 
     const { module_id } = await request.json();
     if (!module_id) throw new AppError('module_id is required');
