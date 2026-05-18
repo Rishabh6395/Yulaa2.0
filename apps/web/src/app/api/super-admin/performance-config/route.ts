@@ -52,17 +52,16 @@ export async function GET(request: Request) {
       prisma.gradingScheme.findMany({ where: { schoolId }, orderBy: [{ gradeLevel: 'asc' }, { minPct: 'desc' }] }),
       prisma.subjectCatalog.findMany({ where: { schoolId }, orderBy: [{ gradeLevel: 'asc' }, { subject: 'asc' }] }),
       prisma.performanceTemplate.findMany({ where: { isActive: true }, orderBy: { cycleType: 'asc' } }),
-      prisma.ecoPointsMatrix.findMany({ where: { schoolId }, orderBy: { category: 'asc' } }),
+      prisma.ecoPointsMatrix.findMany({ where: { schoolId }, orderBy: [{ level: 'asc' }, { achievement: 'asc' }] }),
     ]);
 
     // Merge KPI definitions with per-school overrides
     const cfgMap = Object.fromEntries(kpiConfigs.map(k => [k.kpiCode, k]));
     const kpiList = KPI_DEFINITIONS.map(def => ({
       ...def,
-      isEnabled:  cfgMap[def.code]?.isEnabled  ?? true,
-      weight:     cfgMap[def.code]?.weight      ?? def.defaultWeight ?? 1,
-      target:     cfgMap[def.code]?.target      ?? def.defaultTarget ?? null,
-      configId:   cfgMap[def.code]?.id          ?? null,
+      isEnabled:   cfgMap[def.code]?.isEnabled   ?? true,
+      targetValue: cfgMap[def.code]?.targetValue  ?? def.defaultTarget ?? null,
+      configId:    cfgMap[def.code]?.id           ?? null,
     }));
 
     // Extract composite weights
