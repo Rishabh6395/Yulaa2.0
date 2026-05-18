@@ -38,6 +38,16 @@
   ],
   "exclude": [
     "node_modules",
-    "src/tests"
+    "src/tests",
+    "check-pw.ts",
+    "check-pw2.ts",
+    "check-roles.ts",
+    "perf-config-test.ts",
+    "query-users.ts",
+    "quick-test.ts",
+    "quick-test2.ts",
+    "reset-pw.ts",
+    "test-all-roles.ts",
+    "verify-models.ts"
   ]
 }
