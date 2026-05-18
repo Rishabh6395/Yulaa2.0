@@ -44,10 +44,11 @@ const FALLBACK_BLOODS  = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
 interface ChildEntry {
   name: string; grade: string; dob: string;
   gender: string; bloodGroup: string; previousSchool: string; medicalNotes: string;
+  aadhaarNo: string; photoUrl: string;
 }
 
 function emptyChild(): ChildEntry {
-  return { name: '', grade: '', dob: '', gender: '', bloodGroup: '', previousSchool: '', medicalNotes: '' };
+  return { name: '', grade: '', dob: '', gender: '', bloodGroup: '', previousSchool: '', medicalNotes: '', aadhaarNo: '', photoUrl: '' };
 }
 
 function FieldLabel({ label, req }: { label: string; req: FieldRule }) {
@@ -218,6 +219,8 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
               bloodGroup:     c.bloodGroup     || undefined,
               previousSchool: c.previousSchool || undefined,
               medicalNotes:   c.medicalNotes   || undefined,
+              aadhaarNo:      c.aadhaarNo      || undefined,
+              photoUrl:       c.photoUrl       || undefined,
             };
           }),
         }),
@@ -413,6 +416,42 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
                         <textarea className="input-field" rows={2} value={ch.medicalNotes} onChange={e => updateChild(i, 'medicalNotes', e.target.value)} placeholder="Any medical conditions or allergies" />
                       </div>
                     )}
+                    <div>
+                      <label className="label">Aadhar Card No <span className="text-surface-400 font-normal">(optional)</span></label>
+                      <input
+                        className="input-field font-mono"
+                        maxLength={12}
+                        pattern="\d{12}"
+                        placeholder="12-digit Aadhar number"
+                        value={ch.aadhaarNo}
+                        onChange={e => updateChild(i, 'aadhaarNo', e.target.value.replace(/\D/g, '').slice(0, 12))}
+                      />
+                      {ch.aadhaarNo && ch.aadhaarNo.length !== 12 && (
+                        <p className="text-xs text-amber-600 mt-1">Must be exactly 12 digits</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="label">Photo of Child <span className="text-surface-400 font-normal">(optional)</span></label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="input-field text-sm py-1.5"
+                        onChange={async e => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const token = localStorage.getItem('token') ?? '';
+                          const fd = new FormData();
+                          fd.append('file', file);
+                          const res = await fetch('/api/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+                          const data = await res.json();
+                          if (data.url) updateChild(i, 'photoUrl', data.url);
+                        }}
+                      />
+                      {ch.photoUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={ch.photoUrl} alt="Child" className="mt-2 h-16 w-16 rounded-lg object-cover border border-surface-200 dark:border-gray-700" />
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

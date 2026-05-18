@@ -4,6 +4,7 @@ export interface CreateChildInput {
   dateOfBirth:    string;   // ISO date "YYYY-MM-DD"
   gender:         string;
   aadhaarNo?:     string;
+  photoUrl?:      string;
   classApplying:  string;   // e.g. "Grade 5"
   previousSchool?: string;
 }

@@ -21,13 +21,14 @@ export async function findAnnouncements(schoolId: string) {
 }
 
 export async function createAnnouncement(data: {
-  schoolId:    string;
-  title:       string;
-  content:     string;
-  targetRoles: string[];
-  priority:    string;
-  expiresAt:   Date | null;
-  createdBy:   string;
+  schoolId:       string;
+  title:          string;
+  content:        string;
+  targetRoles:    string[];
+  targetClassIds: string[];
+  priority:       string;
+  expiresAt:      Date | null;
+  createdBy:      string;
 }) {
   return prisma.announcement.create({ data });
 }

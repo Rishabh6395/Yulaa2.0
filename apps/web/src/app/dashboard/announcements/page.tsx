@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Modal from '@/components/ui/Modal';
 import StarsCard from '@/components/ui/StarsCard';
@@ -35,10 +35,12 @@ function daysLeft(date: string) {
 export default function AnnouncementsPage() {
   const [showAddModal,     setShowAddModal]     = useState(false);
   const [form, setForm]                         = useState({ title: '', message: '', type: 'general', audience: 'all' });
+  const [classIds,         setClassIds]         = useState<string[]>([]);
   const [saving,           setSaving]           = useState(false);
   const [saveError,        setSaveError]        = useState('');
   const [selectedSchoolId, setSelectedSchoolId] = useState('');
   const [deleting,         setDeleting]         = useState<string | null>(null);
+  const [classes,          setClasses]          = useState<{ id: string; grade: string; section: string; name: string }[]>([]);
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -50,6 +52,11 @@ export default function AnnouncementsPage() {
     isSuperAdmin ? '/api/super-admin/schools' : null,
   );
   const schools = schoolsData?.schools ?? [];
+
+  const { data: classesData } = useApi<{ classes: { id: string; grade: string; section: string; name: string }[] }>(
+    isAdmin ? '/api/classes' : null,
+  );
+  useEffect(() => { setClasses(classesData?.classes ?? []); }, [classesData]);
 
   const listUrl = isSuperAdmin && selectedSchoolId
     ? `/api/announcements?schoolId=${selectedSchoolId}`
@@ -67,11 +74,13 @@ export default function AnnouncementsPage() {
     setSaving(true); setSaveError('');
     const payload: any = { ...form };
     if (isSuperAdmin && selectedSchoolId) payload.schoolId = selectedSchoolId;
+    if (form.audience === 'class') payload.class_ids = classIds;
     const res  = await fetch('/api/announcements', { method: 'POST', headers, body: JSON.stringify(payload) });
     const body = await res.json();
     if (res.ok) {
       setShowAddModal(false);
       setForm({ title: '', message: '', type: 'general', audience: 'all' });
+      setClassIds([]);
       mutate();
     } else {
       setSaveError(body.error || 'Failed to publish');
@@ -236,14 +245,36 @@ export default function AnnouncementsPage() {
             </div>
             <div>
               <label className="label">Audience</label>
-              <select className="input-field" value={form.audience} onChange={e => setForm(f => ({...f, audience: e.target.value}))}>
+              <select className="input-field" value={form.audience} onChange={e => { setForm(f => ({...f, audience: e.target.value})); setClassIds([]); }}>
                 <option value="all">All</option>
                 <option value="parent">Parents</option>
                 <option value="teacher">Teachers</option>
                 <option value="student">Students</option>
+                <option value="class">Specific Class(es)</option>
               </select>
             </div>
           </div>
+          {form.audience === 'class' && (
+            <div>
+              <label className="label">Select Classes <span className="text-surface-400 font-normal">(click to toggle)</span></label>
+              {classes.length === 0 ? (
+                <p className="text-sm text-surface-400">No classes found.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
+                  {classes.map(c => {
+                    const selected = classIds.includes(c.id);
+                    return (
+                      <button key={c.id} type="button"
+                        onClick={() => setClassIds(ids => selected ? ids.filter(i => i !== c.id) : [...ids, c.id])}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${selected ? 'bg-brand-500 text-white border-brand-500' : 'border-surface-200 dark:border-gray-700 text-surface-600 dark:text-gray-400 hover:border-brand-300'}`}>
+                        {c.grade}-{c.section}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
           {saveError && (
             <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2">
               {saveError}

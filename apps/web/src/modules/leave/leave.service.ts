@@ -293,15 +293,18 @@ export async function reviewLeaveStep(
 
   const result = await repo.advanceLeaveStep(id, action as 'approved' | 'rejected', reviewerId, leave.currentStep, totalSteps, comment);
 
-  // Deduct from TeacherLeaveBalance when an employee leave is finally approved
+  // Deduct balance + auto-sync attendance when employee leave is finally approved
   if (action === 'approved' && result.status === 'approved' && EMPLOYEE_ROLES.includes(leave.roleCode) && !leave.studentId) {
     const weekoffs = await getSchoolWeekoffs(schoolId);
+    const teacherId = await repo.findTeacherIdByUserId(schoolId, leave.userId);
     const days = await countEffectiveDays(schoolId, leave.startDate, leave.endDate, weekoffs);
-    if (days > 0) {
-      const teacherId = await repo.findTeacherIdByUserId(schoolId, leave.userId);
-      if (teacherId) {
-        const { label: academicYear } = currentAcademicYear();
-        await repo.incrementUsedDays(schoolId, teacherId, leave.leaveType, academicYear, days);
+    if (teacherId && days > 0) {
+      const { label: academicYear } = currentAcademicYear();
+      await repo.incrementUsedDays(schoolId, teacherId, leave.leaveType, academicYear, days);
+      // Sync attendance records so the attendance page reflects approved leave immediately
+      const dates = await getEffectiveDatesInRange(schoolId, leave.startDate, leave.endDate, weekoffs);
+      if (dates.length > 0) {
+        await repo.syncTeacherLeaveToAttendance(schoolId, teacherId, dates, reviewerId);
       }
     }
   }

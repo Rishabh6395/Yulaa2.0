@@ -142,8 +142,19 @@ export async function reopenQuery(userId: string, id: string) {
   const query = await repo.findById(id);
   if (!query) throw new AppError('Query not found', 404);
   if (query.raisedById !== userId) throw new AppError('Only the requester can reopen this query', 403);
-  if (query.status !== 'resolved') throw new AppError('Only resolved queries can be reopened');
+  if (!['resolved', 'closed'].includes(query.status)) throw new AppError('Only resolved or closed queries can be reopened');
   return repo.updateStatus(id, 'open');
+}
+
+export async function closeQuery(userId: string, schoolId: string | null, roleCode: string, id: string) {
+  const query = await repo.findById(id);
+  if (!query) throw new AppError('Query not found', 404);
+  const canClose =
+    query.raisedById === userId ||
+    (roleCode === 'school_admin' && query.schoolId === schoolId) ||
+    roleCode === 'super_admin' || roleCode === 'principal';
+  if (!canClose) throw new AppError('Not authorised to close this query', 403);
+  return repo.updateStatus(id, 'closed');
 }
 
 // SLA policy management (super_admin only)

@@ -52,7 +52,7 @@ export async function GET(request: Request) {
         select: {
           id: true, title: true, subject: true, platform: true, scheduledAt: true,
           durationMinutes: true, status: true, isRecorded: true,
-          meetingLink: true,  // safe — already scoped to student's class + school
+          meetingLink: true, meetingId: true, meetingPassword: true,
           recordingUrl: true,
           teacher: { select: { user: { select: { firstName: true, lastName: true } } } },
         },
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
         select: {
           id: true, title: true, subject: true, platform: true, scheduledAt: true,
           durationMinutes: true, status: true, isRecorded: true,
-          meetingLink: true,
+          meetingLink: true, meetingId: true, meetingPassword: true,
           recordingUrl: true,
           class: { select: { name: true, grade: true, section: true } },
           teacher: { select: { user: { select: { firstName: true, lastName: true } } } },
@@ -156,6 +156,25 @@ export async function POST(request: Request) {
         class: { select: { name: true, grade: true, section: true } },
       },
     });
+
+    // Auto-create an announcement so students and teachers in the class get notified in-app
+    try {
+      const scheduledTime = new Date(scheduled_at).toLocaleString('en-IN', {
+        weekday: 'short', day: 'numeric', month: 'short',
+        hour: '2-digit', minute: '2-digit',
+      });
+      await prisma.announcement.create({
+        data: {
+          schoolId,
+          title:       `Online Class: ${title}`,
+          content:     `A new online class has been scheduled.\n\nSubject: ${subject ?? 'N/A'}\nClass: ${onlineClass.class?.grade}-${onlineClass.class?.section}\nPlatform: ${platform ?? 'meet'}\nTime: ${scheduledTime}\nDuration: ${duration_minutes ?? 45} minutes${meeting_link ? `\nLink: ${meeting_link}` : ''}`,
+          targetRoles: ['student', 'teacher', 'parent'],
+          priority:    'high',
+          createdBy:   user.id,
+          expiresAt:   new Date(new Date(scheduled_at).getTime() + 60 * 60 * 1000), // expires 1h after class
+        },
+      });
+    } catch { /* non-critical — don't fail the class creation */ }
 
     return Response.json({ class: onlineClass }, { status: 201 });
   } catch (err) { return handleError(err); }

@@ -260,14 +260,15 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label className="label">Email address</label>
+              <label className="label">Email / Admission No</label>
               <input
-                type="email"
+                type="text"
                 className="input-field"
-                placeholder="you@school.edu.in"
+                placeholder="you@school.edu.in or Admission No"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="username"
               />
             </div>
 

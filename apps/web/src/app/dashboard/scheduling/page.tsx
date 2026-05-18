@@ -74,12 +74,19 @@ export default function SchedulingPage() {
 
   const fileRef        = useRef<HTMLInputElement>(null);
 
-  // Fetch subjects from stream master when class changes
+  // Fetch subjects from stream master when class changes; fall back to all school subjects
   useEffect(() => {
     if (!selectedClass || !schoolId) { setClassSubjects([]); return; }
     fetch(`/api/masters/streams?classId=${selectedClass}`, { headers: headers(false) })
       .then(r => r.json())
-      .then(d => setClassSubjects((d.streamMasters || []).map((m: any) => m.name)))
+      .then(async d => {
+        const byClass = (d.streamMasters || []).map((m: any) => m.name) as string[];
+        if (byClass.length > 0) { setClassSubjects(byClass); return; }
+        // No subjects for this class — load all school-wide subjects as fallback
+        const d2 = await fetch('/api/masters/streams', { headers: headers(false) }).then(r => r.json()).catch(() => ({}));
+        const all = [...new Set((d2.streamMasters || []).map((m: any) => m.name))] as string[];
+        setClassSubjects(all);
+      })
       .catch(() => setClassSubjects([]));
   }, [selectedClass, schoolId]);
 

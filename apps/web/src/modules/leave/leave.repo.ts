@@ -280,6 +280,25 @@ export async function syncLeaveToAttendance(
   );
 }
 
+export async function syncTeacherLeaveToAttendance(
+  schoolId: string, teacherId: string, dates: Date[], markedBy: string,
+) {
+  return Promise.all(
+    dates.map(async date => {
+      const existing = await prisma.attendance.findFirst({ where: { schoolId, teacherId, date } });
+      if (existing) {
+        return prisma.attendance.update({
+          where: { id: existing.id },
+          data:  { status: 'excused', updatedBy: markedBy, remarks: '__leave__' },
+        });
+      }
+      return prisma.attendance.create({
+        data: { schoolId, teacherId, date, status: 'excused', markedBy, updatedBy: markedBy, remarks: '__leave__' },
+      });
+    })
+  );
+}
+
 export async function findStudentApprovedLeaveDays(
   schoolId: string, studentId: string, yearStart: Date, yearEnd: Date,
 ): Promise<number> {
