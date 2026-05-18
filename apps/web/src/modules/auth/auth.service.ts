@@ -7,7 +7,7 @@ import type { LoginInput, LoginResponse, ChangePasswordInput } from './auth.type
 export async function login({ email, password }: LoginInput): Promise<LoginResponse> {
   if (!email || !password) throw new AppError('Email and password are required');
 
-  const user = await prisma.user.findUnique({
+  const user = await prisma.user.findFirst({
     where: { email: email.toLowerCase().trim(), status: 'active' },
     include: { userRoles: { include: { role: true, school: true } } },
   });

@@ -2,6 +2,7 @@
 import { useParams } from 'next/navigation';
 
 import { useEffect, useState, useCallback } from 'react';
+import { ConfigHelp } from '@/components/ui/ConfigHelp';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -305,15 +306,14 @@ function StageRow({
           </div>
         )}
 
-        <label className="flex items-center gap-1.5 shrink-0 cursor-pointer ml-auto"
-          title="Final stage — triggers downstream actions on completion">
+        <label className="flex items-center gap-1.5 shrink-0 cursor-pointer ml-auto">
           <input
             type="checkbox"
             className="w-4 h-4 rounded accent-emerald-500"
             checked={stage.isFinal}
             onChange={e => onChange('isFinal', e.target.checked)}
           />
-          <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">Final stage</span>
+          <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 whitespace-nowrap flex items-center">Final stage<ConfigHelp text="Mark this stage as final when it represents the last decision point. Reaching a final stage automatically triggers system actions: creating student records, generating receipts, updating leave balances, or notifying parents — depending on the workflow type." /></span>
         </label>
       </div>
 
@@ -511,7 +511,7 @@ export default function WorkflowPage({}) {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Workflow Configuration</h1>
+        <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100 flex items-center">Workflow Configuration<ConfigHelp text="Each workflow is an ordered list of approval stages. The 'Final stage' checkbox marks the last step — reaching it triggers downstream system actions (creating records, sending receipts, notifying parents). Workflows apply to all new requests immediately after saving." /></h1>
         <p className="text-sm text-surface-400 mt-0.5">
           Configure approval stages, initiator roles, and system triggers for each workflow. All workflows sync to school instances.
         </p>

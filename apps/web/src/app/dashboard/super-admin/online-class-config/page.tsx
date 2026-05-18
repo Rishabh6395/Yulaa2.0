@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ConfigHelp } from '@/components/ui/ConfigHelp';
 
 type SchoolConfig = {
   id: string;
@@ -96,7 +97,10 @@ export default function OnlineClassConfigPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="flex items-center justify-between p-3 bg-surface-50 dark:bg-gray-800 rounded-xl">
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Online Classes</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center">
+                      Online Classes
+                      <ConfigHelp text="When enabled, teachers can schedule and conduct live video sessions via the selected platforms. Students and parents see the class schedule and join links on their dashboards." />
+                    </p>
                     <p className="text-xs text-surface-400">Live class sessions via meetings</p>
                   </div>
                   <Toggle
@@ -107,7 +111,10 @@ export default function OnlineClassConfigPage() {
 
                 <div className="flex items-center justify-between p-3 bg-surface-50 dark:bg-gray-800 rounded-xl">
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Course Marketplace</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center">
+                      Course Marketplace
+                      <ConfigHelp text="When enabled, teachers and external providers can publish paid or free courses. Students and parents can browse and enroll. Paid courses require payment gateway setup." />
+                    </p>
                     <p className="text-xs text-surface-400">Paid / free course enrollments</p>
                   </div>
                   <Toggle
@@ -119,7 +126,10 @@ export default function OnlineClassConfigPage() {
 
               {school.online_class_enabled && (
                 <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Allowed Platforms</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                    Allowed Platforms
+                    <ConfigHelp text="Only these video conferencing tools appear as options when a teacher schedules a live class. Select all platforms your school has institutional accounts for. At least one platform must be selected when Online Classes is enabled." />
+                  </p>
                   <div className="flex gap-3 flex-wrap">
                     {ALL_PLATFORMS.map(p => (
                       <label key={p.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all ${school.allowed_platforms.includes(p.id) ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/40' : 'border-surface-200 dark:border-gray-700'}`}>

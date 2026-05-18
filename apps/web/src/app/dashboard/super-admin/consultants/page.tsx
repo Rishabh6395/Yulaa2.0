@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ConfigHelp } from '@/components/ui/ConfigHelp';
 
 type Consultant = {
   id: string;
@@ -183,7 +184,10 @@ export default function SuperAdminConsultantsPage() {
               <input className="input" placeholder="e.g. College Admissions, STEM Careers" value={form.specialization} onChange={e => setForm(f => ({ ...f, specialization: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Session Fee (₹)</label>
+              <label className="label flex items-center">
+                Session Fee (₹)
+                <ConfigHelp text="Base fee per career counseling session in ₹. Schools see this rate when booking sessions. Set to 0 or leave empty for free / in-house consultants." />
+              </label>
               <input type="number" min="0" className="input" placeholder="Leave empty for free" value={form.session_fee} onChange={e => setForm(f => ({ ...f, session_fee: e.target.value }))} />
             </div>
             <div>
@@ -201,11 +205,17 @@ export default function SuperAdminConsultantsPage() {
             <div className="col-span-2 flex items-center gap-6 flex-wrap">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.is_external} onChange={e => setForm(f => ({ ...f, is_external: e.target.checked }))} />
-                <span className="text-sm">External consultant (not exclusive to one school)</span>
+                <span className="text-sm flex items-center">
+                  External consultant (not exclusive to one school)
+                  <ConfigHelp text="Internal consultants are employed by a specific school and only serve that school. External consultants are independent and can serve multiple schools based on their area scope." />
+                </span>
               </label>
               {form.is_external && (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-surface-400">Area scope:</span>
+                  <span className="text-sm text-surface-400 flex items-center">
+                    Area scope:
+                    <ConfigHelp text="Controls which schools can book sessions with this consultant. 'school' = only their assigned school; 'city' = all schools in same city; 'state' = all schools in state; 'national' = any school on the platform." />
+                  </span>
                   <select className="input text-sm py-1 px-2 w-32" value={form.area_scope} onChange={e => setForm(f => ({ ...f, area_scope: e.target.value }))}>
                     {AREA_SCOPES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
@@ -274,8 +284,12 @@ export default function SuperAdminConsultantsPage() {
               <tr>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Consultant</th>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Type</th>
-                <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Area Scope</th>
-                <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Contract</th>
+                <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">
+                  <span className="flex items-center gap-0.5">Area Scope<ConfigHelp text="Controls which schools can discover and book this consultant. Only editable for External consultants." /></span>
+                </th>
+                <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">
+                  <span className="flex items-center gap-0.5">Contract<ConfigHelp text="Shows the most recent contract end date. Consultants with expired contracts cannot log in — their account is automatically deactivated." /></span>
+                </th>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Rating</th>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Status</th>
               </tr>

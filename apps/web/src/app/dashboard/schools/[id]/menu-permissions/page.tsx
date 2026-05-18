@@ -3,6 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { menuItems as allMenuItems, type MenuItem } from '@/lib/menuConfig';
+import { ConfigHelp } from '@/components/ui/ConfigHelp';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -211,8 +212,9 @@ export default function MenuPermissionsPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">
+        <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100 flex items-center">
           Menu Permissions & Sequence
+          <ConfigHelp text="Changes here take effect immediately for all active users with that role — no logout required. Use checkbox to show/hide a menu item; use ↑↓ arrows to set the sidebar order. Group items cannot be hidden — only their children can be hidden individually." />
         </h1>
         <p className="text-sm text-surface-400 mt-0.5">
           Control which menus are visible and set their display order per role. Changes apply immediately.

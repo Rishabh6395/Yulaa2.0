@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 import { FORM_DEFINITIONS, type FieldDef } from '@/lib/formDefinitions';
+import { ConfigHelp } from '@/components/ui/ConfigHelp';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -245,6 +246,7 @@ export default function SuperAdminFormConfigPage() {
         <button
           onClick={pushToAllSchools}
           disabled={syncing}
+          title="Copies the default school's custom fields and form config to all other schools. Existing school-level overrides will NOT be affected."
           className="btn btn-primary flex items-center gap-2"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -303,7 +305,10 @@ export default function SuperAdminFormConfigPage() {
           {/* Standard fields reference */}
           <div className="card p-5 space-y-3">
             <div>
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">{form.label}</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center">
+                {form.label}
+                <ConfigHelp text="Standard fields are built into the system and cannot be removed. You can control their visibility and required status per school via the school-level Form Configuration page." />
+              </h2>
               <p className="text-xs text-surface-400 mt-0.5">Standard built-in fields (read-only)</p>
             </div>
             <div className="space-y-0.5">
@@ -335,11 +340,12 @@ export default function SuperAdminFormConfigPage() {
           <div className="card p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-semibold text-gray-900 dark:text-gray-100">
+                <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center">
                   Custom Fields
                   {allDyn.length > 0 && (
                     <span className="ml-2 text-sm font-normal text-amber-500">{allDyn.length} added</span>
                   )}
+                  <ConfigHelp text="Custom fields appear at the bottom of the form after all standard fields. They are stored per-school and visible only to that school's users. Push to All Schools to make this the default template for new schools." />
                 </h2>
                 <p className="text-xs text-surface-400 mt-0.5">Extra fields added to this form template</p>
               </div>
@@ -457,6 +463,7 @@ export default function SuperAdminFormConfigPage() {
                     <p className="text-xs font-semibold text-brand-700 dark:text-brand-300 flex items-center gap-1.5">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       New Custom Field — {form.label}
+                      <ConfigHelp text="The internal field ID (slot) is auto-generated from the label and cannot be changed after creation. Choose a clear, descriptive label. Fields marked 'file' or 'image' require storage quota — check with your infra team before adding." />
                     </p>
                     <div className="flex flex-wrap gap-2">
                       <input

@@ -204,6 +204,21 @@ model Teacher {
   classId         String?               @map("class_id")
   status          String                @default("active") @db.VarChar(20)
   createdAt       DateTime              @default(now()) @map("created_at")
+  dateOfBirth     DateTime?             @map("date_of_birth") @db.Date
+  gender          String?               @db.VarChar(10)
+  aadhaarNo       String?               @map("aadhaar_no") @db.VarChar(12)
+  panNo           String?               @map("pan_no") @db.VarChar(10)
+  category        String?               @db.VarChar(50)
+  employmentType  String?               @map("employment_type") @db.VarChar(50)
+  designationType String?               @map("designation_type") @db.VarChar(50)
+  teacherCert     String?               @map("teacher_cert") @db.VarChar(50)
+  languagesKnown  String?               @map("languages_known") @db.VarChar(200)
+  pfAccountNo     String?               @map("pf_account_no") @db.VarChar(30)
+  bankAccountNo   String?               @map("bank_account_no") @db.VarChar(30)
+  bankIfsc        String?               @map("bank_ifsc") @db.VarChar(11)
+  ibCertified     Boolean               @default(false) @map("ib_certified")
+  workPermitType  String?               @map("work_permit_type") @db.VarChar(50)
+  passportNo      String?               @map("passport_no") @db.VarChar(20)
   attendance      Attendance[]
   classes         Class[]
   homework        Homework[]
@@ -247,6 +262,26 @@ model Student {
   status              String               @default("active") @db.VarChar(20)
   createdAt           DateTime             @default(now()) @map("created_at")
   aadhaarNo           String?              @map("aadhaar_no") @db.VarChar(12)
+  middleName          String?              @map("middle_name") @db.VarChar(100)
+  rollNo              String?              @map("roll_no") @db.VarChar(30)
+  srNo                String?              @map("sr_no") @db.VarChar(30)
+  category            String?              @db.VarChar(50)
+  religion            String?              @db.VarChar(50)
+  nationality         String?              @db.VarChar(50)
+  motherTongue        String?              @map("mother_tongue") @db.VarChar(50)
+  houseId             String?              @map("house_id") @db.VarChar(100)
+  stream              String?              @db.VarChar(50)
+  admissionCategory   String?              @map("admission_category") @db.VarChar(50)
+  boardingType        String?              @map("boarding_type") @db.VarChar(30)
+  dietType            String?              @map("diet_type") @db.VarChar(30)
+  disabilityType      String?              @map("disability_type") @db.VarChar(50)
+  learningSupport     String?              @map("learning_support") @db.VarChar(50)
+  transportRouteId    String?              @map("transport_route_id") @db.VarChar(100)
+  busStop             String?              @map("bus_stop") @db.VarChar(100)
+  doctorName          String?              @map("doctor_name") @db.VarChar(100)
+  doctorPhone         String?              @map("doctor_phone") @db.VarChar(20)
+  insuranceProvider   String?              @map("insurance_provider") @db.VarChar(100)
+  passportNo          String?              @map("passport_no") @db.VarChar(20)
   admissionChildLink  AdmissionChild?      @relation("CreatedFromAdmission")
   attendance          Attendance[]
   feeInvoices         FeeInvoice[]
@@ -292,6 +327,15 @@ model Parent {
   userId            String             @unique @map("user_id")
   occupation        String?
   createdAt         DateTime           @default(now()) @map("created_at")
+  dateOfBirth       DateTime?          @map("date_of_birth") @db.Date
+  gender            String?            @db.VarChar(10)
+  aadhaarNo         String?            @map("aadhaar_no") @db.VarChar(12)
+  panNo             String?            @map("pan_no") @db.VarChar(10)
+  nationality       String?            @db.VarChar(50)
+  annualIncome      String?            @map("annual_income") @db.VarChar(30)
+  highestEducation  String?            @map("highest_education") @db.VarChar(100)
+  organization      String?            @db.VarChar(100)
+  alternatePhone    String?            @map("alternate_phone") @db.VarChar(20)
   parentStudents    ParentStudent[]
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   queries           StudentQuery[]

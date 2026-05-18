@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { ConfigHelp } from '@/components/ui/ConfigHelp';
 
 // ── types ──────────────────────────────────────────────────────────────────
 interface AttachMeta { name: string; url: string; type: string; size: number }
@@ -432,7 +433,9 @@ export default function SuperAdminQueriesPage() {
       {activeTab === 'sla' && (
         <div className="flex-1 overflow-y-auto p-4">
           <div className="max-w-2xl space-y-4">
-            <p className="text-sm text-surface-500">Configure response and resolution time targets per priority level. These apply globally across all schools.</p>
+            <p className="text-sm text-surface-500">Configure response and resolution time targets per priority level. These apply globally across all schools.
+              <ConfigHelp text="Response SLA = time from ticket creation to first staff reply. Resolution SLA = time to fully resolve the ticket. Tickets that exceed these targets are flagged as overdue in the queries list." />
+            </p>
             {slaLoading ? (
               <div className="text-sm text-surface-400 py-8 text-center">Loading…</div>
             ) : (
@@ -446,7 +449,9 @@ export default function SuperAdminQueriesPage() {
                         <span className="text-sm font-medium text-gray-800 dark:text-gray-200 capitalize">{pr.label}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <label className="text-xs text-surface-400 w-20 shrink-0">Response (h)</label>
+                        <label className="text-xs text-surface-400 w-20 shrink-0 flex items-center">
+                          Response (h)<ConfigHelp text="Hours from ticket creation to the first staff reply. Overdue tickets are highlighted in the query list." />
+                        </label>
                         <input type="number" min={1} max={168}
                           className="input w-20 text-sm"
                           value={slaEdit[p]?.response ?? ''}
@@ -454,7 +459,8 @@ export default function SuperAdminQueriesPage() {
                         />
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <label className="text-xs text-surface-400 w-24 shrink-0">Resolution (h)</label>
+                        <label className="text-xs text-surface-400 w-24 shrink-0 flex items-center">
+                          Resolution (h)<ConfigHelp text="Hours from ticket creation to full resolution and closure. Separate from response time — a ticket can be replied to quickly but take longer to resolve." /></label>
                         <input type="number" min={1} max={720}
                           className="input w-20 text-sm"
                           value={slaEdit[p]?.resolution ?? ''}

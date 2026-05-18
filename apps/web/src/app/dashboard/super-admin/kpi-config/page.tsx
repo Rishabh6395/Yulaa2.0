@@ -5,6 +5,7 @@ import {
   KPI_DEFINITIONS, KPI_CATEGORIES, KPI_SEGMENTS,
   KpiDef, KpiCategory, KpiSegment,
 } from '@/lib/kpiDefinitions';
+import { ConfigHelp } from '@/components/ui/ConfigHelp';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -599,7 +600,10 @@ export default function KpiConfigPage() {
               return (
                 <div key={seg.key} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                   <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                    <h3 className="font-medium text-gray-900">{seg.label}</h3>
+                    <h3 className="font-medium text-gray-900 flex items-center">
+                      {seg.label}
+                      <ConfigHelp text={isBehavior ? "Behavior is scored by incident count — fewer incidents = better rating. Enter the maximum number of negative incidents allowed for each band." : "Students scoring at or above the threshold receive that rating badge. Bands must be in descending order (Excellent > Good > Average > Below Average)."} />
+                    </h3>
                     <span className="text-xs text-gray-400">
                       {isBehavior ? 'Based on negative incident count (lower = better)' : 'Based on percentage score (higher = better)'}
                     </span>
@@ -668,7 +672,10 @@ export default function KpiConfigPage() {
             {/* ── ECO (Extracurricular) thresholds ───────────────────────── */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h3 className="font-medium text-gray-900">Extracurricular (ECO)</h3>
+                <h3 className="font-medium text-gray-900 flex items-center">
+                    Extracurricular (ECO)
+                    <ConfigHelp text="ECO score is normalised from activity points earned. Enter the minimum points required for each rating band. Students below the lowest threshold receive 'Needs Improvement'." />
+                  </h3>
                 <span className="text-xs text-gray-400">Points threshold → rating (higher is better)</span>
               </div>
               <div className="p-5 space-y-3">
@@ -700,7 +707,10 @@ export default function KpiConfigPage() {
             {/* ── Composite weights + rating scale ───────────────────────── */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h3 className="font-medium text-gray-900">Composite Score Weights</h3>
+                <h3 className="font-medium text-gray-900 flex items-center">
+                    Composite Score Weights
+                    <ConfigHelp text="Each segment's percentage contribution to the overall composite KPI score. All four weights must sum to exactly 100%. The composite score is displayed on report cards and the main performance dashboard." />
+                  </h3>
                 {(() => {
                   const total = compositeConfig.weightAcademic + compositeConfig.weightAttendance + compositeConfig.weightBehavior + compositeConfig.weightEco;
                   return (
@@ -732,7 +742,10 @@ export default function KpiConfigPage() {
                 </div>
 
                 <div>
-                  <h4 className="text-sm font-medium text-gray-800 mb-3">Composite Rating Scale</h4>
+                  <h4 className="text-sm font-medium text-gray-800 mb-3 flex items-center">
+                    Composite Rating Scale
+                    <ConfigHelp text="Maps final composite scores (0–100) to named rating bands with colors. Each band needs a min, max, label, and color. Bands should cover 0–100 without gaps. Colors appear on report cards, dashboards, and performance summaries." />
+                  </h4>
                   <div className="grid grid-cols-[60px_12px_60px_1fr_36px] gap-2 items-center text-xs text-gray-500 font-medium mb-1 px-1">
                     <span>Min</span><span></span><span>Max</span><span>Label</span><span>Color</span>
                   </div>
@@ -782,7 +795,10 @@ export default function KpiConfigPage() {
 
             <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
               <div className="px-5 py-4">
-                <h3 className="font-medium text-gray-900 mb-3">Academic Year Pattern</h3>
+                <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                  Academic Year Pattern
+                  <ConfigHelp text="Selects which academic year's KPI data is loaded and saved. Changing this does not delete other years' data — all years are stored separately." />
+                </h3>
                 <div className="flex items-center gap-3">
                   <select
                     value={academicYear}
@@ -807,7 +823,10 @@ export default function KpiConfigPage() {
               </div>
 
               <div className="px-5 py-4">
-                <h3 className="font-medium text-gray-900 mb-2">Passing Criteria</h3>
+                <h3 className="font-medium text-gray-900 mb-2 flex items-center">
+                  Passing Criteria
+                  <ConfigHelp text="The pass/fail threshold is set via the 'pass_percentage' formula parameter in KPI Settings → Academic Performance. Used to show pass/fail badges on report cards and student dashboards." />
+                </h3>
                 <p className="text-sm text-gray-500 mb-3">
                   The pass/fail threshold is configured per exam type via the <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">pass_percentage</code> KPI formula parameter in <strong>KPI Settings → Academic Performance → Student Performance</strong>.
                 </p>
@@ -887,7 +906,9 @@ export default function KpiConfigPage() {
                       <tr>
                         <th className="px-5 py-2 text-left">Name</th>
                         <th className="px-5 py-2 text-left">Code</th>
-                        <th className="px-5 py-2 text-center">Order</th>
+                        <th className="px-5 py-2 text-center">
+                          <span className="inline-flex items-center">Order<ConfigHelp text="Numeric sequence for this exam type (1 = first term, 2 = second, etc.). Controls display order on report cards and dashboards." /></span>
+                        </th>
                         <th className="px-5 py-2 text-center">Active</th>
                       </tr>
                     </thead>
@@ -938,7 +959,10 @@ export default function KpiConfigPage() {
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                   <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                     <div>
-                      <h3 className="font-medium text-gray-900">Grading Scale</h3>
+                      <h3 className="font-medium text-gray-900 flex items-center">
+                        Grading Scale
+                        <ConfigHelp text="Define grade letters (A+, A, B…) with their min and max percentage ranges per exam type. Ranges must be contiguous and cover 0–100% without overlap. Used when entering results and generating report cards." />
+                      </h3>
                       <p className="text-xs text-gray-500 mt-0.5">Grade bands per exam type (A → 90–100%, B → 75–89%…). Used in result entry and report cards.</p>
                     </div>
                     <span className="text-xs text-gray-400">{gradingTypes.length} bands</span>
@@ -1073,9 +1097,9 @@ function CategorySection({
         <div className="border-t border-gray-100">
           <div className="grid grid-cols-[1fr_80px_150px_280px_auto] gap-4 px-5 py-2 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wide">
             <span>KPI</span>
-            <span>Enabled</span>
-            <span>Target</span>
-            <span>Visible to Roles</span>
+            <span className="flex items-center">Enabled<ConfigHelp text="Toggle to include or exclude this KPI from scoring. Disabled KPIs are not computed or shown to any role." /></span>
+            <span className="flex items-center">Target<ConfigHelp text="The expected baseline value a student should achieve. Use '>' for metrics where higher is better (e.g. attendance %) and '<' for metrics where lower is better (e.g. incident count)." /></span>
+            <span className="flex items-center">Visible to Roles<ConfigHelp text="Which roles can see this KPI on their dashboard. Deselect a role to hide this metric from them entirely." /></span>
             <span>Formula</span>
           </div>
 

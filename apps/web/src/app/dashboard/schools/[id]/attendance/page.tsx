@@ -2,6 +2,7 @@
 import { useParams } from 'next/navigation';
 
 import { useState, useEffect } from 'react';
+import { ConfigHelp } from '@/components/ui/ConfigHelp';
 
 // ─── Attendance modes ───────────────────────────────────────────────────────────
 
@@ -177,7 +178,7 @@ export default function AttendanceConfigPage({}) {
 
       {/* ── Student Capture Mode ──────────────────────────────────────────────── */}
       <div className="card p-6 space-y-4">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Student Capture Mode</h2>
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center">Student Capture Mode<ConfigHelp text="Determines how student attendance is recorded. Class-wise shows subject columns per period; Daily Roll-call is one record per day; Card Scan and Face Recognition require hardware integration configured below." /></h2>
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[1,2,3,4].map(i => <div key={i} className="h-24 rounded-xl bg-surface-100 dark:bg-gray-800 animate-pulse"/>)}
@@ -214,7 +215,7 @@ export default function AttendanceConfigPage({}) {
       {/* ── Geo Controls ─────────────────────────────────────────────────────────── */}
       <div className="card p-6 space-y-6">
         <div>
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Geo Controls — Teacher Punch</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center">Geo Controls — Teacher Punch<ConfigHelp text="These controls apply only to teacher punch-in/out, not student attendance. Only one mode can be active at a time — enabling one automatically disables the other." /></h2>
           <p className="text-xs text-surface-400 mt-0.5">Control where teachers can punch in / out from. Only one mode can be active at a time.</p>
         </div>
 
@@ -223,7 +224,7 @@ export default function AttendanceConfigPage({}) {
             checked={geoTagging}
             onChange={handleGeoTagging}
             label="Geo Tagging (allow from anywhere)"
-            desc="When ON, teachers can punch from any location. No location restriction is applied."
+            desc="When ON, teachers can punch from any location. Coordinates are still captured for audit purposes but no location restriction is applied."
           />
           <Toggle
             checked={geoFencing}
@@ -289,7 +290,7 @@ export default function AttendanceConfigPage({}) {
       {/* ── Integration Settings ──────────────────────────────────────────────── */}
       <div className="card p-6 space-y-6">
         <div>
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Integration Settings</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center">Integration Settings<ConfigHelp text="Hardware integrations allow automated student attendance without teacher input. ID Card Scan uses RFID/barcode readers; Face Recognition uses camera-based AI. Both require an external API endpoint provided by your hardware vendor." /></h2>
           <p className="text-xs text-surface-400 mt-0.5">Configure hardware integrations for automated attendance capture.</p>
         </div>
 
@@ -341,7 +342,7 @@ export default function AttendanceConfigPage({}) {
       {/* ── Attendance Color Codes ───────────────────────────────────────────── */}
       <div className="card p-6 space-y-4">
         <div>
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Attendance Color Codes</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center">Attendance Color Codes<ConfigHelp text="These colors are system-wide and cannot be customized per school. They are applied consistently on all attendance calendars, reports, and teacher dashboards." /></h2>
           <p className="text-xs text-surface-400 mt-0.5">Standard color coding applied across all attendance calendars.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

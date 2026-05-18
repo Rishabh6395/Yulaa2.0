@@ -64,7 +64,7 @@ export async function getUserFromRequest(request: Request): Promise<AuthUser | n
   const decoded = verifyToken(token);
   if (!decoded) return null;
 
-  const user = await prisma.user.findUnique({
+  const user = await prisma.user.findFirst({
     where: { id: decoded.userId, status: 'active' },
     include: {
       userRoles: {
