@@ -466,14 +466,17 @@ export default function StudentsPage() {
                 <label className="label">{fc.label('religion')}{fc.required('religion') && <span className="text-red-500 ml-0.5">*</span>}</label>
                 <select className="input-field" required={fc.required('religion')} disabled={!fc.editable('religion')} value={form.religion} onChange={e => setForm({...form, religion: e.target.value})}>
                   <option value="">Select</option>
-                  {['Hindu','Muslim','Christian','Sikh','Buddhist','Jain','Parsi','Others'].map(o => <option key={o} value={o}>{o}</option>)}
+                  {fc.options('religion', ['Hindu','Muslim','Christian','Sikh','Buddhist','Jain','Parsi','Others']).map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
             )}
             {fc.visible('motherTongue') && (
               <div>
                 <label className="label">{fc.label('motherTongue')}{fc.required('motherTongue') && <span className="text-red-500 ml-0.5">*</span>}</label>
-                <input className="input-field" required={fc.required('motherTongue')} readOnly={!fc.editable('motherTongue')} value={form.mother_tongue} onChange={e => setForm({...form, mother_tongue: e.target.value})}/>
+                <select className="input-field" required={fc.required('motherTongue')} disabled={!fc.editable('motherTongue')} value={form.mother_tongue} onChange={e => setForm({...form, mother_tongue: e.target.value})}>
+                  <option value="">Select</option>
+                  {fc.options('motherTongue', ['Hindi','Bengali','Tamil','Telugu','Marathi','Gujarati','Punjabi','Kannada','Malayalam','Odia','English','Others']).map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
               </div>
             )}
             {fc.visible('nationality') && (
@@ -491,7 +494,7 @@ export default function StudentsPage() {
                 <label className="label">{fc.label('stream')}{fc.required('stream') && <span className="text-red-500 ml-0.5">*</span>}</label>
                 <select className="input-field" required={fc.required('stream')} disabled={!fc.editable('stream')} value={form.stream} onChange={e => setForm({...form, stream: e.target.value})}>
                   <option value="">Select</option>
-                  {['Science','Commerce','Arts','General'].map(o => <option key={o} value={o}>{o}</option>)}
+                  {fc.options('stream', ['Science','Commerce','Arts','General']).map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
             )}
@@ -500,7 +503,7 @@ export default function StudentsPage() {
                 <label className="label">{fc.label('admissionCategory')}{fc.required('admissionCategory') && <span className="text-red-500 ml-0.5">*</span>}</label>
                 <select className="input-field" required={fc.required('admissionCategory')} disabled={!fc.editable('admissionCategory')} value={form.admission_category} onChange={e => setForm({...form, admission_category: e.target.value})}>
                   <option value="">Select</option>
-                  {['Regular','EWS/RTE','Sports','NCC','Minority','Legacy','Staff Ward','Management Quota'].map(o => <option key={o} value={o}>{o}</option>)}
+                  {fc.options('admissionCategory', ['Regular','EWS/RTE','Sports','NCC','Minority','Legacy','Staff Ward','Management Quota']).map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
             )}
@@ -512,7 +515,7 @@ export default function StudentsPage() {
                 <label className="label">{fc.label('boardingType')}{fc.required('boardingType') && <span className="text-red-500 ml-0.5">*</span>}</label>
                 <select className="input-field" required={fc.required('boardingType')} disabled={!fc.editable('boardingType')} value={form.boarding_type} onChange={e => setForm({...form, boarding_type: e.target.value})}>
                   <option value="">Select</option>
-                  {['Day Scholar','Boarder','Weekly Boarder','Day Boarder'].map(o => <option key={o} value={o}>{o}</option>)}
+                  {fc.options('boardingType', ['Day Scholar','Boarder','Weekly Boarder','Day Boarder']).map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
             )}
@@ -521,7 +524,7 @@ export default function StudentsPage() {
                 <label className="label">{fc.label('dietType')}{fc.required('dietType') && <span className="text-red-500 ml-0.5">*</span>}</label>
                 <select className="input-field" required={fc.required('dietType')} disabled={!fc.editable('dietType')} value={form.diet_type} onChange={e => setForm({...form, diet_type: e.target.value})}>
                   <option value="">Select</option>
-                  {['Vegetarian','Non-Vegetarian','Vegan','Halal','Jain','Gluten-Free'].map(o => <option key={o} value={o}>{o}</option>)}
+                  {fc.options('dietType', ['Vegetarian','Non-Vegetarian','Vegan','Halal','Jain','Gluten-Free']).map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
             )}
@@ -532,7 +535,7 @@ export default function StudentsPage() {
               <label className="label">{fc.label('disabilityType')}{fc.required('disabilityType') && <span className="text-red-500 ml-0.5">*</span>}</label>
               <select className="input-field" required={fc.required('disabilityType')} disabled={!fc.editable('disabilityType')} value={form.disability_type} onChange={e => setForm({...form, disability_type: e.target.value})}>
                 <option value="">Select</option>
-                {['None','Visual','Hearing','Physical','Dyslexia','ADHD','Autism','Cerebral Palsy'].map(o => <option key={o} value={o}>{o}</option>)}
+                {fc.options('disabilityType', ['None','Visual','Hearing','Physical','Dyslexia','ADHD','Autism','Cerebral Palsy']).map(o => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
           )}

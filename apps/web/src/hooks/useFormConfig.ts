@@ -67,19 +67,34 @@ export function useFormConfig(formId: string) {
   const systemRole = user.primaryRole ?? '';
   const configRole = SYSTEM_TO_CONFIG_ROLE[systemRole] ?? systemRole;
 
-  const cfgKey   = schoolId ? `/api/form-config?schoolId=${schoolId}&formId=${formId}` : null;
-  const gKey     = schoolId ? `/api/masters/gender?schoolId=${schoolId}` : null;
-  const bgKey    = schoolId ? `/api/masters/blood-groups?schoolId=${schoolId}` : null;
-  const qualKey  = schoolId ? `/api/masters/qualifications?schoolId=${schoolId}` : null;
-  const ctKey    = schoolId ? `/api/masters/content-types?schoolId=${schoolId}&formName=${formId}` : null;
+  const cfgKey      = schoolId ? `/api/form-config?schoolId=${schoolId}&formId=${formId}` : null;
+  const gKey        = schoolId ? `/api/masters/gender?schoolId=${schoolId}` : null;
+  const bgKey       = schoolId ? `/api/masters/blood-groups?schoolId=${schoolId}` : null;
+  const qualKey     = schoolId ? `/api/masters/qualifications?schoolId=${schoolId}` : null;
+  const ctKey       = schoolId ? `/api/masters/content-types?schoolId=${schoolId}&formName=${formId}` : null;
+  const streamKey   = schoolId ? `/api/masters/streams?schoolId=${schoolId}` : null;
+  const religionKey = schoolId ? `/api/masters/custom/religion?schoolId=${schoolId}` : null;
+  const mtKey       = schoolId ? `/api/masters/custom/mother_tongue?schoolId=${schoolId}` : null;
+  const admCatKey   = schoolId ? `/api/masters/custom/admission_category?schoolId=${schoolId}` : null;
+  const boardKey    = schoolId ? `/api/masters/custom/boarding_type?schoolId=${schoolId}` : null;
+  const dietKey     = schoolId ? `/api/masters/custom/diet_type?schoolId=${schoolId}` : null;
+  const disabKey    = schoolId ? `/api/masters/custom/disability_type?schoolId=${schoolId}` : null;
 
-  const swrOpts  = { dedupingInterval: FC_DEDUP, revalidateOnFocus: true, revalidateOnMount: true, keepPreviousData: true };
+  const swrOpts       = { dedupingInterval: FC_DEDUP, revalidateOnFocus: true, revalidateOnMount: true, keepPreviousData: true };
+  const customSwrOpts = { ...swrOpts, shouldRetryOnError: (err: any) => err?.status !== 404 };
 
   const { data: cfgData,           isLoading: cfgLoading, mutate: mutateCfg       } = useSWR<{ configs: Record<string, Record<string, Record<string, any>>> }>(cfgKey, fetcher, swrOpts);
   const { data: genderData,        mutate: mutateGender      } = useSWR<{ genderMasters: { name: string }[] }>(gKey,  fetcher, swrOpts);
   const { data: bloodGroupData,    mutate: mutateBloodGroup  } = useSWR<{ bloodGroupMasters: { name: string }[] }>(bgKey,  fetcher, swrOpts);
   const { data: qualificationData, mutate: mutateQual        } = useSWR<{ qualificationMasters: { name: string }[] }>(qualKey, fetcher, swrOpts);
   const { data: contentTypeData,   mutate: mutateCt          } = useSWR<{ contentTypes: { fieldSlot: string; options: string[]; fieldType: string; label: string }[] }>(ctKey, fetcher, swrOpts);
+  const { data: streamData,        mutate: mutateStream       } = useSWR<{ streamMasters: { name: string }[] }>(streamKey, fetcher, swrOpts);
+  const { data: religionData,      mutate: mutateReligion     } = useSWR<{ masterValues: { name: string }[] }>(religionKey, fetcher, customSwrOpts);
+  const { data: mtData,            mutate: mutateMt           } = useSWR<{ masterValues: { name: string }[] }>(mtKey, fetcher, customSwrOpts);
+  const { data: admCatData,        mutate: mutateAdmCat       } = useSWR<{ masterValues: { name: string }[] }>(admCatKey, fetcher, customSwrOpts);
+  const { data: boardData,         mutate: mutateBoard        } = useSWR<{ masterValues: { name: string }[] }>(boardKey, fetcher, customSwrOpts);
+  const { data: dietData,          mutate: mutateDiet         } = useSWR<{ masterValues: { name: string }[] }>(dietKey, fetcher, customSwrOpts);
+  const { data: disabData,         mutate: mutateDisab        } = useSWR<{ masterValues: { name: string }[] }>(disabKey, fetcher, customSwrOpts);
 
   const rawRules: Record<string, any> = cfgData?.configs?.[formId]?.[configRole] ?? {};
   const rules: Record<string, FieldRule> = Object.fromEntries(
@@ -96,10 +111,17 @@ export function useFormConfig(formId: string) {
   const fields: FieldDef[] = FORM_FIELDS_MAP[formId] ?? [];
 
   const masterOptions: Record<string, string[]> = {
-    gender:        (genderData?.genderMasters        ?? []).map(m => m.name),
-    childGender:   (genderData?.genderMasters        ?? []).map(m => m.name),
-    bloodGroup:    (bloodGroupData?.bloodGroupMasters ?? []).map(m => m.name),
-    qualification: (qualificationData?.qualificationMasters ?? []).map(m => m.name),
+    gender:            (genderData?.genderMasters           ?? []).map(m => m.name),
+    childGender:       (genderData?.genderMasters           ?? []).map(m => m.name),
+    bloodGroup:        (bloodGroupData?.bloodGroupMasters   ?? []).map(m => m.name),
+    qualification:     (qualificationData?.qualificationMasters ?? []).map(m => m.name),
+    stream:            (streamData?.streamMasters           ?? []).map(m => m.name),
+    religion:          (religionData?.masterValues          ?? []).map(v => v.name),
+    motherTongue:      (mtData?.masterValues                ?? []).map(v => v.name),
+    admissionCategory: (admCatData?.masterValues            ?? []).map(v => v.name),
+    boardingType:      (boardData?.masterValues             ?? []).map(v => v.name),
+    dietType:          (dietData?.masterValues              ?? []).map(v => v.name),
+    disabilityType:    (disabData?.masterValues             ?? []).map(v => v.name),
   };
 
   const contentSlotOptions: Record<string, string[]> = {};
@@ -160,11 +182,8 @@ export function useFormConfig(formId: string) {
     rule,
 
     refresh() {
-      mutateCfg();
-      mutateGender();
-      mutateBloodGroup();
-      mutateQual();
-      mutateCt();
+      mutateCfg(); mutateGender(); mutateBloodGroup(); mutateQual(); mutateCt();
+      mutateStream(); mutateReligion(); mutateMt(); mutateAdmCat(); mutateBoard(); mutateDiet(); mutateDisab();
     },
   };
 }
