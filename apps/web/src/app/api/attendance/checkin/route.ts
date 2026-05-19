@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const dateOnly = new Date(today.toISOString().split('T')[0]);
     dateOnly.setUTCHours(0, 0, 0, 0);
     const employee = await prisma.teacher.findFirst({
-      where: { userId: user.id, schoolId: primary.school_id },
+      where: { userId: user.id ?? undefined, schoolId: primary.school_id ?? undefined },
       select: { id: true },
     });
     if (employee) {

@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     }
 
     if (mine && role === 'teacher') {
-      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id }, select: { id: true } });
+      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id ?? undefined }, select: { id: true } });
       if (!teacher) return Response.json({ courses: [] });
       const courses = await prisma.course.findMany({
         where: { teacherId: teacher.id },
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
 
     let teacherId: string | null = null;
     if (role === 'teacher') {
-      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id }, select: { id: true } });
+      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id ?? undefined }, select: { id: true } });
       if (!teacher) throw new ForbiddenError('Teacher profile not found');
       teacherId = teacher.id;
     }
@@ -142,7 +142,7 @@ export async function PATCH(request: Request) {
     if (!existing) throw new AppError('Course not found');
 
     if (role === 'teacher') {
-      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id }, select: { id: true } });
+      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id ?? undefined }, select: { id: true } });
       if (!teacher || existing.teacherId !== teacher.id) throw new ForbiddenError();
     }
 

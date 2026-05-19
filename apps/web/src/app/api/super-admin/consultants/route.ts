@@ -150,7 +150,7 @@ export async function POST(request: Request) {
     }
 
     // Optionally create a contract if school_id and contract_end supplied
-    let contract = null;
+    let contract: any = null;
     if (school_id && contract_end) {
       const contractNo = `CON-${school_id.slice(0, 6).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
       contract = await prisma.consultantContract.create({

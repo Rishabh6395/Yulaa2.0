@@ -1,12 +1,13 @@
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import type { CreateStudentInput, StudentListParams } from './student.types';
 
-export async function countStudents(where: Parameters<typeof prisma.student.count>[0]['where']) {
+export async function countStudents(where: Prisma.StudentWhereInput) {
   return prisma.student.count({ where });
 }
 
 export async function findStudents(params: StudentListParams) {
-  const where: Parameters<typeof prisma.student.findMany>[0]['where'] = {
+  const where: Prisma.StudentWhereInput = {
     schoolId: params.schoolId,
     ...(params.status  && { status:  params.status }),
     ...(params.classId && { classId: params.classId }),

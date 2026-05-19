@@ -100,7 +100,7 @@ export async function POST(request: Request) {
         if (!vendorProfile) {
           await prisma.vendor.create({
             data: {
-              userId:           existingUser.id,
+              userId:           existingUser!.id,
               companyName:      r.company_name.trim(),
               gstNo:            r.gst_no || null,
               address:          r.address || null,

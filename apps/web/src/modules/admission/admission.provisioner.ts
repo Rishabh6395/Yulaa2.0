@@ -76,7 +76,7 @@ export async function provisionApprovedApplication(applicationId: string) {
       const student = await tx.student.create({
         data: {
           schoolId:    app.schoolId,
-          classId:     cls?.id ?? null,
+          classId:     cls?.id ?? undefined,
           admissionNo: admissionNo(app.schoolId),
           firstName:   child.firstName,
           lastName:    child.lastName,

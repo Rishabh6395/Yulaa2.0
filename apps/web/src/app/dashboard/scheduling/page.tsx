@@ -235,7 +235,7 @@ export default function SchedulingPage() {
     if (!schoolId) { setError('No school ID found. Please log out and log in again.'); return; }
     setSaving(true); setError('');
     try {
-      const slots = [];
+      const slots: { dayOfWeek: number; periodNo: number; startTime: string; endTime: string; subject: string; teacherId: string | null }[] = [];
       for (const day of activeDays) {
         for (const period of periods) {
           const data = grid[slotKey(day, period.no)];

@@ -99,7 +99,7 @@ export async function POST(request: Request) {
         if (!consultantProfile) {
           consultantProfile = await prisma.consultant.create({
             data: {
-              userId:           existingUser.id,
+              userId:           existingUser!.id,
               specialization:   r.specialization || null,
               bio:              r.bio || null,
               qualifications:   r.qualifications || null,

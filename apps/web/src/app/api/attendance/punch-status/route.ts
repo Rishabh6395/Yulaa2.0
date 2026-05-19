@@ -7,7 +7,7 @@ export async function GET(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    const schoolId = primary.school_id;
+    const schoolId = primary.school_id ?? '';
 
     const school = await prisma.school.findUnique({
       where: { id: schoolId },
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     dateOnly.setUTCHours(0, 0, 0, 0);
 
     const employee = await prisma.teacher.findFirst({
-      where: { userId: user.id, schoolId },
+      where: { userId: user.id ?? undefined, schoolId },
       select: { id: true },
     });
 

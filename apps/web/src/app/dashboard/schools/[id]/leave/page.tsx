@@ -204,7 +204,7 @@ export default function LeaveConfigPage({}) {
     try {
       const res = await fetch(`/api/super-admin/schools/${schoolId}/leave-config`, {
         method: 'PUT', headers: headers(),
-        body: JSON.stringify({ action: 'upsert_policy', leaveTypeId: ltId, roleCode, ...updated }),
+        body: JSON.stringify({ action: 'upsert_policy', ...updated, leaveTypeId: ltId, roleCode }),
       });
       const data = await res.json();
       if (data.policy) {
