@@ -29,9 +29,10 @@ export async function POST(request: Request) {
       await writeFile(join(dir, safe), buffer);
       return Response.json({ name: file.name, size: file.size, type: file.type, url: `/uploads/queries/${safe}` });
     } catch {
-      // Fallback: inline base64 data URL (serverless-safe, no external storage needed)
-      const url = `data:${file.type};base64,${buffer.toString('base64')}`;
-      return Response.json({ name: file.name, size: file.size, type: file.type, url });
+      return Response.json(
+        { error: 'File storage is not available in this environment. Configure cloud storage to enable uploads.' },
+        { status: 503 }
+      );
     }
   } catch (err) { return handleError(err); }
 }

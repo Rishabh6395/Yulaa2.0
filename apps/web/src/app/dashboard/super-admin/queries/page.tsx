@@ -186,10 +186,15 @@ export default function SuperAdminQueriesPage() {
   // ── reply ──────────────────────────────────────────────────────────────
   async function handleFiles(files: FileList | null) {
     if (!files) return;
+    const token = localStorage.getItem('token');
     for (const f of Array.from(files)) {
       const fd = new FormData(); fd.append('file', f);
       try {
-        const r = await fetch('/api/upload', { method: 'POST', body: fd });
+        const r = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        });
         const d = await r.json();
         if (d.url) setReplyAtts(a => [...a, { name: d.name, url: d.url, type: d.type, size: d.size }]);
       } catch {}

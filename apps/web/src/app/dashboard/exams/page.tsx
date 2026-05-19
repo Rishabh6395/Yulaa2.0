@@ -46,6 +46,7 @@ export default function ExamsPage() {
   const [exams,      setExams]      = useState<Exam[]>([]);
   const [classes,    setClasses]    = useState<ClassItem[]>([]);
   const [loading,    setLoading]    = useState(true);
+  const [loadError,  setLoadError]  = useState('');
   const [classFilter, setClassFilter] = useState('');
   const [tab,        setTab]        = useState<'list' | 'create' | 'results'>('list');
   const [selExam,    setSelExam]    = useState<Exam | null>(null);
@@ -71,10 +72,15 @@ export default function ExamsPage() {
 
   const load = () => {
     setLoading(true);
+    setLoadError('');
     const qs = classFilter ? `?class_id=${classFilter}` : '';
     fetch(`/api/exams${qs}`, { headers: auth })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`Failed to load exams (${r.status})`);
+        return r.json();
+      })
       .then(d => setExams(d.exams ?? []))
+      .catch(e => setLoadError(e.message ?? 'Failed to load exams'))
       .finally(() => setLoading(false));
   };
 
@@ -212,6 +218,12 @@ export default function ExamsPage() {
               {classes.map(c => <option key={c.id} value={c.id}>{c.name || `${c.grade}-${c.section}`}</option>)}
             </select>
           </div>
+
+          {loadError && (
+            <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl text-sm">
+              {loadError}
+            </div>
+          )}
 
           {loading ? (
             <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 card animate-pulse bg-surface-50 dark:bg-gray-800"/>)}</div>

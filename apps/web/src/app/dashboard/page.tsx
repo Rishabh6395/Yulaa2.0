@@ -1008,14 +1008,15 @@ const ALL_KEYS = new Set([
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const [stats,       setStats]       = useState<any>(null);
-  const [feed,        setFeed]        = useState<any>(null);
-  const [role,        setRole]        = useState<string | null>(null);
-  const [userId,      setUserId]      = useState('');
-  const [activeChild, setActiveChild] = useState<any>(null);
-  const [isParent,    setIsParent]    = useState(false);
-  const [allowed,     setAllowed]     = useState<Set<string>>(ALL_KEYS);
-  const [pending,     setPending]     = useState<{ admissions: any[]; leaves: any[] } | null>(null);
+  const [stats,           setStats]           = useState<any>(null);
+  const [feed,            setFeed]            = useState<any>(null);
+  const [role,            setRole]            = useState<string | null>(null);
+  const [userId,          setUserId]          = useState('');
+  const [activeChild,     setActiveChild]     = useState<any>(null);
+  const [isParent,        setIsParent]        = useState(false);
+  const [childrenLoading, setChildrenLoading] = useState(false);
+  const [allowed,         setAllowed]         = useState<Set<string>>(ALL_KEYS);
+  const [pending,         setPending]         = useState<{ admissions: any[]; leaves: any[] } | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -1077,6 +1078,7 @@ export default function DashboardPage() {
         const stored = localStorage.getItem('activeChild');
         const child  = stored ? JSON.parse(stored) : null;
         setActiveChild(child);
+        if (!child) setChildrenLoading(true);
         fetchDashboard(child);
       } else {
         fetchDashboard(null);
@@ -1090,18 +1092,25 @@ export default function DashboardPage() {
     const handler = (e: Event) => {
       const child = (e as CustomEvent).detail;
       setActiveChild(child);
+      setChildrenLoading(false);
       fetchDashboard(child);
     };
     window.addEventListener('activeChildChanged', handler);
     return () => window.removeEventListener('activeChildChanged', handler);
   }, [fetchDashboard]);
 
+  useEffect(() => {
+    const handler = () => setChildrenLoading(false);
+    window.addEventListener('parentChildrenLoaded', handler);
+    return () => window.removeEventListener('parentChildrenLoaded', handler);
+  }, []);
+
   const data = stats ? { ...stats, ...(feed ?? {}) } : null;
 
   if (!stats) return <LoadingSkeleton />;
 
   if (isParent) {
-    if (!activeChild) return <NoChildPrompt />;
+    if (!activeChild) return childrenLoading ? <LoadingSkeleton /> : <NoChildPrompt />;
     const childName = `${activeChild.first_name} ${activeChild.last_name}`;
     return <ParentDashboard data={data || {}} childName={childName} childId={activeChild.id} feedReady={!!feed} allowed={allowed} />;
   }

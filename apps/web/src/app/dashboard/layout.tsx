@@ -24,6 +24,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setUser(parsed);
 
       if (parsed.primaryRole === 'parent') {
+        window.dispatchEvent(new CustomEvent('parentChildrenLoading'));
         fetch('/api/parent/children', { headers: { Authorization: `Bearer ${token}` } })
           .then(r => r.json())
           .then(d => {
@@ -35,21 +36,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             if (stored) {
               try {
                 const storedChild = JSON.parse(stored);
-                selectedChild = kids.find((k: any) => k.id === storedChild.id) || kids[0] || null;
+                selectedChild = kids.find((k: any) => k.id === storedChild.id)
+                             || kids.find((k: any) => k.is_primary_child)
+                             || kids[0]
+                             || null;
               } catch {
-                selectedChild = kids[0] || null;
+                selectedChild = kids.find((k: any) => k.is_primary_child) || kids[0] || null;
               }
             } else if (kids.length > 0) {
-              selectedChild = kids[0];
+              selectedChild = kids.find((k: any) => k.is_primary_child) || kids[0] || null;
             }
             if (selectedChild) {
               setActiveChild(selectedChild);
               localStorage.setItem('activeChild', JSON.stringify(selectedChild));
-              // Dispatch so all pages react to the initial child selection
               window.dispatchEvent(new CustomEvent('activeChildChanged', { detail: selectedChild }));
             }
+            window.dispatchEvent(new CustomEvent('parentChildrenLoaded'));
           })
-          .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[children-fetch]', err); });
+          .catch((err: unknown) => {
+            if (process.env.NODE_ENV === 'development') console.error('[children-fetch]', err);
+            window.dispatchEvent(new CustomEvent('parentChildrenLoaded'));
+          });
       }
     } catch {
       router.push('/login');
