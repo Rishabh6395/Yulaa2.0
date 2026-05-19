@@ -5,7 +5,8 @@ import { sendWelcomeEmail } from '@/services/email.service';
 
 function assertSuperAdmin(user: Awaited<ReturnType<typeof getUserFromRequest>>) {
   if (!user) throw new UnauthorizedError();
-  if (!user.roles.some((r) => r.role_code === 'super_admin')) throw new ForbiddenError();
+  const primary = user.roles.find((r) => r.is_primary) ?? user.roles[0];
+  if (primary.role_code !== 'super_admin') throw new ForbiddenError();
 }
 
 export async function GET(request: Request) {

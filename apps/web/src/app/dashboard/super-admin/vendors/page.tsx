@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ConfigHelp } from '@/components/ui/ConfigHelp';
 
 type Vendor = {
   id: string;
@@ -179,17 +180,26 @@ export default function SuperAdminVendorsPage() {
               <input type="password" className="input" placeholder="Default: Yulaa@2024" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Category *</label>
+              <label className="label flex items-center">
+                Category *
+                <ConfigHelp text="Product/service category shown to schools when browsing the marketplace (Books, Uniforms, Stationery, Lab Equipment, etc.). Used for filtering in the vendor directory." />
+              </label>
               <select required className="input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                 {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
               </select>
             </div>
             <div>
-              <label className="label">GST No.</label>
+              <label className="label flex items-center">
+                GST No.
+                <ConfigHelp text="Mandatory for tax invoice generation. Must be a valid 15-character GSTIN. Leave blank only for exempt vendors. Displayed on vendor invoices sent to schools." />
+              </label>
               <input className="input" value={form.gst_no} onChange={e => setForm(f => ({ ...f, gst_no: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Contract End Date</label>
+              <label className="label flex items-center">
+                Contract End Date
+                <ConfigHelp text="Vendor listing will be automatically deactivated after this date and the vendor cannot log in. Leave blank for permanent / rolling contracts." />
+              </label>
               <input type="date" className="input" value={form.contract_end} onChange={e => setForm(f => ({ ...f, contract_end: e.target.value }))} />
             </div>
             <div className="col-span-2">
@@ -203,11 +213,17 @@ export default function SuperAdminVendorsPage() {
             <div className="col-span-2 flex items-center gap-6 flex-wrap">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.is_external} onChange={e => setForm(f => ({ ...f, is_external: e.target.checked }))} />
-                <span className="text-sm">External vendor (not exclusive to one school)</span>
+                <span className="text-sm flex items-center">
+                  External vendor (not exclusive to one school)
+                  <ConfigHelp text="Internal vendors are managed by one school directly (e.g. in-house bookstore). External vendors are independent suppliers visible to multiple schools based on their area scope." />
+                </span>
               </label>
               {form.is_external && (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-surface-400">Area scope:</span>
+                  <span className="text-sm text-surface-400 flex items-center">
+                    Area scope:
+                    <ConfigHelp text="Controls which schools can see this vendor in their marketplace. 'school' = one school only; 'city' = all schools in same city; 'national' = visible to all schools on the platform." />
+                  </span>
                   <select className="input text-sm py-1 px-2 w-32" value={form.area_scope} onChange={e => setForm(f => ({ ...f, area_scope: e.target.value }))}>
                     {AREA_SCOPES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
@@ -276,8 +292,12 @@ export default function SuperAdminVendorsPage() {
               <tr>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Vendor</th>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Type</th>
-                <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Area Scope</th>
-                <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Contract</th>
+                <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">
+                  <span className="flex items-center gap-0.5">Area Scope<ConfigHelp text="Controls which schools can see this vendor. Only editable for External vendors — Internal vendors are always school-specific." /></span>
+                </th>
+                <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">
+                  <span className="flex items-center gap-0.5">Contract<ConfigHelp text="Contract end date. Vendor account is automatically deactivated after this date." /></span>
+                </th>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Products</th>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Rating</th>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Active</th>

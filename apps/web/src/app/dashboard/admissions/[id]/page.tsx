@@ -291,6 +291,21 @@ export default function ApplicationDetailPage({}) {
         ))
       )}
 
+      {/* Custom field values submitted with the application */}
+      {!editMode && app.customFieldValues && Object.keys(app.customFieldValues).length > 0 && (
+        <div className="card p-5 space-y-3">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100">Additional Information</h3>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            {Object.entries(app.customFieldValues as Record<string, string>).map(([slot, val]) => (
+              <div key={slot}>
+                <p className="text-surface-400 text-xs capitalize">{slot.replace(/_/g, ' ')}</p>
+                <p>{val || '—'}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Save edits button */}
       {editMode && (
         <button onClick={handleSaveEdits} disabled={saving}

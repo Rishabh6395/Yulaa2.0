@@ -56,6 +56,7 @@ export async function createStudent(data: CreateStudentInput) {
       gender:      data.gender     || null,
       address:     data.address    || null,
       bloodGroup:  data.bloodGroup || null,
+      photoUrl:    data.photoUrl   || null,
       status:      'pending',
     },
   });

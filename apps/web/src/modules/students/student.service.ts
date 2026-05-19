@@ -49,7 +49,7 @@ export async function listStudents(schoolId: string, searchParams: URLSearchPara
 export async function createStudent(schoolId: string, body: Record<string, any>) {
   const {
     admission_no, first_name, last_name, dob, gender, class_id, address, blood_group,
-    parent_name, parent_phone, parent_email,
+    parent_name, parent_phone, parent_email, photo_url,
   } = body;
 
   if (!admission_no || !first_name || !last_name) {
@@ -66,6 +66,7 @@ export async function createStudent(schoolId: string, body: Record<string, any>)
     gender:      gender     || null,
     address:     address    || null,
     bloodGroup:  blood_group || null,
+    photoUrl:    photo_url  || null,
   });
 
   if (parent_name?.trim() && parent_phone?.trim()) {

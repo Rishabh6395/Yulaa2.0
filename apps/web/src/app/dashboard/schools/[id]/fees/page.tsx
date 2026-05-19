@@ -3,6 +3,7 @@ import { useParams } from 'next/navigation';
 
 import { useState, useEffect } from 'react';
 import { useApi } from '@/hooks/useApi';
+import { ConfigHelp } from '@/components/ui/ConfigHelp';
 
 const NOTIF_TRIGGERS = [
   { id: 'due_3days', label: '3 days before due date' },
@@ -59,7 +60,7 @@ export default function FeesConfigPage({}) {
 
       {/* Payment Gateway */}
       <div className="card p-6 space-y-5">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Payment Gateway</h2>
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center">Payment Gateway<ConfigHelp text="Credentials are stored securely and used only for this school's fee transactions. Use live keys for production; test keys for UAT. The Webhook Secret validates payment callbacks from the gateway — required for auto-marking fees as paid." /></h2>
         <div className="flex gap-3">
           {['razorpay', 'stripe', 'payu'].map(gw => (
             <button
@@ -90,7 +91,7 @@ export default function FeesConfigPage({}) {
       {/* Fee Types */}
       <div className="card p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Enabled Fee Types</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center">Enabled Fee Types<ConfigHelp text="Only enabled fee types appear when creating fee invoices for this school. Deselect a type to hide it from invoicing without deleting the underlying fee structure." /></h2>
           <span className="text-xs text-surface-400">Sourced from fee structures</span>
         </div>
         {loadingFeeTypes ? (
@@ -120,7 +121,7 @@ export default function FeesConfigPage({}) {
 
       {/* Notification Triggers */}
       <div className="card p-6 space-y-4">
-        <h2 className="font-semibold text-gray-900 dark:text-gray-100">Payment Reminder Notifications</h2>
+        <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center">Payment Reminder Notifications<ConfigHelp text="In-app notifications sent to parents at these trigger points. 'Payment success confirmation' is strongly recommended — it reassures parents that payment was received. All triggers are optional but improve on-time payment rates." /></h2>
         <div className="space-y-3">
           {NOTIF_TRIGGERS.map(n => (
             <label key={n.id} className="flex items-center gap-3 cursor-pointer">

@@ -2,6 +2,7 @@
 import { useParams } from 'next/navigation';
 
 import { useEffect, useRef, useState } from 'react';
+import { ConfigHelp } from '@/components/ui/ConfigHelp';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface ClassItem { id: string; name: string; grade: string; section: string; }
@@ -284,7 +285,7 @@ export default function TimetablePage({}) {
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Timetable Builder</h1>
+          <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100 flex items-center">Timetable Builder<ConfigHelp text="Each class-section has its own independent timetable. Timetable slots sync with attendance — when a teacher marks Class-wise attendance, the system shows the period's subject from this timetable. Proxy Reassign lets admins reassign a teacher's classes to a substitute without editing the base timetable." /></h1>
           <p className="text-sm text-surface-400 mt-0.5">Assign subject-wise teachers per class and section. Each class/section has its own independent timetable.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -494,7 +495,7 @@ export default function TimetablePage({}) {
         <div className="space-y-6 max-w-2xl">
           <div className="card p-6 space-y-4">
             <div>
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Bulk Timetable Upload</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center">Bulk Timetable Upload<ConfigHelp text="Uploading a file replaces ALL existing slots for each class listed in the file. Classes not mentioned in the file are unaffected. Use the Template button to download the correct column format. Teacher IDs must be UUIDs from this school's teacher list." /></h2>
               <p className="text-xs text-surface-400 mt-0.5">Upload an Excel/CSV file to populate timetable slots for multiple classes at once.</p>
             </div>
 
@@ -546,7 +547,7 @@ export default function TimetablePage({}) {
         <div className="space-y-6">
           <div className="card p-6 space-y-4 max-w-2xl">
             <div>
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Proxy Reassignment</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center">Proxy Reassignment<ConfigHelp text="Proxy reassignment is temporary — it does not modify the base timetable. After the end date, slots revert to the original teacher automatically. The substitute sees the reassigned slots highlighted in amber on their timetable. Use this for planned absences like leave or training." /></h2>
               <p className="text-xs text-surface-400 mt-0.5">
                 Act on behalf of a teacher to reassign their classes to a substitute for a date range.
                 Both the original and substitute teacher will see the updated timetable.

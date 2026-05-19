@@ -2,6 +2,7 @@
 import { useParams } from 'next/navigation';
 
 import { useEffect, useRef, useState } from 'react';
+import { ConfigHelp } from '@/components/ui/ConfigHelp';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Tab = 'leave-types' | 'balance-policy' | 'holidays' | 'workflows';
@@ -418,7 +419,7 @@ export default function LeaveConfigPage({}) {
         <div className="space-y-6 max-w-3xl">
           <div className="card p-6 space-y-5">
             <div>
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Leave Type Master</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center">Leave Type Master<ConfigHelp text="Leave types defined here appear in the leave application form. The 'Code' field is an internal identifier (e.g. sick_leave) — it cannot be changed after creation. Leaving 'Applicable To' blank makes the type available to all roles including students." /></h2>
               <p className="text-xs text-surface-400 mt-0.5">Define all leave types used in this school. Assign which roles each type applies to.</p>
             </div>
 
@@ -492,7 +493,7 @@ export default function LeaveConfigPage({}) {
           {/* Carry-Forward Date */}
           <div className="card p-6 space-y-4">
             <div>
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Carry-Forward Settings</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center">Carry-Forward Settings<ConfigHelp text="On the carry-forward date, unused leave balances exceeding the 'Max Carry Days' limit are lapsed. Only the allowed carry amount rolls over to the next year. Set this date before the academic year end (typically March 31 for Indian schools). Run manually if migrating mid-year." /></h2>
               <p className="text-xs text-surface-400 mt-0.5">
                 Set the date on which the carry-forward process runs automatically each year. Unused leaves lapse; only the max allowed carry amount transfers.
               </p>
@@ -539,7 +540,7 @@ export default function LeaveConfigPage({}) {
           {/* Policy matrix */}
           <div className="card p-6 space-y-4">
             <div>
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Leave Balance Policy</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center">Leave Balance Policy<ConfigHelp text="Configure entitlements per leave type per role. 'Days/month' accrues throughout the year; 'Initial balance' is granted at year start. Cells showing N/A mean that leave type is not applicable to that role (set in Leave Type Master above)." /></h2>
               <p className="text-xs text-surface-400 mt-0.5">
                 Set monthly accrual, initial balance, and carry-forward limit per leave type per role. Students have no balance — all leave is approval-only.
               </p>
@@ -649,7 +650,7 @@ export default function LeaveConfigPage({}) {
           {/* Weekly Off Configuration */}
           <div className="card p-6 space-y-4">
             <div>
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">Weekly Off Days</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center">Weekly Off Days<ConfigHelp text="Days marked as weekly off are excluded from attendance counts and leave calculations. Typically Saturday and Sunday for most schools. If your school has alternate Saturdays off, do NOT mark Saturday here — manage it via the holiday calendar instead." /></h2>
               <p className="text-xs text-surface-400 mt-0.5">Mark which days of the week are weekly offs. These reflect across all attendance calendars.</p>
             </div>
             <div className="flex flex-wrap gap-2">

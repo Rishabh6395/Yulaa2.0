@@ -19,8 +19,9 @@ export async function createApplication(data: CreateApplicationInput, flags: obj
       parentUserId:         data.parentUserId ?? undefined,
       residentialAddress:   data.residentialAddress ?? null,
       permanentAddress:     data.permanentAddress ?? null,
-      validationFlags:      flags,
+      validationFlags:  flags,
       riskScore,
+      ...(data.customFieldValues ? { customFieldValues: data.customFieldValues as any } : {}),
       children: {
         create: data.children.map((c) => ({
           firstName:      c.firstName,
@@ -31,6 +32,8 @@ export async function createApplication(data: CreateApplicationInput, flags: obj
           photoUrl:       c.photoUrl       ?? null,
           classApplying:  c.classApplying,
           previousSchool: c.previousSchool ?? null,
+          photoUrl:       c.photoUrl       ?? null,
+          ...(c.customFieldValues ? { customFieldValues: c.customFieldValues as any } : {}),
         })),
       },
     },

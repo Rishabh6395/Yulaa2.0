@@ -362,11 +362,11 @@ function AnnouncementsCard({ announcements }: { announcements: any[] }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{a.title}</p>
-                <p className="text-xs text-surface-400 dark:text-gray-500 mt-0.5 line-clamp-1">{a.message}</p>
+                <p className="text-xs text-surface-400 dark:text-gray-500 mt-0.5 line-clamp-1">{a.content}</p>
               </div>
               <div className="flex-shrink-0 text-right ml-2">
                 <p className="text-[10px] text-surface-400 dark:text-gray-500 whitespace-nowrap">
-                  {new Date(a.published_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  {new Date(a.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                 </p>
                 {a.priority === 'urgent' && (
                   <span className="text-[9px] font-bold text-red-500 dark:text-red-400 uppercase">Urgent</span>

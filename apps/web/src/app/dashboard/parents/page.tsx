@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Modal from '@/components/ui/Modal';
+import PhotoUpload from '@/components/ui/PhotoUpload';
 import { useApi } from '@/hooks/useApi';
 import { useFormConfig } from '@/hooks/useFormConfig';
 
@@ -99,7 +100,7 @@ export default function ParentsPage() {
 
   // Add parent form
   const [form, setForm] = useState({
-    first_name: '', last_name: '', phone: '', email: '', password: '', student_ids: [] as string[],
+    first_name: '', last_name: '', phone: '', email: '', password: '', avatar_url: '', student_ids: [] as string[],
   });
   const [saving, setSaving]   = useState(false);
   const [formError, setFormError] = useState('');
@@ -138,7 +139,7 @@ export default function ParentsPage() {
     const data = await res.json();
     if (!res.ok) { setFormError(data.error || 'Failed to add parent — please try again'); setSaving(false); return; }
     setShowAddModal(false);
-    setForm({ first_name: '', last_name: '', phone: '', email: '', password: '', student_ids: [] });
+    setForm({ first_name: '', last_name: '', phone: '', email: '', password: '', avatar_url: '', student_ids: [] });
     mutate();
     setSaving(false);
   };
@@ -246,9 +247,13 @@ export default function ParentsPage() {
                 <tr key={p.id}>
                   <td>
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-950/50 flex items-center justify-center text-brand-600 dark:text-brand-400 text-xs font-bold flex-shrink-0">
-                        {initials(p.first_name, p.last_name)}
-                      </div>
+                      {p.avatar_url ? (
+                        <img src={p.avatar_url} alt={`${p.first_name} ${p.last_name}`} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-950/50 flex items-center justify-center text-brand-600 dark:text-brand-400 text-xs font-bold flex-shrink-0">
+                          {initials(p.first_name, p.last_name)}
+                        </div>
+                      )}
                       <div>
                         <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{p.first_name} {p.last_name}</p>
                         <p className="text-xs text-surface-400">{p.email?.includes('@noemail.local') ? '' : p.email}</p>
@@ -336,6 +341,18 @@ export default function ParentsPage() {
       <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add Parent / Guardian">
         <form onSubmit={handleAdd} className="space-y-4">
           {formError && <p className="text-sm text-red-600 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{formError}</p>}
+
+          {fc.visible('photo') && (
+            <div className="flex justify-center pb-2">
+              <PhotoUpload
+                value={form.avatar_url}
+                onChange={url => setForm({ ...form, avatar_url: url })}
+                label={fc.label('photo')}
+                required={fc.required('photo')}
+                size={96}
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             {fc.visible('firstName') && (

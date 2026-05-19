@@ -158,6 +158,10 @@ export async function addContentType(schoolId: string, data: {
 export async function patchContentType(id: string, data: {
   label?: string; fieldType?: string; options?: string[]; isActive?: boolean; sortOrder?: number;
 }) { return repo.updateContentType(id, data); }
+export async function deleteContentType(id: string) {
+  if (!id) throw new ConflictError('id is required');
+  return repo.deleteContentType(id);
+}
 
 // ─── Leave types (existing model) ────────────────────────────────────────────
 

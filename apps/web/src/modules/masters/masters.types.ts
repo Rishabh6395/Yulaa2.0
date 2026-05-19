@@ -88,7 +88,7 @@ export interface ContentTypeMasterRow {
   schoolId:  string;
   formName:  string;
   fieldSlot: string;
-  fieldType: 'text' | 'dropdown';
+  fieldType: 'text' | 'email' | 'tel' | 'number' | 'date' | 'textarea' | 'select' | 'dropdown' | 'file' | 'image' | 'checkbox' | string;
   label:     string;
   options:   string[];
   isActive:  boolean;

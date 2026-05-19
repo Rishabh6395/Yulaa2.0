@@ -1,12 +1,13 @@
 export interface CreateChildInput {
-  firstName:      string;
-  lastName:       string;
-  dateOfBirth:    string;   // ISO date "YYYY-MM-DD"
-  gender:         string;
-  aadhaarNo?:     string;
-  photoUrl?:      string;
-  classApplying:  string;   // e.g. "Grade 5"
-  previousSchool?: string;
+  firstName:         string;
+  lastName:          string;
+  dateOfBirth:       string;   // ISO date "YYYY-MM-DD"
+  gender:            string;
+  aadhaarNo?:        string;
+  classApplying:     string;   // e.g. "Grade 5"
+  previousSchool?:   string;
+  photoUrl?:         string;
+  customFieldValues?: Record<string, string>;
 }
 
 export interface CreateApplicationInput {
@@ -19,6 +20,7 @@ export interface CreateApplicationInput {
   residentialAddress?:  string;
   permanentAddress?:    string;
   children:             CreateChildInput[];
+  customFieldValues?:   Record<string, string>;
 }
 
 export interface ValidationFlag {
@@ -50,10 +52,16 @@ export interface ApplicationListParams {
   skip:      number;
 }
 
+export interface ChecklistItemInput {
+  label:      string;
+  actionRole: string;
+}
+
 export interface WorkflowStepInput {
-  stepOrder:    number;
-  label:        string;
-  approverRole: string;
+  stepOrder:      number;
+  label:          string;
+  approverRole:   string;
+  checklistItems?: ChecklistItemInput[];
 }
 
 export interface CreateWorkflowInput {

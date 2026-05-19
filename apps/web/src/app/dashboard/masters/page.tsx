@@ -58,6 +58,53 @@ const MASTER_SECTIONS = [
       { label: 'Product Categories', href: '/dashboard/masters/custom/product_category', icon: 'ShoppingBag', desc: 'Product categories for vendor marketplace' },
     ],
   },
+  {
+    title: 'Student Compliance',
+    items: [
+      { label: 'Category',           href: '/dashboard/masters/custom/category',           icon: 'Users',         desc: 'General, OBC, SC, ST, EWS — used in admission forms and compliance reports' },
+      { label: 'Religion',           href: '/dashboard/masters/custom/religion',           icon: 'BookMarked',    desc: 'Religion options for student profile and admission form' },
+      { label: 'Mother Tongue',      href: '/dashboard/masters/custom/mother_tongue',      icon: 'MessageCircle', desc: 'Language spoken at home — required for board-level reports' },
+      { label: 'Admission Category', href: '/dashboard/masters/custom/admission_category', icon: 'FileText',      desc: 'Regular, EWS/RTE, Sports, Management quota and other admission routes' },
+      { label: 'Boarding Type',      href: '/dashboard/masters/custom/boarding_type',      icon: 'Building',      desc: 'Day Scholar, Boarder, Weekly Boarder — for hostel-enabled schools' },
+      { label: 'Diet Type',          href: '/dashboard/masters/custom/diet_type',          icon: 'Heart',         desc: 'Dietary preferences for hostel and canteen planning' },
+      { label: 'Disability Type',    href: '/dashboard/masters/custom/disability_type',    icon: 'Shield',        desc: 'Visual, Hearing, Dyslexia, ADHD and other special needs categories' },
+      { label: 'Learning Support',   href: '/dashboard/masters/custom/learning_support',   icon: 'Layers',        desc: 'Level of additional support needed — None, Mild, IEP Required' },
+    ],
+  },
+  {
+    title: 'Staff & HR',
+    items: [
+      { label: 'Designation Type',     href: '/dashboard/masters/custom/designation_type', icon: 'GraduationCap',  desc: 'PRT, TGT, PGT, HOD, Counselor and other staff designations' },
+      { label: 'Employment Type',      href: '/dashboard/masters/custom/employment_type',  icon: 'Users',          desc: 'Permanent, Contractual, Guest Faculty, On Deputation' },
+      { label: 'Teacher Certification',href: '/dashboard/masters/custom/teacher_cert',     icon: 'ClipboardCheck', desc: 'B.Ed, CTET, IB Certificate and other teaching qualifications' },
+      { label: 'Visa / Work Permit',   href: '/dashboard/masters/custom/visa_type',        icon: 'Globe',          desc: 'Work Permit, OCI Card — for international staff and student tracking' },
+    ],
+  },
+  {
+    title: 'Fee & Finance',
+    items: [
+      { label: 'Fee Component',    href: '/dashboard/masters/custom/fee_component',    icon: 'BarChart',    desc: 'Tuition, Lab, Sports, Transport and other fee line-item categories' },
+      { label: 'Scholarship Type', href: '/dashboard/masters/custom/scholarship_type', icon: 'Layers',      desc: 'Merit, Sports, EWS, Staff Ward and other concession categories' },
+      { label: 'Income Bracket',   href: '/dashboard/masters/custom/income_bracket',   icon: 'BarChart',    desc: 'Annual family income ranges used for scholarship eligibility' },
+    ],
+  },
+  {
+    title: 'Academic Boards',
+    items: [
+      { label: 'Board',              href: '/dashboard/masters/custom/board',              icon: 'BookMarked',    desc: 'CBSE, ICSE, IB, Cambridge — previous school board for admission tracking' },
+      { label: 'IB Programme',       href: '/dashboard/masters/custom/ib_programme',       icon: 'GraduationCap', desc: 'PYP, MYP, DP, CP — IB programme stages for IB schools' },
+      { label: 'Cambridge Pathway',  href: '/dashboard/masters/custom/cambridge_pathway',  icon: 'BookMarked',    desc: 'Primary, IGCSE, O-Level, A-Level — Cambridge curriculum stages' },
+    ],
+  },
+  {
+    title: 'Infrastructure & Relations',
+    items: [
+      { label: 'House',           href: '/dashboard/masters/custom/house',           icon: 'Building',    desc: 'School houses for inter-house competitions and points system' },
+      { label: 'Transport Stop',  href: '/dashboard/masters/custom/transport_stop',  icon: 'MapPin',      desc: 'Bus stops with estimated pickup times for route management' },
+      { label: 'Relationship',    href: '/dashboard/masters/custom/relationship',    icon: 'Heart',       desc: 'Father, Mother, Guardian — parent-student relationship types' },
+      { label: 'CAS Category',    href: '/dashboard/masters/custom/cas_category',    icon: 'Layers',      desc: 'Creativity, Activity, Service — IB Diploma CAS portfolio categories' },
+    ],
+  },
 ];
 
 const icons: Record<string, React.ReactNode> = {
@@ -78,7 +125,9 @@ const icons: Record<string, React.ReactNode> = {
   FileText:      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
   ListOrdered:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>,
   Layers:        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>,
-  ShoppingBag:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
+  ShoppingBag:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
+  MessageCircle:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+  Shield:          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
 };
 
 function getToken() {
@@ -98,6 +147,8 @@ export default function MastersPage() {
   const [form, setForm]               = useState({ name: '', description: '', formId: '', fieldSlot: '' });
   const [saving, setSaving]           = useState(false);
   const [error, setError]             = useState('');
+  const [seeding, setSeeding]         = useState(false);
+  const [seedResult, setSeedResult]   = useState('');
 
   const loadCustomTypes = () => {
     const qs = schoolId ? `?schoolId=${schoolId}` : '';
@@ -108,6 +159,24 @@ export default function MastersPage() {
   };
 
   useEffect(() => { loadCustomTypes(); }, [schoolId]);
+
+  const handleSeedStandard = async () => {
+    setSeeding(true); setSeedResult('');
+    try {
+      const body: any = {};
+      if (schoolId) body.schoolId = schoolId;
+      const res  = await fetch('/api/masters/seed-standard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { setSeedResult(data.error ?? 'Seed failed'); return; }
+      setSeedResult(`Done — ${data.created} created, ${data.skipped} already existed.`);
+      loadCustomTypes();
+    } catch { setSeedResult('Network error'); }
+    finally { setSeeding(false); }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,13 +211,27 @@ export default function MastersPage() {
             Configure lookup data used across forms and workflows
           </p>
         </div>
-        <button
-          onClick={() => { setShowModal(true); setError(''); }}
-          className="btn-primary flex items-center gap-2"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Add Master
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={handleSeedStandard}
+              disabled={seeding}
+              className="btn-secondary flex items-center gap-2 text-sm"
+              title="Create all 22 standard master types with default values (idempotent)"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+              {seeding ? 'Initializing…' : 'Init Standard Masters'}
+            </button>
+            {seedResult && <span className="text-xs text-emerald-600 dark:text-emerald-400">{seedResult}</span>}
+          </div>
+          <button
+            onClick={() => { setShowModal(true); setError(''); }}
+            className="btn-primary flex items-center gap-2"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Master
+          </button>
+        </div>
       </div>
 
       {/* Built-in master sections */}

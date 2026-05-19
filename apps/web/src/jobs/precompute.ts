@@ -51,6 +51,7 @@ export async function computeAdminDashboard(schoolId: string) {
     totalStudents, approvedStudents, pendingStudents,
     totalTeachers, totalClasses,
     todayAttendanceRows, feeInvoices, recentAnnouncements, recentHomework,
+    appApproved, appPending, appRejected,
   ] = await Promise.all([
     prisma.student.count({ where: { schoolId } }),
     prisma.student.count({ where: { schoolId, status: 'active' } }),
@@ -68,6 +69,9 @@ export async function computeAdminDashboard(schoolId: string) {
       include: { class: true, teacher: { include: { user: true } } },
       orderBy: { createdAt: 'desc' }, take: parseInt(process.env.PRECOMPUTE_LIMIT || '5', 10),
     }),
+    prisma.admissionApplication.count({ where: { schoolId, status: 'approved' } }),
+    prisma.admissionApplication.count({ where: { schoolId, status: { in: ['submitted', 'under_review'] } } }),
+    prisma.admissionApplication.count({ where: { schoolId, status: 'rejected' } }),
   ]);
 
   const present = todayAttendanceRows.filter((a) => a.status === 'present').length;
@@ -87,6 +91,7 @@ export async function computeAdminDashboard(schoolId: string) {
       totalTeachers, totalClasses,
       todayAttendance: { present, absent, late, total, rate: total > 0 ? Math.round((present / total) * 100) : 0 },
       fees: { totalFees: feeTotal, collected: feeCollected, pending: feePending, overdueCount: feeInvoices.filter((i) => i.status === 'overdue').length },
+      admissions: { approved: appApproved, pending: appPending, rejected: appRejected },
     },
     recentAnnouncements,
     recentHomework: recentHomework.map((h) => ({
@@ -120,15 +125,30 @@ export async function computeTeacherDashboard(userId: string, schoolId: string) 
     where: { classTeacherId: teacher.id, schoolId },
   });
 
-  const [totalStudents, todayAttendanceRows, announcements] = await Promise.all([
+  // Classes where this teacher teaches as subject teacher (via timetable slots)
+  const subjectClassIds = myClass ? [] : await prisma.timetableSlot.findMany({
+    where:  { teacherId: teacher.id, timetable: { schoolId } },
+    select: { timetable: { select: { classId: true } } },
+    distinct: ['timetableId'],
+  }).then((rows) => [...new Set(rows.map((r) => r.timetable.classId))]);
+
+  const [totalStudents, todayAttendanceRows, announcements, pendingHomeworkCount, upcomingExamsCount] = await Promise.all([
     myClass
       ? prisma.student.count({ where: { classId: myClass.id } })
-      : prisma.student.count({ where: { schoolId } }),
+      : subjectClassIds.length > 0
+        ? prisma.student.count({ where: { classId: { in: subjectClassIds } } })
+        : 0,
     myClass ? prisma.attendance.findMany({ where: { classId: myClass.id, date: today }, select: { status: true } }) : [],
     prisma.announcement.findMany({
       where: { schoolId }, orderBy: { createdAt: 'desc' }, take: parseInt(process.env.PRECOMPUTE_LIMIT || '5', 10),
       select: { id: true, title: true, content: true, priority: true, createdAt: true },
     }),
+    myClass
+      ? prisma.homework.count({ where: { classId: myClass.id, submissions: { none: {} } } })
+      : subjectClassIds.length > 0
+        ? prisma.homework.count({ where: { classId: { in: subjectClassIds }, submissions: { none: {} } } })
+        : Promise.resolve(0),
+    prisma.exam.count({ where: { schoolId, startDate: { gte: today } } }),
   ]);
 
   const present = (todayAttendanceRows as { status: string }[]).filter((a) => a.status === 'present').length;
@@ -139,9 +159,11 @@ export async function computeTeacherDashboard(userId: string, schoolId: string) 
   return {
     stats: {
       totalStudents,
-      className:   myClass ? `${myClass.grade} ${myClass.section}` : null,
-      sectionName: myClass?.section ?? null,
+      className:      myClass ? `${myClass.grade} ${myClass.section}` : null,
+      sectionName:    myClass?.section ?? null,
       todayAttendance: { present, absent, late, total, rate: total > 0 ? Math.round((present / total) * 100) : 0 },
+      pendingHomework: pendingHomeworkCount,
+      upcomingExams:   upcomingExamsCount,
     },
     recentAnnouncements: announcements,
   };

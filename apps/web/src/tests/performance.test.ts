@@ -13,7 +13,11 @@ const RESULT = { id: 'res-1', examId: 'exam-1', studentId: 'stu-1', subject: 'Ma
 const TEACHER_RECORD = { id: 'teacher-rec-1', userId: 'user-teacher', schoolId: 'school-1' };
 
 describe('📊 PERFORMANCE MODULE', () => {
-  beforeEach(() => { resetPrisma(); });
+  beforeEach(() => {
+    resetPrisma();
+    // Return empty config so loadRiskConfig falls back to hardcoded defaults
+    prismaMock.performanceRiskConfig.findMany.mockResolvedValue([]);
+  });
 
   // ── Super Admin ────────────────────────────────────────────────────────
   describe('super_admin', () => {

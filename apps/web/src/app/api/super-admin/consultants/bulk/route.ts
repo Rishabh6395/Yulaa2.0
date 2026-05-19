@@ -5,7 +5,8 @@ import bcrypt from 'bcryptjs';
 
 function assertSuperAdmin(user: Awaited<ReturnType<typeof getUserFromRequest>>) {
   if (!user) throw new UnauthorizedError();
-  if (!user.roles.some((r) => r.role_code === 'super_admin')) throw new ForbiddenError();
+  const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
+  if (primary.role_code !== 'super_admin') throw new ForbiddenError();
 }
 
 function parseCSV(text: string): Record<string, string>[] {
@@ -46,11 +47,13 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     if (!file) throw new AppError('Please upload a CSV file. No file was received.');
+    if (file.size > 5 * 1024 * 1024) throw new AppError('File too large. Maximum allowed size is 5 MB.');
 
     const text = await file.text();
     const records = parseCSV(text);
     if (records.length === 0)
       throw new AppError('The uploaded CSV file is empty or has no data rows. Please check the file and try again.');
+    if (records.length > 1000) throw new AppError('CSV exceeds maximum of 1,000 rows per upload. Split the file and upload in batches.');
 
     const consultantRole = await prisma.role.findUnique({ where: { code: 'consultant' } });
     if (!consultantRole)
@@ -74,7 +77,8 @@ export async function POST(request: Request) {
           ? await prisma.consultant.findUnique({ where: { userId: existingUser.id } })
           : null;
 
-        if (!existingUser) {
+        const isNewUser = !existingUser;
+        if (isNewUser) {
           const hash = await bcrypt.hash('Yulaa@2024', 12);
           existingUser = await prisma.user.create({
             data: {
@@ -86,9 +90,6 @@ export async function POST(request: Request) {
               userRoles: { create: { roleId: consultantRole.id, isPrimary: true } },
             },
           });
-          created++;
-        } else {
-          skipped++;
         }
 
         const schoolIds = r.allowed_school_ids
@@ -109,6 +110,7 @@ export async function POST(request: Request) {
               allowedSchoolIds: schoolIds,
             },
           });
+          if (isNewUser) created++; else linked++;
         } else {
           const merged = Array.from(new Set([...consultantProfile.allowedSchoolIds, ...schoolIds]));
           consultantProfile = await prisma.consultant.update({
@@ -116,6 +118,7 @@ export async function POST(request: Request) {
             data: { allowedSchoolIds: merged },
           });
           linked++;
+          if (!isNewUser) skipped++;
         }
 
         // Create contract if school_id + contract_end provided

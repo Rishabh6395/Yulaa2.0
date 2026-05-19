@@ -135,6 +135,7 @@ export const updateContentType = (id: string, data: {
   isActive?:  boolean;
   sortOrder?: number;
 }) => prisma.contentTypeMaster.update({ where: { id }, data });
+export const deleteContentType = (id: string) => prisma.contentTypeMaster.delete({ where: { id } });
 
 // ─── Leave type master (existing — list by school) ───────────────────────────
 

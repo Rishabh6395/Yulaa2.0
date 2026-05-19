@@ -112,7 +112,7 @@ async function computeParentDashboard(userId: string, studentId: string) {
     prisma.attendance.findMany({
       where: { studentId, date: { gte: firstOfMonth, lte: lastOfMonth } }, select: { status: true },
     }),
-    prisma.feeInvoice.findMany({ where: { studentId }, select: { amount: true, paidAmount: true, status: true } }),
+    prisma.feeInvoice.findMany({ where: { studentId, schoolId: student.schoolId }, select: { amount: true, paidAmount: true, status: true } }),
     student.classId
       ? prisma.homework.findMany({
           where: { classId: student.classId },

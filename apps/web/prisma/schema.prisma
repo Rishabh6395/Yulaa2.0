@@ -90,7 +90,42 @@ model School {
   contentTypes        ContentTypeMaster[]
   genericWorkflows    GenericWorkflow[]
   genericMasterTypes  GenericMasterType[]
-  yearbookEntries     YearbookEntry[]
+  studentSkillRatings      StudentSkillRating[]
+  behaviorIncidents        BehaviorIncident[]
+  performanceRiskConfigs   PerformanceRiskConfig[]
+  kpiConfigs               SchoolKpiConfig[]
+  kpiRatingConfigs         KpiRatingConfig[]
+  reportCards              ReportCard[]
+  performanceCycles        PerformanceCycle[]
+  timingConfigs            SchoolTimingConfig[]
+  extracurricularEntries   ExtracurricularEntry[]
+  courseRecommendations    CourseRecommendation[]
+  examResults              ExamResult[]
+  academicYears            AcademicYear[]
+  behaviorKpiConfigs       BehaviorKpiConfig[]
+  ecoPointsMatrix          EcoPointsMatrix[]
+  attendancePeriodSummaries AttendancePeriodSummary[]
+  cycleAcademicSummaries   CycleAcademicSummary[]
+  attendanceRegularizations AttendanceRegularization[]
+  gatePasses               GatePass[]
+  feeConcessions           FeeConcession[]
+  lateFeeConfigs           LateFeeConfig[]
+  transferCertificates     TransferCertificate[]
+  earlyWarningLogs         EarlyWarningLog[]
+  libraryBooks             LibraryBook[]
+  libraryIssues            LibraryIssue[]
+  hostelBlocks             HostelBlock[]
+  hostelRooms              HostelRoom[]
+  hostelAllocations        HostelAllocation[]
+  diaryEntries             DiaryEntry[]
+  staffSalaryConfigs       StaffSalaryConfig[]
+  staffPayrolls            StaffPayroll[]
+  boardExamTrackers        BoardExamTracker[]
+  subjectChatThreads       SubjectChatThread[]
+  riskFlags                RiskFlag[]
+  gradingSchemes           GradingScheme[]
+  subjectCatalog           SubjectCatalog[]
+  yearbookEntries          YearbookEntry[]
 
   @@map("schools")
 }
@@ -135,6 +170,8 @@ model User {
   createdEvents         SchoolEvent[]
   operatedRides         TransportRide[]        @relation("TransportRideEmployee")
   courseEnrollments     CourseEnrollment[]
+  reportCardsSent       ReportCard[]           @relation("ReportCardSentBy")
+  approvedExams         Exam[]                 @relation("ExamApprovedBy")
   yearbookUploads       YearbookEntry[]        @relation("YearbookUploader")
 
   @@map("users")
@@ -167,8 +204,24 @@ model Teacher {
   qualification   String?
   experienceYears Int?                  @map("experience_years")
   joiningDate     DateTime?             @map("joining_date") @db.Date
+  classId         String?               @map("class_id")
   status          String                @default("active") @db.VarChar(20)
   createdAt       DateTime              @default(now()) @map("created_at")
+  dateOfBirth     DateTime?             @map("date_of_birth") @db.Date
+  gender          String?               @db.VarChar(10)
+  aadhaarNo       String?               @map("aadhaar_no") @db.VarChar(12)
+  panNo           String?               @map("pan_no") @db.VarChar(10)
+  category        String?               @db.VarChar(50)
+  employmentType  String?               @map("employment_type") @db.VarChar(50)
+  designationType String?               @map("designation_type") @db.VarChar(50)
+  teacherCert     String?               @map("teacher_cert") @db.VarChar(50)
+  languagesKnown  String?               @map("languages_known") @db.VarChar(200)
+  pfAccountNo     String?               @map("pf_account_no") @db.VarChar(30)
+  bankAccountNo   String?               @map("bank_account_no") @db.VarChar(30)
+  bankIfsc        String?               @map("bank_ifsc") @db.VarChar(11)
+  ibCertified     Boolean               @default(false) @map("ib_certified")
+  workPermitType  String?               @map("work_permit_type") @db.VarChar(50)
+  passportNo      String?               @map("passport_no") @db.VarChar(20)
   attendance      Attendance[]
   classes         Class[]
   homework        Homework[]
@@ -181,6 +234,13 @@ model Teacher {
   syllabusItems        SyllabusItem[]
   onlineClasses        OnlineClass[]
   taughtCourses        Course[]
+  skillRatingsGiven    StudentSkillRating[]
+  invigilatedEntries   ExamTimetableEntry[]   @relation("ExamInvigilator")
+  libraryIssues        LibraryIssue[]
+  salaryConfig         StaffSalaryConfig?
+  payrolls             StaffPayroll[]
+  subjectChatThreads   SubjectChatThread[]
+  diaryEntries         DiaryEntry[]
 
   @@unique([userId, schoolId])
   @@index([schoolId])
@@ -205,6 +265,26 @@ model Student {
   status              String               @default("active") @db.VarChar(20)
   createdAt           DateTime             @default(now()) @map("created_at")
   aadhaarNo           String?              @map("aadhaar_no") @db.VarChar(12)
+  middleName          String?              @map("middle_name") @db.VarChar(100)
+  rollNo              String?              @map("roll_no") @db.VarChar(30)
+  srNo                String?              @map("sr_no") @db.VarChar(30)
+  category            String?              @db.VarChar(50)
+  religion            String?              @db.VarChar(50)
+  nationality         String?              @db.VarChar(50)
+  motherTongue        String?              @map("mother_tongue") @db.VarChar(50)
+  houseId             String?              @map("house_id") @db.VarChar(100)
+  stream              String?              @db.VarChar(50)
+  admissionCategory   String?              @map("admission_category") @db.VarChar(50)
+  boardingType        String?              @map("boarding_type") @db.VarChar(30)
+  dietType            String?              @map("diet_type") @db.VarChar(30)
+  disabilityType      String?              @map("disability_type") @db.VarChar(50)
+  learningSupport     String?              @map("learning_support") @db.VarChar(50)
+  transportRouteId    String?              @map("transport_route_id") @db.VarChar(100)
+  busStop             String?              @map("bus_stop") @db.VarChar(100)
+  doctorName          String?              @map("doctor_name") @db.VarChar(100)
+  doctorPhone         String?              @map("doctor_phone") @db.VarChar(20)
+  insuranceProvider   String?              @map("insurance_provider") @db.VarChar(100)
+  passportNo          String?              @map("passport_no") @db.VarChar(20)
   admissionChildLink  AdmissionChild?      @relation("CreatedFromAdmission")
   attendance          Attendance[]
   feeInvoices         FeeInvoice[]
@@ -220,6 +300,23 @@ model Student {
   sessionBookings          SessionBooking[]
   onlineClassAttendances   OnlineClassAttendance[]
   courseEnrollments        CourseEnrollment[]
+  skillRatings             StudentSkillRating[]
+  behaviorIncidents        BehaviorIncident[]
+  reportCards              ReportCard[]
+  extracurricularEntries     ExtracurricularEntry[]
+  courseRecommendations      CourseRecommendation[]
+  attendancePeriodSummaries  AttendancePeriodSummary[]
+  cycleAcademicSummaries     CycleAcademicSummary[]
+  libraryIssues              LibraryIssue[]
+  hostelAllocations          HostelAllocation[]
+  boardExamTrackers          BoardExamTracker[]
+  subjectChatThreads         SubjectChatThread[]
+  riskFlags                  RiskFlag[]
+  attendanceRegularizations  AttendanceRegularization[]
+  gatePasses                 GatePass[]
+  feeConcessions             FeeConcession[]
+  transferCertificates       TransferCertificate[]
+  earlyWarningLogs           EarlyWarningLog[]
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -233,6 +330,15 @@ model Parent {
   userId            String             @unique @map("user_id")
   occupation        String?
   createdAt         DateTime           @default(now()) @map("created_at")
+  dateOfBirth       DateTime?          @map("date_of_birth") @db.Date
+  gender            String?            @db.VarChar(10)
+  aadhaarNo         String?            @map("aadhaar_no") @db.VarChar(12)
+  panNo             String?            @map("pan_no") @db.VarChar(10)
+  nationality       String?            @db.VarChar(50)
+  annualIncome      String?            @map("annual_income") @db.VarChar(30)
+  highestEducation  String?            @map("highest_education") @db.VarChar(100)
+  organization      String?            @db.VarChar(100)
+  alternatePhone    String?            @map("alternate_phone") @db.VarChar(20)
   parentStudents    ParentStudent[]
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   queries           StudentQuery[]
@@ -280,6 +386,7 @@ model Class {
   examEntries    ExamTimetableEntry[]
   streamMasters  StreamMaster[]
   onlineClasses   OnlineClass[]
+  diaryEntries    DiaryEntry[]
   yearbookEntries YearbookEntry[]
 
   @@unique([schoolId, grade, section, academicYear])
@@ -307,7 +414,8 @@ model Attendance {
   school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   student       Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
   teacher       Teacher? @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  updatedByUser User?    @relation("UpdatedBy", fields: [updatedBy], references: [id])
+  updatedByUser         User?                      @relation("UpdatedBy", fields: [updatedBy], references: [id])
+  regularizations       AttendanceRegularization[]
 
   @@unique([studentId, date])
   @@index([schoolId, date])
@@ -325,9 +433,11 @@ model FeeStructure {
   frequency    String       @default("monthly") @db.VarChar(20)
   academicYear String       @default("2025-2026") @map("academic_year") @db.VarChar(9)
   createdAt    DateTime     @default(now()) @map("created_at")
-  invoices     FeeInvoice[]
-  class        Class?       @relation(fields: [classId], references: [id])
-  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  invoices      FeeInvoice[]
+  concessions   FeeConcession[]
+  lateFeeConfig LateFeeConfig[]
+  class         Class?       @relation(fields: [classId], references: [id])
+  school        School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@map("fee_structures")
 }
@@ -362,14 +472,18 @@ model FeePayment {
   id             String     @id @default(uuid())
   invoiceId      String     @map("invoice_id")
   amount         Decimal    @db.Decimal(10, 2)
-  paymentMethod  String     @default("online") @map("payment_method") @db.VarChar(30)
+  paymentMethod  String     @default("online") @map("payment_method") @db.VarChar(30)  // 'online' | 'cash' | 'cheque' | 'dd' | 'neft'
   transactionRef String?    @map("transaction_ref") @db.VarChar(100)
-  paymentGateway String     @default("razorpay") @map("payment_gateway") @db.VarChar(30)
+  paymentGateway String?    @map("payment_gateway") @db.VarChar(30)  // razorpay | payu | null for cash
+  receiptNo      String?    @map("receipt_no") @db.VarChar(50)       // sequential receipt number
+  receivedById   String?    @map("received_by_id")                   // staff who collected cash
+  remarks        String?    @db.VarChar(300)
   status         String     @default("success") @db.VarChar(20)
   paidAt         DateTime   @default(now()) @map("paid_at")
   createdAt      DateTime   @default(now()) @map("created_at")
   invoice        FeeInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
+  @@index([invoiceId])
   @@map("fee_payments")
 }
 
@@ -857,6 +971,7 @@ model AdmissionWorkflowStep {
   notifyEnabled  Boolean           @default(true)  @map("notify_enabled")
   notifyMessage  String?           @map("notify_message") @db.VarChar(300)
   isFinal        Boolean           @default(false) @map("is_final")
+  checklistItems Json?             @map("checklist_items")
   createdAt      DateTime          @default(now()) @map("created_at")
   workflow       AdmissionWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
@@ -866,30 +981,45 @@ model AdmissionWorkflowStep {
 }
 
 model AdmissionApplication {
-  id              String             @id @default(uuid())
-  schoolId        String             @map("school_id")
-  workflowId      String?            @map("workflow_id")
-  parentName      String             @map("parent_name") @db.VarChar(200)
-  parentPhone     String             @map("parent_phone") @db.VarChar(20)
-  parentEmail     String             @map("parent_email") @db.VarChar(100)
-  parentUserId    String?            @map("parent_user_id")
-  currentStep     Int                @default(0) @map("current_step")
-  status          String             @default("submitted") @db.VarChar(20)
-  riskScore            Int                @default(0) @map("risk_score")
-  validationFlags      Json?              @map("validation_flags")
-  residentialAddress   String?            @map("residential_address")
-  permanentAddress     String?            @map("permanent_address")
-  submittedAt          DateTime           @default(now()) @map("submitted_at")
-  updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at")
-  actions         AdmissionAction[]
-  parentUser      User?              @relation("ApplicationParentUser", fields: [parentUserId], references: [id])
-  school          School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  workflow        AdmissionWorkflow? @relation(fields: [workflowId], references: [id])
-  children        AdmissionChild[]
+  id                  String             @id @default(uuid())
+  schoolId            String             @map("school_id")
+  workflowId          String?            @map("workflow_id")
+  parentName          String             @map("parent_name") @db.VarChar(200)
+  parentPhone         String             @map("parent_phone") @db.VarChar(20)
+  parentEmail         String             @map("parent_email") @db.VarChar(100)
+  parentUserId        String?            @map("parent_user_id")
+  currentStep         Int                @default(0) @map("current_step")
+  status              String             @default("submitted") @db.VarChar(20)
+  riskScore           Int                @default(0) @map("risk_score")
+  validationFlags     Json?              @map("validation_flags")
+  residentialAddress  String?            @map("residential_address")
+  permanentAddress    String?            @map("permanent_address")
+  // RTE / EWS quota
+  isRte               Boolean            @default(false) @map("is_rte")
+  rteDocuments        Json?              @map("rte_documents")   // [{type, url}]
+  // Sibling preference
+  siblingStudentId    String?            @map("sibling_student_id")
+  // Waitlist
+  waitlistPosition    Int?               @map("waitlist_position")
+  waitlistedAt        DateTime?          @map("waitlisted_at")
+  // Aadhaar dedup (store hash only, never raw)
+  parentAadhaarHash   String?            @map("parent_aadhaar_hash") @db.VarChar(64)
+  // Custom fields defined by super admin via ContentTypeMaster
+  customFieldValues   Json?              @map("custom_field_values")
+  submittedAt         DateTime           @default(now()) @map("submitted_at")
+  updatedAt           DateTime           @default(now()) @updatedAt @map("updated_at")
+
+  actions             AdmissionAction[]
+  parentUser          User?              @relation("ApplicationParentUser", fields: [parentUserId], references: [id])
+  school              School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  workflow            AdmissionWorkflow? @relation(fields: [workflowId], references: [id])
+  children            AdmissionChild[]
+  transferCertificate TransferCertificate?
 
   @@index([schoolId, status])
   @@index([parentEmail])
   @@index([submittedAt])
+  @@index([schoolId, waitlistPosition])
   @@map("admission_applications")
 }
 
@@ -905,7 +1035,9 @@ model AdmissionChild {
   classApplying  String?              @map("class_applying") @db.VarChar(30)
   section        String?              @db.VarChar(10)
   previousSchool String?              @map("previous_school") @db.VarChar(200)
+  photoUrl       String?              @map("photo_url")
   studentId      String?              @unique @map("student_id")
+  customFieldValues Json?             @map("custom_field_values")
   createdAt      DateTime             @default(now()) @map("created_at")
   application    AdmissionApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   student        Student?             @relation("CreatedFromAdmission", fields: [studentId], references: [id])
@@ -1187,41 +1319,56 @@ model SyllabusItem {
 
 // ─── Exam Management ─────────────────────────────────────────────────────────
 model Exam {
-  id           String               @id @default(uuid())
-  schoolId     String               @map("school_id")
-  title        String               @db.VarChar(200)
-  examType     String               @map("exam_type") @db.VarChar(50)
-  academicYear String               @map("academic_year") @db.VarChar(9)
-  classId      String?              @map("class_id")
-  startDate    DateTime             @map("start_date") @db.Date
-  endDate      DateTime             @map("end_date") @db.Date
-  status       String               @default("scheduled") @db.VarChar(20)
-  gradingType  String               @default("percentage") @map("grading_type") @db.VarChar(20)
-  createdAt    DateTime             @default(now()) @map("created_at")
-  updatedAt    DateTime             @default(now()) @updatedAt @map("updated_at")
-  entries      ExamTimetableEntry[]
-  results      ExamResult[]
-  school       School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  class        Class?               @relation(fields: [classId], references: [id])
+  id                 String               @id @default(uuid())
+  schoolId           String               @map("school_id")
+  title              String               @db.VarChar(200)
+  examType           String               @map("exam_type") @db.VarChar(50)
+  subject            String?              @db.VarChar(100)
+  academicYear       String               @map("academic_year") @db.VarChar(9)
+  classId            String?              @map("class_id")
+  performanceCycleId String?              @map("performance_cycle_id")
+  createdByRole      String?              @map("created_by_role") @db.VarChar(30)
+  approvedById       String?              @map("approved_by_id")
+  startDate          DateTime             @map("start_date") @db.Date
+  endDate            DateTime             @map("end_date") @db.Date
+  status             String               @default("scheduled") @db.VarChar(20)
+  gradingType        String               @default("percentage") @map("grading_type") @db.VarChar(20)
+  maxMarks           Int                  @default(100) @map("max_marks")
+  passingMarks       Int                  @default(35) @map("passing_marks")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @default(now()) @updatedAt @map("updated_at")
+  entries            ExamTimetableEntry[]
+  results            ExamResult[]
+  school             School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class              Class?               @relation(fields: [classId], references: [id])
+  performanceCycle   PerformanceCycle?    @relation(fields: [performanceCycleId], references: [id])
+  approvedBy         User?                @relation("ExamApprovedBy", fields: [approvedById], references: [id])
 
   @@index([schoolId])
   @@index([schoolId, academicYear])
+  @@index([performanceCycleId])
   @@map("exams")
 }
 
 model ExamTimetableEntry {
-  id        String   @id @default(uuid())
-  examId    String   @map("exam_id")
-  classId   String   @map("class_id")
-  subject   String   @db.VarChar(100)
-  date      DateTime @db.Date
-  startTime String   @map("start_time") @db.VarChar(10)
-  endTime   String   @map("end_time") @db.VarChar(10)
-  maxMarks  Int      @map("max_marks")
-  venue     String?  @db.VarChar(200)
-  createdAt DateTime @default(now()) @map("created_at")
-  exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
-  class     Class    @relation(fields: [classId], references: [id])
+  id                String    @id @default(uuid())
+  examId            String    @map("exam_id")
+  classId           String    @map("class_id")
+  subject           String    @db.VarChar(100)
+  date              DateTime  @db.Date
+  startTime         String    @map("start_time") @db.VarChar(10)
+  endTime           String    @map("end_time") @db.VarChar(10)
+  maxMarks          Int       @map("max_marks")
+  venue             String?   @db.VarChar(200)
+  invigilatorId     String?   @map("invigilator_id")
+  status            String    @default("scheduled") @db.VarChar(20)  // 'scheduled' | 'rescheduled' | 'cancelled'
+  rescheduledDate   DateTime? @map("rescheduled_date") @db.Date
+  rescheduledReason String?   @map("rescheduled_reason") @db.VarChar(300)
+  notifiedAt        DateTime? @map("notified_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  exam              Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
+  class             Class     @relation(fields: [classId], references: [id])
+  invigilator       Teacher?  @relation("ExamInvigilator", fields: [invigilatorId], references: [id])
 
   @@unique([examId, classId, subject])
   @@index([examId])
@@ -1230,6 +1377,7 @@ model ExamTimetableEntry {
 
 model ExamResult {
   id            String   @id @default(uuid())
+  schoolId      String?  @map("school_id")
   examId        String   @map("exam_id")
   studentId     String   @map("student_id")
   subject       String   @db.VarChar(100)
@@ -1242,13 +1390,150 @@ model ExamResult {
   approvedById  String?  @map("approved_by_id")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+  school        School?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   exam          Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
   student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([examId, studentId, subject])
+  @@index([schoolId])
   @@index([examId])
   @@index([studentId])
   @@map("exam_results")
+}
+
+// ─── Performance Risk Configuration ─────────────────────────────────────────
+// Configurable by super_admin (global, schoolId=null) or school_admin (per school).
+// Grade-specific rules override the school-wide default (grade=null).
+model PerformanceRiskConfig {
+  id                  String   @id @default(uuid())
+  schoolId            String?  @map("school_id")           // null = global default
+  grade               String?  @db.VarChar(20)             // null = all grades
+  minMarksPct         Int      @default(40) @map("min_marks_pct")
+  minAttendancePct    Int      @default(75) @map("min_attendance_pct")
+  minHomeworkPct      Int      @default(60) @map("min_homework_pct")
+  weightMarks         Int      @default(40) @map("weight_marks")
+  weightAttendance    Int      @default(35) @map("weight_attendance")
+  weightHomework      Int      @default(25) @map("weight_homework")
+  highRiskThreshold   Int      @default(60) @map("high_risk_threshold")
+  mediumRiskThreshold Int      @default(30) @map("medium_risk_threshold")
+  createdById         String   @map("created_by_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+  school              School?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, grade])
+  @@index([schoolId])
+  @@map("performance_risk_configs")
+}
+
+// ─── KPI Configuration ────────────────────────────────────────────────────────
+
+model SchoolKpiConfig {
+  id               String   @id @default(uuid())
+  schoolId         String   @map("school_id")
+  kpiCode          String   @map("kpi_code") @db.VarChar(60)
+  isEnabled        Boolean  @default(true) @map("is_enabled")
+  targetValue      Decimal? @map("target_value") @db.Decimal(8, 2)
+  targetDirection  String   @default("above") @map("target_direction") @db.VarChar(10)
+  academicYear     String   @map("academic_year") @db.VarChar(9)
+  visibleToRoles   String?  @map("visible_to_roles") @db.Text  // JSON array of role codes; null = use KPI definition default
+  formulaParams    String?  @map("formula_params") @db.Text    // JSON object; school-specific formula thresholds
+  createdById      String   @map("created_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
+  school           School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, kpiCode, academicYear])
+  @@index([schoolId, academicYear])
+  @@map("school_kpi_configs")
+}
+
+// ─── Report Cards ─────────────────────────────────────────────────────────────
+// Sent by school_admin / principal / teacher to parents.
+// Data is snapshotted at send time so the report is immutable.
+
+model ReportCard {
+  id                    String    @id @default(uuid())
+  schoolId              String    @map("school_id")
+  studentId             String    @map("student_id")
+  classId               String?   @map("class_id")
+  academicYear          String    @map("academic_year") @db.VarChar(9)
+  term                  String    @db.VarChar(60)
+  cycleId               String?   @map("cycle_id")
+  sentById              String    @map("sent_by_id")
+  sentAt                DateTime  @default(now()) @map("sent_at")
+  viewedAt              DateTime? @map("viewed_at")
+  parentAcknowledgedAt  DateTime? @map("parent_acknowledged_at")
+  // Immutable JSON snapshots of data at send time
+  academicData          String?   @map("academic_data")   @db.Text
+  attendanceData        String?   @map("attendance_data") @db.Text
+  behaviorData          String?   @map("behavior_data")   @db.Text
+  ecoData               String?   @map("eco_data")        @db.Text  // extracurricular snapshot
+  // Scores and ratings
+  compositeScore        Decimal?  @map("composite_score") @db.Decimal(5, 2)
+  overallRating         String?   @map("overall_rating")  @db.VarChar(30)
+  academicRating        String?   @map("academic_rating")   @db.VarChar(30)
+  attendanceRating      String?   @map("attendance_rating") @db.VarChar(30)
+  behaviorRating        String?   @map("behavior_rating")   @db.VarChar(30)
+  ecoRating             String?   @map("eco_rating")        @db.VarChar(30)
+  // Remarks
+  teacherRemarks        String?   @map("teacher_remarks")      @db.Text
+  principalRemarks      String?   @map("principal_remarks")    @db.Text
+  aiGeneratedRemarks    String?   @map("ai_generated_remarks") @db.Text
+  templateId            String?   @map("template_id")
+  studentSnapshot       String?   @map("student_snapshot")     @db.Text  // immutable JSON: name/photo/class/admissionNo
+  status                String    @default("draft") @db.VarChar(30)  // draft | principal_approved | published | parent_acknowledged
+  publishedAt           DateTime? @map("published_at")
+
+  school  School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  sentBy  User             @relation("ReportCardSentBy", fields: [sentById], references: [id])
+  cycle   PerformanceCycle? @relation(fields: [cycleId], references: [id])
+
+  @@index([schoolId, academicYear])
+  @@index([studentId, academicYear])
+  @@index([cycleId])
+  @@map("report_cards")
+}
+
+// ─── KPI Rating Config ────────────────────────────────────────────────────────
+// Per-school configurable rating thresholds for report card sections.
+// segment: 'academic' | 'attendance' | 'behavior'
+
+model KpiRatingConfig {
+  id              String   @id @default(uuid())
+  schoolId        String   @map("school_id")
+  segment         String   @db.VarChar(20)  // 'academic' | 'attendance' | 'behavior' | 'extracurricular' | 'composite'
+  // For academic & attendance: score/percentage thresholds (lower bound for each band)
+  excellentMin    Int      @default(90)  @map("excellent_min")
+  goodMin         Int      @default(75)  @map("good_min")
+  averageMin      Int      @default(60)  @map("average_min")
+  belowAverageMin Int      @default(40)  @map("below_average_min")
+  // For behavior: negative-incident count thresholds (upper bound for each band)
+  behExcellentMax Int      @default(0)   @map("beh_excellent_max")
+  behGoodMax      Int      @default(2)   @map("beh_good_max")
+  behAverageMax   Int      @default(5)   @map("beh_average_max")
+  behBelowAvgMax  Int      @default(10)  @map("beh_below_avg_max")
+  // ECO (extracurricular) point thresholds — used when segment='extracurricular'
+  ecoExcellentMin Int      @default(85)  @map("eco_excellent_min")
+  ecoGoodMin      Int      @default(70)  @map("eco_good_min")
+  ecoAverageMin   Int      @default(50)  @map("eco_average_min")
+  ecoBelowAvgMin  Int      @default(30)  @map("eco_below_avg_min")
+  // Composite weights (sum must equal 100, used when segment='composite')
+  weightAcademic      Int  @default(40)  @map("weight_academic")
+  weightAttendance    Int  @default(30)  @map("weight_attendance")
+  weightBehavior      Int  @default(20)  @map("weight_behavior")
+  weightEco           Int  @default(10)  @map("weight_eco")
+  // Custom rating labels (JSON: {"excellent":"Outstanding","good":"Good",...})
+  ratingLabels    String?  @map("rating_labels") @db.VarChar(500)
+  // Rating scale with colors — [{min,max,label,color}] used for composite output
+  ratingScale     Json?    @map("rating_scale")
+  createdById     String   @map("created_by_id")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+  school          School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, segment])
+  @@map("kpi_rating_configs")
 }
 
 // ─── School Inventory ─────────────────────────────────────────────────────────
@@ -1845,11 +2130,12 @@ model OnlineClass {
   isRecorded      Boolean   @default(false) @map("is_recorded")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
-  school          School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  teacher         Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  slot            TimetableSlot? @relation(fields: [slotId], references: [id])
-  class           Class?    @relation(fields: [classId], references: [id])
-  attendances     OnlineClassAttendance[]
+  school              School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher             Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  slot                TimetableSlot? @relation(fields: [slotId], references: [id])
+  class               Class?    @relation(fields: [classId], references: [id])
+  attendances         OnlineClassAttendance[]
+  courseRecommendations CourseRecommendation[]
 
   @@index([schoolId, scheduledAt])
   @@index([teacherId])
@@ -1901,10 +2187,11 @@ model Course {
   targetGrades        String[]  @map("target_grades")
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at")
-  school              School?   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  teacher             Teacher?  @relation(fields: [teacherId], references: [id])
-  modules             CourseModule[]
-  enrollments         CourseEnrollment[]
+  school                School?   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher               Teacher?  @relation(fields: [teacherId], references: [id])
+  modules               CourseModule[]
+  enrollments           CourseEnrollment[]
+  courseRecommendations CourseRecommendation[]
 
   @@index([schoolId, isPublished])
   @@index([isExternal, isPublished])
@@ -1986,4 +2273,806 @@ model CourseProgress {
   @@map("course_progress")
 }
 
+// ─── Student Skill Ratings ────────────────────────────────────────────────────
+model StudentSkillRating {
+  id           String   @id @default(uuid())
+  schoolId     String   @map("school_id")
+  studentId    String   @map("student_id")
+  teacherId    String   @map("teacher_id")
+  cycleId      String?  @map("cycle_id")
+  skillName    String   @map("skill_name") @db.VarChar(100)
+  rating       Int
+  comments     String?  @db.VarChar(500)
+  academicYear String   @map("academic_year") @db.VarChar(9)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
+  school  School            @relation(fields: [schoolId],  references: [id], onDelete: Cascade)
+  student Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher Teacher           @relation(fields: [teacherId], references: [id])
+  cycle   PerformanceCycle? @relation(fields: [cycleId], references: [id])
+
+  @@unique([schoolId, studentId, teacherId, skillName, academicYear])
+  @@index([schoolId, studentId])
+  @@index([cycleId])
+  @@map("student_skill_ratings")
+}
+
+// ─── Behavior Incidents ───────────────────────────────────────────────────────
+model BehaviorIncident {
+  id           String   @id @default(uuid())
+  schoolId     String   @map("school_id")
+  studentId    String   @map("student_id")
+  cycleId      String?  @map("cycle_id")
+  reportedBy   String   @map("reported_by")
+  incidentType String   @map("incident_type") @db.VarChar(20)
+  category     String   @db.VarChar(100)
+  description  String
+  severity     String?  @db.VarChar(20)
+  weight       Int      @default(1)
+  actionTaken  String?  @map("action_taken")
+  date         DateTime @db.Date
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  school  School            @relation(fields: [schoolId],  references: [id], onDelete: Cascade)
+  student Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  cycle   PerformanceCycle? @relation(fields: [cycleId], references: [id])
+
+  @@index([schoolId, studentId])
+  @@index([schoolId, date])
+  @@index([cycleId])
+  @@map("behavior_incidents")
+}
+
+// ─── Performance Cycles ───────────────────────────────────────────────────────
+// Configurable by super_admin per school. Drives exam, report card, behavior, ECO tagging.
+model PerformanceCycle {
+  id                   String    @id @default(uuid())
+  schoolId             String    @map("school_id")
+  name                 String    @db.VarChar(100)
+  cycleType            String    @map("cycle_type") @db.VarChar(20)  // 'monthly' | 'quarterly' | 'half_yearly' | 'yearly' | 'custom'
+  academicYear         String    @map("academic_year") @db.VarChar(9)
+  startDate            DateTime  @map("start_date") @db.Date
+  endDate              DateTime  @map("end_date") @db.Date
+  status               String    @default("upcoming") @db.VarChar(20)  // 'upcoming' | 'active' | 'locked' | 'report_published'
+  isActive             Boolean   @default(false) @map("is_active")
+  reportCardTemplate   String?   @map("report_card_template") @db.VarChar(50)  // 'compact' | 'standard' | 'comprehensive'
+  lockedAt             DateTime? @map("locked_at")
+  reportPublishedAt    DateTime? @map("report_published_at")
+  createdById          String    @map("created_by_id")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  school                  School                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  exams                   Exam[]
+  reportCards             ReportCard[]
+  behaviorIncidents       BehaviorIncident[]
+  skillRatings            StudentSkillRating[]
+  extracurricularEntries  ExtracurricularEntry[]
+  attendanceSummaries     AttendancePeriodSummary[]
+  academicSummaries       CycleAcademicSummary[]
+
+  @@index([schoolId, academicYear])
+  @@index([schoolId, status])
+  @@map("performance_cycles")
+}
+
+// ─── School Timing Config ─────────────────────────────────────────────────────
+// Attendance module advance config: defines school hours for late-marking.
+model SchoolTimingConfig {
+  id              String   @id @default(uuid())
+  schoolId        String   @map("school_id")
+  dayOfWeek       Int      @map("day_of_week")  // 0=Sunday … 6=Saturday; -1 = all weekdays
+  schoolStartTime String   @map("school_start_time") @db.VarChar(5)  // "HH:MM"
+  schoolEndTime   String   @map("school_end_time")   @db.VarChar(5)
+  lateAfterMins   Int      @default(15) @map("late_after_mins")  // minutes past start = late
+  halfDayAfterMins Int     @default(180) @map("half_day_after_mins")
+  isHoliday       Boolean  @default(false) @map("is_holiday")
+  effectiveFrom   DateTime @map("effective_from") @db.Date
+  createdById     String   @map("created_by_id")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, dayOfWeek, effectiveFrom])
+  @@index([schoolId])
+  @@map("school_timing_configs")
+}
+
+// ─── Extracurricular Entries ──────────────────────────────────────────────────
+// Tracks student participation in sports, cultural events, clubs, etc.
+model ExtracurricularEntry {
+  id           String    @id @default(uuid())
+  schoolId     String    @map("school_id")
+  studentId    String    @map("student_id")
+  cycleId      String?   @map("cycle_id")
+  academicYear String    @map("academic_year") @db.VarChar(9)
+  category     String    @db.VarChar(50)
+  activity     String    @db.VarChar(200)
+  role         String?   @db.VarChar(100)
+  achievement  String?   @db.VarChar(200)
+  level        String?   @db.VarChar(30)
+  points       Int       @default(1)
+  date         DateTime  @db.Date
+  recordedById String    @map("recorded_by_id")
+  approvedById String?   @map("approved_by_id")
+  approvedAt   DateTime? @map("approved_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  school  School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  cycle   PerformanceCycle? @relation(fields: [cycleId], references: [id])
+
+  @@index([schoolId, studentId])
+  @@index([schoolId, academicYear])
+  @@index([cycleId])
+  @@map("extracurricular_entries")
+}
+
+// ─── Course Recommendations ───────────────────────────────────────────────────
+// Auto-generated or manual links from weak subjects → OnlineClass/Course.
+model CourseRecommendation {
+  id           String   @id @default(uuid())
+  schoolId     String   @map("school_id")
+  studentId    String   @map("student_id")
+  cycleId      String?  @map("cycle_id")
+  subject      String   @db.VarChar(100)
+  reason       String?  @db.VarChar(200)  // e.g. "Below average for 2 consecutive cycles"
+  courseId     String?  @map("course_id")
+  onlineClassId String? @map("online_class_id")
+  source       String   @default("auto") @db.VarChar(20)  // 'auto' | 'manual'
+  status       String   @default("pending") @db.VarChar(20)  // 'pending' | 'accepted' | 'dismissed'
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  school      School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student     Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course      Course?       @relation(fields: [courseId], references: [id])
+  onlineClass OnlineClass?  @relation(fields: [onlineClassId], references: [id])
+
+  @@index([schoolId, studentId])
+  @@index([cycleId])
+  @@map("course_recommendations")
+}
+
+// ─── Academic Year Master ─────────────────────────────────────────────────────
+// Configured by super_admin; each school uses one active academic year.
+model AcademicYear {
+  id          String   @id @default(uuid())
+  schoolId    String   @map("school_id")
+  label       String   @db.VarChar(9)   // e.g. "2025-2026"
+  startDate   DateTime @map("start_date") @db.Date
+  endDate     DateTime @map("end_date")   @db.Date
+  isActive    Boolean  @default(false) @map("is_active")
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, label])
+  @@index([schoolId, isActive])
+  @@map("academic_years")
+}
+
+// ─── Behavior KPI Config ──────────────────────────────────────────────────────
+// Catalog of incident types with weights — configured per school by super_admin.
+model BehaviorKpiConfig {
+  id            String   @id @default(uuid())
+  schoolId      String   @map("school_id")
+  incidentType  String   @map("incident_type") @db.VarChar(20)   // 'positive' | 'negative'
+  code          String   @db.VarChar(60)
+  label         String   @db.VarChar(100)
+  weight        Int                        // positive = +N, negative = -N
+  severity      String?  @db.VarChar(20)  // null | 'low' | 'medium' | 'high'
+  isActive      Boolean  @default(true) @map("is_active")
+  createdById   String   @map("created_by_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, code])
+  @@index([schoolId, incidentType])
+  @@map("behavior_kpi_configs")
+}
+
+// ─── ECO Points Matrix ────────────────────────────────────────────────────────
+// Level × achievement points grid configured by super_admin per school.
+model EcoPointsMatrix {
+  id          String   @id @default(uuid())
+  schoolId    String   @map("school_id")
+  level       String   @db.VarChar(30)       // 'school' | 'district' | 'state' | 'national' | 'international'
+  achievement String   @db.VarChar(50)       // 'participant' | 'runner_up' | 'winner' | 'special_mention'
+  points      Int
+  createdById String   @map("created_by_id")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, level, achievement])
+  @@index([schoolId])
+  @@map("eco_points_matrix")
+}
+
+// ─── Attendance Period Summary ────────────────────────────────────────────────
+// Cached cycle-based attendance aggregation per student.
+model AttendancePeriodSummary {
+  id                String   @id @default(uuid())
+  schoolId          String   @map("school_id")
+  studentId         String   @map("student_id")
+  cycleId           String   @map("cycle_id")
+  workingDays       Int      @default(0) @map("working_days")
+  presentDays       Int      @default(0) @map("present_days")
+  absentDays        Int      @default(0) @map("absent_days")
+  lateDays          Int      @default(0) @map("late_days")
+  halfDays          Int      @default(0) @map("half_days")
+  excusedDays       Int      @default(0) @map("excused_days")
+  attendancePercent Decimal  @default(0) @map("attendance_percent") @db.Decimal(5, 2)
+  lateCount         Int      @default(0) @map("late_count")
+  rating            String?  @db.VarChar(30)
+  computedAt        DateTime @default(now()) @map("computed_at")
+
+  school  School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  cycle   PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, cycleId])
+  @@index([schoolId, cycleId])
+  @@map("attendance_period_summaries")
+}
+
+// ─── Cycle Academic Summary ───────────────────────────────────────────────────
+// Per-student per-subject per-cycle academic snapshot.
+model CycleAcademicSummary {
+  id                String   @id @default(uuid())
+  schoolId          String   @map("school_id")
+  studentId         String   @map("student_id")
+  cycleId           String   @map("cycle_id")
+  classId           String?  @map("class_id")
+  subjectsData      String   @map("subjects_data") @db.Text  // JSON: [{subject, maxMarks, marks, pct, grade, classRank}]
+  overallPercentage Decimal  @default(0) @map("overall_percentage") @db.Decimal(5, 2)
+  overallGrade      String?  @map("overall_grade") @db.VarChar(5)
+  classRank         Int?     @map("class_rank")
+  gradeRank         Int?     @map("grade_rank")
+  classAverage      Decimal? @map("class_average") @db.Decimal(5, 2)
+  weakSubjects      String?  @map("weak_subjects") @db.VarChar(500)  // CSV of subjects needing attention
+  strongSubjects    String?  @map("strong_subjects") @db.VarChar(500)
+  rating            String?  @db.VarChar(30)
+  bellCurveData     String?  @map("bell_curve_data") @db.Text  // JSON: per-subject distribution
+  computedAt        DateTime @default(now()) @map("computed_at")
+
+  school  School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  cycle   PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, cycleId])
+  @@index([schoolId, cycleId])
+  @@map("cycle_academic_summaries")
+}
+
+// ─── Attendance Regularization ────────────────────────────────────────────────
+// Teacher requests correction, principal/HOD approves with audit trail.
+model AttendanceRegularization {
+  id            String    @id @default(uuid())
+  schoolId      String    @map("school_id")
+  studentId     String    @map("student_id")
+  attendanceId  String    @map("attendance_id")
+  requestedById String    @map("requested_by_id")
+  fromStatus    String    @map("from_status") @db.VarChar(20)  // original status
+  toStatus      String    @map("to_status")   @db.VarChar(20)  // requested status
+  reason        String    @db.VarChar(500)
+  status        String    @default("pending") @db.VarChar(20)  // 'pending' | 'approved' | 'rejected'
+  reviewedById  String?   @map("reviewed_by_id")
+  reviewedAt    DateTime? @map("reviewed_at")
+  reviewComment String?   @map("review_comment") @db.VarChar(300)
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  school      School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student     Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  attendance  Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, status])
+  @@index([studentId])
+  @@map("attendance_regularizations")
+}
+
+// ─── Gate Pass ────────────────────────────────────────────────────────────────
+// Student early leaving with teacher permission and parent OTP.
+model GatePass {
+  id              String    @id @default(uuid())
+  schoolId        String    @map("school_id")
+  studentId       String    @map("student_id")
+  issuedById      String    @map("issued_by_id")
+  exitTime        DateTime  @map("exit_time")
+  expectedReturn  DateTime? @map("expected_return")
+  reason          String    @db.VarChar(300)
+  parentConsent   Boolean   @default(false) @map("parent_consent")
+  parentOtp       String?   @map("parent_otp") @db.VarChar(6)  // stored hashed
+  otpVerifiedAt   DateTime? @map("otp_verified_at")
+  returnedAt      DateTime? @map("returned_at")
+  status          String    @default("issued") @db.VarChar(20)  // 'issued' | 'returned' | 'not_returned'
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, studentId])
+  @@index([schoolId, exitTime])
+  @@map("gate_passes")
+}
+
+// ─── Fee Concession ───────────────────────────────────────────────────────────
+// Discounts/scholarships applied per student per fee structure.
+model FeeConcession {
+  id              String     @id @default(uuid())
+  schoolId        String     @map("school_id")
+  studentId       String     @map("student_id")
+  feeStructureId  String?    @map("fee_structure_id")
+  concessionType  String     @map("concession_type") @db.VarChar(50)  // 'rte' | 'merit' | 'staff_ward' | 'sibling' | 'scholarship' | 'custom'
+  discountPercent Decimal?   @map("discount_percent") @db.Decimal(5, 2)
+  discountAmount  Decimal?   @map("discount_amount")  @db.Decimal(10, 2)  // fixed override
+  reason          String?    @db.VarChar(300)
+  academicYear    String     @map("academic_year") @db.VarChar(9)
+  status          String     @default("pending") @db.VarChar(20)  // 'pending' | 'approved' | 'rejected'
+  approvedById    String?    @map("approved_by_id")
+  approvedAt      DateTime?  @map("approved_at")
+  validFrom       DateTime?  @map("valid_from") @db.Date
+  validTo         DateTime?  @map("valid_to")   @db.Date
+  isActive        Boolean    @default(true) @map("is_active")
+  createdById     String     @map("created_by_id")
+  createdAt       DateTime   @default(now()) @map("created_at")
+
+  school       School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student      Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeStructure FeeStructure? @relation(fields: [feeStructureId], references: [id])
+
+  @@index([schoolId, studentId])
+  @@index([schoolId, academicYear])
+  @@map("fee_concessions")
+}
+
+// ─── Late Fee Config ──────────────────────────────────────────────────────────
+// Per-school late fee rules: auto-add after due date + grace period.
+model LateFeeConfig {
+  id              String   @id @default(uuid())
+  schoolId        String   @map("school_id")
+  feeCategory     String   @default("default") @map("fee_category") @db.VarChar(50)  // fee category slug or 'default'
+  academicYear    String   @default("all") @map("academic_year") @db.VarChar(9)      // specific year or 'all'
+  feeStructureId  String?  @map("fee_structure_id")  // null = applies to all
+  graceDays       Int      @default(0) @map("grace_days")
+  lateFeeType     String   @default("fixed") @map("late_fee_type") @db.VarChar(10)  // 'fixed' | 'percent'
+  lateFeeValue    Decimal  @map("late_fee_value") @db.Decimal(10, 2)
+  maxLateFee      Decimal? @map("max_late_fee") @db.Decimal(10, 2)
+  isActive        Boolean  @default(true) @map("is_active")
+  createdById     String   @map("created_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  school       School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  feeStructure FeeStructure? @relation(fields: [feeStructureId], references: [id])
+
+  @@unique([schoolId, feeCategory, academicYear])
+  @@index([schoolId])
+  @@map("late_fee_configs")
+}
+
+// ─── Transfer Certificate ─────────────────────────────────────────────────────
+// Generated when student leaves. Requires principal approval workflow.
+model TransferCertificate {
+  id                String    @id @default(uuid())
+  schoolId          String    @map("school_id")
+  studentId         String?   @map("student_id")         // null if student not yet created
+  applicationId     String?   @unique @map("application_id")  // linked from admission for TC on joining
+  tcNumber          String    @map("tc_number") @db.VarChar(30)
+  issueDate         DateTime? @map("issue_date") @db.Date
+  dateOfLeaving     DateTime? @map("date_of_leaving") @db.Date
+  lastClassAttended String?   @map("last_class_attended") @db.VarChar(50)
+  reasonForLeaving  String?   @map("reason_for_leaving") @db.VarChar(200)
+  duesClearedStatus Boolean   @default(false) @map("dues_cleared_status")
+  conductCertificate String?  @map("conduct_certificate") @db.VarChar(50)  // 'good' | 'satisfactory' | 'not_satisfactory'
+  status            String    @default("draft") @db.VarChar(20)  // 'draft' | 'pending_approval' | 'approved' | 'issued'
+  requestedById     String    @map("requested_by_id")
+  approvedById      String?   @map("approved_by_id")
+  approvedAt        DateTime? @map("approved_at")
+  remarks           String?   @db.VarChar(500)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student     Student?             @relation(fields: [studentId], references: [id])
+  application AdmissionApplication? @relation(fields: [applicationId], references: [id])
+
+  @@unique([schoolId, tcNumber])
+  @@index([schoolId, status])
+  @@index([studentId])
+  @@map("transfer_certificates")
+}
+
+// ─── Early Warning Log ────────────────────────────────────────────────────────
+// Auto-triggered when student drops 2 consecutive cycles.
+model EarlyWarningLog {
+  id           String   @id @default(uuid())
+  schoolId     String   @map("school_id")
+  studentId    String   @map("student_id")
+  cycleId      String   @map("cycle_id")
+  warningType  String   @map("warning_type") @db.VarChar(30)  // 'attendance_drop' | 'academic_drop' | 'composite_drop'
+  segment      String?  @db.VarChar(20)  // 'academic' | 'attendance' | 'behavior' | 'eco'
+  subject      String?  @db.VarChar(100) // for academic drops
+  previousRating String? @map("previous_rating") @db.VarChar(30)
+  currentRating  String? @map("current_rating")  @db.VarChar(30)
+  notifiedTeacherId String? @map("notified_teacher_id")
+  notifiedParent    Boolean @default(false) @map("notified_parent")
+  resolvedAt   DateTime? @map("resolved_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, studentId])
+  @@index([cycleId])
+  @@map("early_warning_logs")
+}
+
+// ─── Library ──────────────────────────────────────────────────────────────────
+
+model LibraryBook {
+  id              String   @id @default(uuid())
+  schoolId        String   @map("school_id")
+  isbn            String?  @db.VarChar(20)
+  title           String   @db.VarChar(300)
+  author          String?  @db.VarChar(200)
+  publisher       String?  @db.VarChar(200)
+  genre           String?  @db.VarChar(50)
+  subject         String?  @db.VarChar(100)
+  language        String   @default("English") @db.VarChar(30)
+  totalCopies     Int      @default(1) @map("total_copies")
+  availableCopies Int      @default(1) @map("available_copies")
+  location        String?  @db.VarChar(100)  // shelf/rack
+  coverUrl        String?  @map("cover_url")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdById     String   @map("created_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  school  School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  issues  LibraryIssue[]
+
+  @@unique([schoolId, isbn])
+  @@index([schoolId, subject])
+  @@map("library_books")
+}
+
+model LibraryIssue {
+  id          String    @id @default(uuid())
+  schoolId    String    @map("school_id")
+  bookId      String    @map("book_id")
+  studentId   String?   @map("student_id")
+  teacherId   String?   @map("teacher_id")
+  issueDate   DateTime  @map("issue_date") @db.Date
+  dueDate     DateTime  @map("due_date")   @db.Date
+  returnDate  DateTime? @map("return_date") @db.Date
+  fine        Decimal?  @db.Decimal(8, 2)
+  status      String    @default("issued") @db.VarChar(20)  // 'issued' | 'returned' | 'overdue' | 'lost'
+  issuedById  String    @map("issued_by_id")
+  remarks     String?   @db.VarChar(300)
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  school    School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  book      LibraryBook  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  student   Student?     @relation(fields: [studentId], references: [id])
+  teacher   Teacher?     @relation(fields: [teacherId], references: [id])
+
+  @@index([schoolId, status])
+  @@index([bookId])
+  @@index([studentId])
+  @@map("library_issues")
+}
+
+// ─── Hostel / Boarding ────────────────────────────────────────────────────────
+
+model HostelBlock {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  name      String   @db.VarChar(100)
+  gender    String   @db.VarChar(10)   // 'boys' | 'girls' | 'mixed'
+  wardenId  String?  @map("warden_id")
+  capacity  Int      @default(0)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  school School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  rooms  HostelRoom[]
+
+  @@index([schoolId])
+  @@map("hostel_blocks")
+}
+
+model HostelRoom {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  blockId   String   @map("block_id")
+  roomNo    String   @map("room_no") @db.VarChar(20)
+  roomType  String   @default("shared") @map("room_type") @db.VarChar(20)  // 'single' | 'double' | 'shared'
+  capacity  Int      @default(4)
+  floor     Int?
+  amenities String?  @db.VarChar(300)  // CSV: wifi, ac, attached_bath
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  school      School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  block       HostelBlock        @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  allocations HostelAllocation[]
+
+  @@unique([blockId, roomNo])
+  @@index([schoolId])
+  @@map("hostel_rooms")
+}
+
+model HostelAllocation {
+  id           String    @id @default(uuid())
+  schoolId     String    @map("school_id")
+  studentId    String    @map("student_id")
+  roomId       String    @map("room_id")
+  bedNo        String?   @map("bed_no") @db.VarChar(10)
+  academicYear String    @map("academic_year") @db.VarChar(9)
+  joinDate     DateTime  @map("join_date") @db.Date
+  leaveDate    DateTime? @map("leave_date") @db.Date
+  mealPlan     String?   @map("meal_plan") @db.VarChar(20)  // 'veg' | 'non_veg' | 'jain'
+  status       String    @default("active") @db.VarChar(20)  // 'active' | 'vacated' | 'transferred'
+  createdById  String    @map("created_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  school  School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  room    HostelRoom @relation(fields: [roomId], references: [id])
+
+  @@unique([studentId, academicYear])
+  @@index([schoolId, roomId])
+  @@map("hostel_allocations")
+}
+
+// ─── School Diary / Circular ──────────────────────────────────────────────────
+
+model DiaryEntry {
+  id              String   @id @default(uuid())
+  schoolId        String   @map("school_id")
+  classId         String   @map("class_id")
+  teacherId       String   @map("teacher_id")
+  date            DateTime @db.Date
+  subject         String?  @db.VarChar(100)
+  content         String   @db.Text
+  homeworkDetails String?  @map("homework_details") @db.Text
+  attachments     Json?    // [{url, name, type}]
+  isPublished     Boolean  @default(true) @map("is_published")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+
+  @@index([schoolId, classId, date])
+  @@index([teacherId])
+  @@map("diary_entries")
+}
+
+// ─── Staff HRMS ───────────────────────────────────────────────────────────────
+
+model StaffSalaryConfig {
+  id               String   @id @default(uuid())
+  schoolId         String   @map("school_id")
+  teacherId        String   @unique @map("teacher_id")
+  basic            Decimal  @db.Decimal(10, 2)
+  hra              Decimal  @default(0) @db.Decimal(10, 2)
+  da               Decimal  @default(0) @db.Decimal(10, 2)
+  ta               Decimal  @default(0) @db.Decimal(10, 2)
+  otherAllowances  Decimal  @default(0) @map("other_allowances") @db.Decimal(10, 2)
+  pfPercent        Decimal  @default(12) @map("pf_percent") @db.Decimal(5, 2)   // employee PF %
+  pfEmployer       Decimal  @default(12) @map("pf_employer") @db.Decimal(5, 2)
+  esiPercent       Decimal  @default(0.75) @map("esi_percent") @db.Decimal(5, 2)
+  esiEmployer      Decimal  @default(3.25) @map("esi_employer") @db.Decimal(5, 2)
+  tdsMonthly       Decimal  @default(0) @map("tds_monthly") @db.Decimal(10, 2)
+  effectiveFrom    DateTime @map("effective_from") @db.Date
+  createdById      String   @map("created_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
+
+  school   School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher  Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  payrolls StaffPayroll[]
+
+  @@index([schoolId])
+  @@map("staff_salary_configs")
+}
+
+model StaffPayroll {
+  id              String    @id @default(uuid())
+  schoolId        String    @map("school_id")
+  teacherId       String    @map("teacher_id")
+  configId        String?   @map("config_id")
+  month           Int       // 1–12
+  year            Int
+  workingDays     Int       @default(0) @map("working_days")
+  presentDays     Int       @default(0) @map("present_days")
+  leaveDays       Int       @default(0) @map("leave_days")
+  lopDays         Decimal   @default(0) @map("lop_days") @db.Decimal(4, 1)  // loss-of-pay
+  basic           Decimal   @db.Decimal(10, 2)
+  hra             Decimal   @default(0) @db.Decimal(10, 2)
+  da              Decimal   @default(0) @db.Decimal(10, 2)
+  ta              Decimal   @default(0) @db.Decimal(10, 2)
+  otherAllowances Decimal   @default(0) @map("other_allowances") @db.Decimal(10, 2)
+  grossSalary     Decimal   @map("gross_salary") @db.Decimal(10, 2)
+  pfEmployee      Decimal   @default(0) @map("pf_employee") @db.Decimal(10, 2)
+  pfEmployer      Decimal   @default(0) @map("pf_employer") @db.Decimal(10, 2)
+  esiEmployee     Decimal   @default(0) @map("esi_employee") @db.Decimal(10, 2)
+  esiEmployer     Decimal   @default(0) @map("esi_employer") @db.Decimal(10, 2)
+  tds             Decimal   @default(0) @db.Decimal(10, 2)
+  otherDeductions Decimal   @default(0) @map("other_deductions") @db.Decimal(10, 2)
+  netSalary       Decimal   @map("net_salary") @db.Decimal(10, 2)
+  status          String    @default("draft") @db.VarChar(20)  // 'draft' | 'approved' | 'paid'
+  paidAt          DateTime? @map("paid_at")
+  paidById        String?   @map("paid_by_id")
+  payslipUrl      String?   @map("payslip_url")
+  remarks         String?   @db.VarChar(300)
+  createdById     String    @map("created_by_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  school  School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher Teacher            @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  config  StaffSalaryConfig? @relation(fields: [configId], references: [id])
+
+  @@unique([teacherId, month, year])
+  @@index([schoolId, month, year])
+  @@map("staff_payrolls")
+}
+
+// ─── Board Exam Tracker ───────────────────────────────────────────────────────
+
+model BoardExamTracker {
+  id                String    @id @default(uuid())
+  schoolId          String    @map("school_id")
+  studentId         String    @map("student_id")
+  classId           String?   @map("class_id")
+  subject           String    @db.VarChar(100)
+  boardExamType     String    @map("board_exam_type") @db.VarChar(20)  // 'class10' | 'class12' | 'entrance'
+  examDate          DateTime? @map("exam_date") @db.Date
+  syllabusCoverage  Int       @default(0) @map("syllabus_coverage")   // 0–100 %
+  practiceTestScore Decimal?  @map("practice_test_score") @db.Decimal(5, 2)
+  targetScore       Decimal?  @map("target_score") @db.Decimal(5, 2)
+  weakTopics        String?   @map("weak_topics") @db.Text   // JSON array
+  strongTopics      String?   @map("strong_topics") @db.Text
+  notes             String?   @db.Text
+  updatedById       String    @map("updated_by_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, subject, boardExamType])
+  @@index([schoolId, boardExamType])
+  @@map("board_exam_trackers")
+}
+
+// ─── Subject Chat (Parent-Teacher on weak subjects) ───────────────────────────
+
+model SubjectChatThread {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  studentId String   @map("student_id")
+  teacherId String   @map("teacher_id")
+  subject   String   @db.VarChar(100)
+  cycleId   String?  @map("cycle_id")
+  status    String   @default("open") @db.VarChar(20)  // 'open' | 'resolved'
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  school   School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student  Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher  Teacher              @relation(fields: [teacherId], references: [id])
+  messages SubjectChatMessage[]
+
+  @@unique([studentId, teacherId, subject, cycleId])
+  @@index([schoolId])
+  @@map("subject_chat_threads")
+}
+
+model SubjectChatMessage {
+  id          String    @id @default(uuid())
+  threadId    String    @map("thread_id")
+  senderId    String    @map("sender_id")
+  senderRole  String    @map("sender_role") @db.VarChar(20)  // 'teacher' | 'parent' | 'student'
+  message     String    @db.Text
+  attachments Json?
+  readAt      DateTime? @map("read_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  thread SubjectChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@map("subject_chat_messages")
+}
+
+// ─── Risk Flag (Predictive Risk Scoring) ─────────────────────────────────────
+
+model RiskFlag {
+  id              String    @id @default(uuid())
+  schoolId        String    @map("school_id")
+  studentId       String    @map("student_id")
+  riskLevel       String    @map("risk_level") @db.VarChar(20)  // 'low' | 'medium' | 'high' | 'critical'
+  riskScore       Int       @map("risk_score")  // 0–100
+  triggers        Json      // [{type, detail}] — e.g. [{type:'attendance', detail:'68%'}]
+  attendancePct   Decimal?  @map("attendance_pct") @db.Decimal(5, 2)
+  decliningExams  Int       @default(0) @map("declining_exams")
+  behaviorScore   Int?      @map("behavior_score")
+  recommendedAction String? @map("recommended_action") @db.VarChar(300)
+  resolvedAt      DateTime? @map("resolved_at")
+  resolvedById    String?   @map("resolved_by_id")
+  computedAt      DateTime  @default(now()) @map("computed_at")
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, riskLevel])
+  @@index([studentId])
+  @@map("risk_flags")
+}
+
+// ─── Grading Scheme (Super Admin configures per school) ───────────────────────
+
+model GradingScheme {
+  id        String  @id @default(uuid())
+  schoolId  String  @map("school_id")
+  gradeLevel String @default("all") @map("grade_level") @db.VarChar(10)  // '1'–'12', 'KG', 'all'
+  label     String  @db.VarChar(10)   // 'A+', 'A', 'B+', 'B', 'C', 'D', 'F'
+  minPct    Int     @map("min_pct")   // lower bound (inclusive)
+  maxPct    Int     @map("max_pct")   // upper bound (inclusive, 100 for top band)
+  gpaPoints Decimal @default(0) @map("gpa_points") @db.Decimal(4, 2)
+  remark    String? @db.VarChar(100)  // "Outstanding", "Excellent", "Good"
+  createdById String @map("created_by_id")
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, gradeLevel, label])
+  @@index([schoolId])
+  @@map("grading_schemes")
+}
+
+// ─── Subject Catalog (Super Admin defines subjects per grade per school) ──────
+
+model SubjectCatalog {
+  id        String  @id @default(uuid())
+  schoolId  String  @map("school_id")
+  gradeLevel String @default("all") @map("grade_level") @db.VarChar(10)  // '1'–'12', 'KG', 'all'
+  subject   String  @db.VarChar(100)
+  code      String? @db.VarChar(20)   // Subject code e.g. 'MATH10'
+  isCore    Boolean @default(true) @map("is_core")
+  maxMarks  Int     @default(100) @map("max_marks")
+  passMarks Int     @default(33) @map("pass_marks")
+  createdById String @map("created_by_id")
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, gradeLevel, subject])
+  @@index([schoolId, gradeLevel])
+  @@map("subject_catalogs")
+}
+
+// ─── Performance Template (Super Admin defines cycle templates for schools) ───
+
+model PerformanceTemplate {
+  id              String   @id @default(uuid())
+  name            String   @db.VarChar(100)   // "Quarterly Assessment", "Monthly Check-in"
+  description     String?  @db.Text
+  cycleType       String   @db.VarChar(20)    // 'monthly' | 'quarterly' | 'half_yearly' | 'yearly'
+  isActive        Boolean  @default(true) @map("is_active")
+  // Default weights (can be overridden per school)
+  weightAcademic  Int      @default(40) @map("weight_academic")
+  weightAttendance Int     @default(30) @map("weight_attendance")
+  weightBehavior  Int      @default(20) @map("weight_behavior")
+  weightEco       Int      @default(10) @map("weight_eco")
+  reportCardTemplate String @default("standard") @map("report_card_template") @db.VarChar(30)
+  createdById     String   @map("created_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("performance_templates")
+}

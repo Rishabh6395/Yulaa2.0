@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ConfigHelp } from '@/components/ui/ConfigHelp';
 
 type Course = {
   id: string;
@@ -60,7 +61,10 @@ export default function SuperAdminCoursesPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Course Approvals</h1>
+        <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100 flex items-center">
+          Course Approvals
+          <ConfigHelp text="Only External courses require approval. Internal courses created by school teachers go live immediately. Approved courses appear in students' and parents' course marketplace." />
+        </h1>
         <p className="text-sm text-surface-400 mt-0.5">Review and approve external courses before they go live.</p>
       </div>
 
@@ -93,8 +97,12 @@ export default function SuperAdminCoursesPage() {
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Instructor</th>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">School</th>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Type</th>
-                <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Price</th>
-                <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Status</th>
+                <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">
+                  <span className="flex items-center gap-0.5">Price<ConfigHelp text="'Free' courses are accessible immediately after enrollment. Paid courses require a payment gateway to be configured for the school." /></span>
+                </th>
+                <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">
+                  <span className="flex items-center gap-0.5">Status<ConfigHelp text="'Pending' external courses are hidden from students until approved. Approving a course makes it instantly visible in the marketplace." /></span>
+                </th>
                 <th className="text-left p-4 text-xs font-semibold text-surface-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
