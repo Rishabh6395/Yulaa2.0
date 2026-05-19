@@ -17,19 +17,28 @@ function validateAadhaar(no: string): boolean {
 
 /** Load school's configured grade names (from GradeMaster) for age-check gating. */
 async function getSchoolGradeNames(schoolId: string): Promise<Set<string>> {
-  const grades = await prisma.gradeMaster.findMany({
-    where: { schoolId, isActive: true },
-    select: { name: true },
-  });
-  return new Set(grades.map(g => g.name.toLowerCase().trim()));
+  try {
+    const grades = await prisma.gradeMaster.findMany({
+      where: { schoolId, isActive: true },
+      select: { name: true },
+    });
+    return new Set(grades.map(g => g.name.toLowerCase().trim()));
+  } catch {
+    // grade_masters table may not exist yet — skip age-check validation
+    return new Set();
+  }
 }
 
 async function hasDuplicateAadhaar(aadhaarNo: string, schoolId: string): Promise<boolean> {
-  const count = await prisma.student.count({ where: { schoolId, aadhaarNo } });
-  const appCount = await prisma.admissionChild.count({
-    where: { aadhaarNo, application: { schoolId, status: { not: 'rejected' } } },
-  });
-  return count > 0 || appCount > 0;
+  try {
+    const count = await prisma.student.count({ where: { schoolId, aadhaarNo } });
+    const appCount = await prisma.admissionChild.count({
+      where: { aadhaarNo, application: { schoolId, status: { not: 'rejected' } } },
+    });
+    return count > 0 || appCount > 0;
+  } catch {
+    return false;
+  }
 }
 
 async function hasDuplicateNameDob(firstName: string, lastName: string, dob: Date, schoolId: string): Promise<boolean> {

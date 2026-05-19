@@ -23,7 +23,7 @@ export default function StudentsPage() {
   const [statusFilter,  setStatusFilter]  = useState('');
   const [classFilter,   setClassFilter]   = useState('');
   const [showAddModal,  setShowAddModal]  = useState(false);
-  const [form,          setForm]          = useState({ admission_no: '', first_name: '', last_name: '', dob: '', gender: '', class_id: '', address: '', parent_name: '', parent_phone: '', parent_email: '', photo_url: '' });
+  const [form,          setForm]          = useState({ admission_no: '', first_name: '', last_name: '', middle_name: '', roll_no: '', sr_no: '', dob: '', gender: '', class_id: '', address: '', blood_group: '', aadhaar_no: '', category: '', religion: '', nationality: '', mother_tongue: '', house_id: '', stream: '', admission_category: '', boarding_type: '', diet_type: '', disability_type: '', transport_route_id: '', bus_stop: '', doctor_name: '', doctor_phone: '', insurance_provider: '', passport_no: '', parent_name: '', parent_phone: '', parent_email: '', photo_url: '' });
   const [saving,        setSaving]        = useState(false);
 
   const [parentTarget, setParentTarget] = useState<{ id: string; name: string } | null>(null);
@@ -76,7 +76,7 @@ export default function StudentsPage() {
       const d = await res.json();
       if (!res.ok) { setSaveError(d.error || 'Failed to add student — please try again.'); return; }
       setShowAddModal(false);
-      setForm({ admission_no: '', first_name: '', last_name: '', dob: '', gender: '', class_id: '', address: '', parent_name: '', parent_phone: '', parent_email: '', photo_url: '' });
+      setForm({ admission_no: '', first_name: '', last_name: '', middle_name: '', roll_no: '', sr_no: '', dob: '', gender: '', class_id: '', address: '', blood_group: '', aadhaar_no: '', category: '', religion: '', nationality: '', mother_tongue: '', house_id: '', stream: '', admission_category: '', boarding_type: '', diet_type: '', disability_type: '', transport_route_id: '', bus_stop: '', doctor_name: '', doctor_phone: '', insurance_provider: '', passport_no: '', parent_name: '', parent_phone: '', parent_email: '', photo_url: '' });
       mutate();
     } catch { setSaveError('Network error — please check your connection and try again.'); }
     finally { setSaving(false); }
@@ -334,7 +334,13 @@ export default function StudentsPage() {
       </Modal>
 
       <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Student">
-        <form onSubmit={handleAdd} className="space-y-4">
+        <form onSubmit={handleAdd} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+          {saveError && (
+            <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl text-sm font-medium">
+              {saveError}
+            </div>
+          )}
+
           {fc.visible('photo') && (
             <div className="flex justify-center pb-2">
               <PhotoUpload
@@ -346,6 +352,8 @@ export default function StudentsPage() {
               />
             </div>
           )}
+
+          {/* Name row */}
           <div className="grid grid-cols-2 gap-4">
             {fc.visible('firstName') && (
               <div>
@@ -360,21 +368,44 @@ export default function StudentsPage() {
               </div>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+
+          {fc.visible('middleName') && (
+            <div>
+              <label className="label">{fc.label('middleName')}{fc.required('middleName') && <span className="text-red-500 ml-0.5">*</span>}</label>
+              <input className="input-field" required={fc.required('middleName')} readOnly={!fc.editable('middleName')} value={form.middle_name} onChange={e => setForm({...form, middle_name: e.target.value})}/>
+            </div>
+          )}
+
+          {/* Admission + Roll numbers */}
+          <div className="grid grid-cols-3 gap-4">
             {fc.visible('admissionNo') && (
               <div>
                 <label className="label">{fc.label('admissionNo')}{fc.required('admissionNo') && <span className="text-red-500 ml-0.5">*</span>}</label>
                 <input className="input-field" required={fc.required('admissionNo')} readOnly={!fc.editable('admissionNo')} value={form.admission_no} onChange={e => setForm({...form, admission_no: e.target.value})}/>
               </div>
             )}
+            {fc.visible('rollNo') && (
+              <div>
+                <label className="label">{fc.label('rollNo')}{fc.required('rollNo') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" required={fc.required('rollNo')} readOnly={!fc.editable('rollNo')} value={form.roll_no} onChange={e => setForm({...form, roll_no: e.target.value})}/>
+              </div>
+            )}
+            {fc.visible('srNo') && (
+              <div>
+                <label className="label">{fc.label('srNo')}{fc.required('srNo') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" required={fc.required('srNo')} readOnly={!fc.editable('srNo')} value={form.sr_no} onChange={e => setForm({...form, sr_no: e.target.value})}/>
+              </div>
+            )}
+          </div>
+
+          {/* DOB + Gender + Class */}
+          <div className="grid grid-cols-2 gap-4">
             {fc.visible('dob') && (
               <div>
                 <label className="label">{fc.label('dob')}{fc.required('dob') && <span className="text-red-500 ml-0.5">*</span>}</label>
                 <input type="date" className="input-field" readOnly={!fc.editable('dob')} value={form.dob} onChange={e => setForm({...form, dob: e.target.value})}/>
               </div>
             )}
-          </div>
-          <div className="grid grid-cols-2 gap-4">
             {fc.visible('gender') && (
               <div>
                 <label className="label">{fc.label('gender')}{fc.required('gender') && <span className="text-red-500 ml-0.5">*</span>}</label>
@@ -386,6 +417,9 @@ export default function StudentsPage() {
                 </select>
               </div>
             )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             {fc.visible('classId') && (
               <div>
                 <label className="label">{fc.label('classId')}{fc.required('classId') && <span className="text-red-500 ml-0.5">*</span>}</label>
@@ -395,13 +429,169 @@ export default function StudentsPage() {
                 </select>
               </div>
             )}
+            {fc.visible('bloodGroup') && (
+              <div>
+                <label className="label">{fc.label('bloodGroup')}{fc.required('bloodGroup') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <select className="input-field" required={fc.required('bloodGroup')} disabled={!fc.editable('bloodGroup')} value={form.blood_group} onChange={e => setForm({...form, blood_group: e.target.value})}>
+                  <option value="">Select</option>
+                  {fc.options('bloodGroup', ['A+','A-','B+','B-','AB+','AB-','O+','O-']).map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+            )}
           </div>
+
+          {/* Aadhaar + Category */}
+          <div className="grid grid-cols-2 gap-4">
+            {fc.visible('aadhaarNo') && (
+              <div>
+                <label className="label">{fc.label('aadhaarNo')}{fc.required('aadhaarNo') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" maxLength={12} placeholder="12-digit Aadhaar" required={fc.required('aadhaarNo')} readOnly={!fc.editable('aadhaarNo')} value={form.aadhaar_no} onChange={e => setForm({...form, aadhaar_no: e.target.value})}/>
+              </div>
+            )}
+            {fc.visible('category') && (
+              <div>
+                <label className="label">{fc.label('category')}{fc.required('category') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <select className="input-field" required={fc.required('category')} disabled={!fc.editable('category')} value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
+                  <option value="">Select</option>
+                  {fc.options('category', ['General','OBC','SC','ST','EWS','Differently Abled']).map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Religion + Mother Tongue + Nationality */}
+          <div className="grid grid-cols-3 gap-4">
+            {fc.visible('religion') && (
+              <div>
+                <label className="label">{fc.label('religion')}{fc.required('religion') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <select className="input-field" required={fc.required('religion')} disabled={!fc.editable('religion')} value={form.religion} onChange={e => setForm({...form, religion: e.target.value})}>
+                  <option value="">Select</option>
+                  {['Hindu','Muslim','Christian','Sikh','Buddhist','Jain','Parsi','Others'].map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+            )}
+            {fc.visible('motherTongue') && (
+              <div>
+                <label className="label">{fc.label('motherTongue')}{fc.required('motherTongue') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" required={fc.required('motherTongue')} readOnly={!fc.editable('motherTongue')} value={form.mother_tongue} onChange={e => setForm({...form, mother_tongue: e.target.value})}/>
+              </div>
+            )}
+            {fc.visible('nationality') && (
+              <div>
+                <label className="label">{fc.label('nationality')}{fc.required('nationality') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" placeholder="e.g. Indian" required={fc.required('nationality')} readOnly={!fc.editable('nationality')} value={form.nationality} onChange={e => setForm({...form, nationality: e.target.value})}/>
+              </div>
+            )}
+          </div>
+
+          {/* Stream + Admission Category + Boarding */}
+          <div className="grid grid-cols-2 gap-4">
+            {fc.visible('stream') && (
+              <div>
+                <label className="label">{fc.label('stream')}{fc.required('stream') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <select className="input-field" required={fc.required('stream')} disabled={!fc.editable('stream')} value={form.stream} onChange={e => setForm({...form, stream: e.target.value})}>
+                  <option value="">Select</option>
+                  {['Science','Commerce','Arts','General'].map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+            )}
+            {fc.visible('admissionCategory') && (
+              <div>
+                <label className="label">{fc.label('admissionCategory')}{fc.required('admissionCategory') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <select className="input-field" required={fc.required('admissionCategory')} disabled={!fc.editable('admissionCategory')} value={form.admission_category} onChange={e => setForm({...form, admission_category: e.target.value})}>
+                  <option value="">Select</option>
+                  {['Regular','EWS/RTE','Sports','NCC','Minority','Legacy','Staff Ward','Management Quota'].map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {fc.visible('boardingType') && (
+              <div>
+                <label className="label">{fc.label('boardingType')}{fc.required('boardingType') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <select className="input-field" required={fc.required('boardingType')} disabled={!fc.editable('boardingType')} value={form.boarding_type} onChange={e => setForm({...form, boarding_type: e.target.value})}>
+                  <option value="">Select</option>
+                  {['Day Scholar','Boarder','Weekly Boarder','Day Boarder'].map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+            )}
+            {fc.visible('dietType') && (
+              <div>
+                <label className="label">{fc.label('dietType')}{fc.required('dietType') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <select className="input-field" required={fc.required('dietType')} disabled={!fc.editable('dietType')} value={form.diet_type} onChange={e => setForm({...form, diet_type: e.target.value})}>
+                  <option value="">Select</option>
+                  {['Vegetarian','Non-Vegetarian','Vegan','Halal','Jain','Gluten-Free'].map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {fc.visible('disabilityType') && (
+            <div>
+              <label className="label">{fc.label('disabilityType')}{fc.required('disabilityType') && <span className="text-red-500 ml-0.5">*</span>}</label>
+              <select className="input-field" required={fc.required('disabilityType')} disabled={!fc.editable('disabilityType')} value={form.disability_type} onChange={e => setForm({...form, disability_type: e.target.value})}>
+                <option value="">Select</option>
+                {['None','Visual','Hearing','Physical','Dyslexia','ADHD','Autism','Cerebral Palsy'].map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Transport */}
+          <div className="grid grid-cols-2 gap-4">
+            {fc.visible('transportRouteId') && (
+              <div>
+                <label className="label">{fc.label('transportRouteId')}{fc.required('transportRouteId') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" placeholder="Route name / ID" required={fc.required('transportRouteId')} readOnly={!fc.editable('transportRouteId')} value={form.transport_route_id} onChange={e => setForm({...form, transport_route_id: e.target.value})}/>
+              </div>
+            )}
+            {fc.visible('busStop') && (
+              <div>
+                <label className="label">{fc.label('busStop')}{fc.required('busStop') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" required={fc.required('busStop')} readOnly={!fc.editable('busStop')} value={form.bus_stop} onChange={e => setForm({...form, bus_stop: e.target.value})}/>
+              </div>
+            )}
+          </div>
+
+          {/* Health */}
+          <div className="grid grid-cols-2 gap-4">
+            {fc.visible('doctorName') && (
+              <div>
+                <label className="label">{fc.label('doctorName')}{fc.required('doctorName') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" required={fc.required('doctorName')} readOnly={!fc.editable('doctorName')} value={form.doctor_name} onChange={e => setForm({...form, doctor_name: e.target.value})}/>
+              </div>
+            )}
+            {fc.visible('doctorPhone') && (
+              <div>
+                <label className="label">{fc.label('doctorPhone')}{fc.required('doctorPhone') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" type="tel" required={fc.required('doctorPhone')} readOnly={!fc.editable('doctorPhone')} value={form.doctor_phone} onChange={e => setForm({...form, doctor_phone: e.target.value})}/>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {fc.visible('insuranceProvider') && (
+              <div>
+                <label className="label">{fc.label('insuranceProvider')}{fc.required('insuranceProvider') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" required={fc.required('insuranceProvider')} readOnly={!fc.editable('insuranceProvider')} value={form.insurance_provider} onChange={e => setForm({...form, insurance_provider: e.target.value})}/>
+              </div>
+            )}
+            {fc.visible('passportNo') && (
+              <div>
+                <label className="label">{fc.label('passportNo')}{fc.required('passportNo') && <span className="text-red-500 ml-0.5">*</span>}</label>
+                <input className="input-field" required={fc.required('passportNo')} readOnly={!fc.editable('passportNo')} value={form.passport_no} onChange={e => setForm({...form, passport_no: e.target.value})}/>
+              </div>
+            )}
+          </div>
+
           {fc.visible('address') && (
             <div>
               <label className="label">{fc.label('address')}{fc.required('address') && <span className="text-red-500 ml-0.5">*</span>}</label>
               <textarea className="input-field" rows={2} readOnly={!fc.editable('address')} value={form.address} onChange={e => setForm({...form, address: e.target.value})}/>
             </div>
           )}
+
+          {/* Parent section */}
           <div className="border-t border-surface-100 dark:border-gray-800 pt-4">
             <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Parent / Guardian (optional)</p>
             <div className="grid grid-cols-2 gap-4">
@@ -425,6 +615,7 @@ export default function StudentsPage() {
               )}
             </div>
           </div>
+
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving...' : 'Add Student'}</button>

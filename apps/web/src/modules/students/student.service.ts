@@ -50,6 +50,11 @@ export async function createStudent(schoolId: string, body: Record<string, any>)
   const {
     admission_no, first_name, last_name, dob, gender, class_id, address, blood_group,
     parent_name, parent_phone, parent_email, photo_url,
+    middle_name, roll_no, sr_no, aadhaar_no, nationality, mother_tongue,
+    category, religion, house_id, stream, admission_category,
+    boarding_type, diet_type, disability_type,
+    transport_route_id, bus_stop, doctor_name, doctor_phone,
+    insurance_provider, passport_no,
   } = body;
 
   if (!admission_no || !first_name || !last_name) {
@@ -58,15 +63,35 @@ export async function createStudent(schoolId: string, body: Record<string, any>)
 
   const student = await repo.createStudent({
     schoolId,
-    admissionNo: admission_no,
-    firstName:   first_name,
-    lastName:    last_name,
-    classId:     class_id   || null,
-    dob:         dob        || null,
-    gender:      gender     || null,
-    address:     address    || null,
-    bloodGroup:  blood_group || null,
-    photoUrl:    photo_url  || null,
+    admissionNo:       admission_no,
+    firstName:         first_name,
+    lastName:          last_name,
+    classId:           class_id          || null,
+    dob:               dob               || null,
+    gender:            gender            || null,
+    address:           address           || null,
+    bloodGroup:        blood_group       || null,
+    photoUrl:          photo_url         || null,
+    middleName:        middle_name       || null,
+    rollNo:            roll_no           || null,
+    srNo:              sr_no             || null,
+    aadhaarNo:         aadhaar_no        || null,
+    nationality:       nationality       || null,
+    motherTongue:      mother_tongue     || null,
+    category:          category          || null,
+    religion:          religion          || null,
+    houseId:           house_id          || null,
+    stream:            stream            || null,
+    admissionCategory: admission_category || null,
+    boardingType:      boarding_type     || null,
+    dietType:          diet_type         || null,
+    disabilityType:    disability_type   || null,
+    transportRouteId:  transport_route_id || null,
+    busStop:           bus_stop          || null,
+    doctorName:        doctor_name       || null,
+    doctorPhone:       doctor_phone      || null,
+    insuranceProvider: insurance_provider || null,
+    passportNo:        passport_no       || null,
   });
 
   if (parent_name?.trim() && parent_phone?.trim()) {

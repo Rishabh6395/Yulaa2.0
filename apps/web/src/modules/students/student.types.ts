@@ -9,16 +9,39 @@ export interface StudentListParams {
 }
 
 export interface CreateStudentInput {
-  schoolId:    string;
-  admissionNo: string;
-  firstName:   string;
-  lastName:    string;
-  classId?:    string | null;
-  dob?:        string | null;
-  gender?:     string | null;
-  address?:    string | null;
-  bloodGroup?: string | null;
-  photoUrl?:   string | null;
+  schoolId:          string;
+  admissionNo:       string;
+  firstName:         string;
+  lastName:          string;
+  classId?:          string | null;
+  dob?:              string | null;
+  gender?:           string | null;
+  address?:          string | null;
+  bloodGroup?:       string | null;
+  photoUrl?:         string | null;
+  // Extended fields
+  middleName?:       string | null;
+  rollNo?:           string | null;
+  srNo?:             string | null;
+  aadhaarNo?:        string | null;
+  nationality?:      string | null;
+  motherTongue?:     string | null;
+  category?:         string | null;
+  religion?:         string | null;
+  houseId?:          string | null;
+  stream?:           string | null;
+  admissionCategory?:string | null;
+  boardingType?:     string | null;
+  dietType?:         string | null;
+  disabilityType?:   string | null;
+  transportRouteId?: string | null;
+  busStop?:          string | null;
+  doctorName?:       string | null;
+  doctorPhone?:      string | null;
+  insuranceProvider?:string | null;
+  passportNo?:       string | null;
+  phone?:            string | null;
+  emergencyContact?: string | null;
 }
 
 export interface UpdateStudentInput {
