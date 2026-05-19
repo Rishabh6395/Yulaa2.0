@@ -49,7 +49,7 @@ function validateThresholds(body: any) {
     ['mediumRiskThreshold',body.mediumRiskThreshold,0,  99],
   ] as any;
 
-  for (const [field, val, min, max] of checks as [string, unknown, number, number][]) {
+  for (const [field, val, min, max] of checks as unknown as [string, unknown, number, number][]) {
     if (val !== undefined && val !== null) {
       if (typeof val !== 'number' || val < min || val > max) {
         throw new AppError(`${field} must be a number between ${min} and ${max}`);

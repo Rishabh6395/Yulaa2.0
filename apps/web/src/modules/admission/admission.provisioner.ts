@@ -70,7 +70,7 @@ export async function provisionApprovedApplication(applicationId: string) {
     for (const child of app.children) {
       // Resolve classId from classApplying label
       const cls = await tx.class.findFirst({
-        where: { schoolId: app.schoolId, grade: { contains: child.classApplying, mode: 'insensitive' } },
+        where: { schoolId: app.schoolId, ...(child.classApplying ? { grade: { contains: child.classApplying, mode: 'insensitive' } } : {}) },
       });
 
       const student = await tx.student.create({
