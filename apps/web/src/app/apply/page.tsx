@@ -33,10 +33,10 @@ const emptyChild = (): ChildForm => ({
   bloodGroup: '', medicalNotes: '', photo: '',
 });
 
-const STEPS  = ['Parent Details', 'Children & School', 'Review & Submit'];
-const GRADES = ['Nursery', 'LKG', 'UKG', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4',
-                'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10',
-                'Grade 11', 'Grade 12'];
+const STEPS         = ['Parent Details', 'Children & School', 'Review & Submit'];
+const DEFAULT_GRADES = ['Nursery', 'LKG', 'UKG', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4',
+                        'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10',
+                        'Grade 11', 'Grade 12'];
 
 const DEFAULT_RULES: FieldRules = {
   parentName: 'required', parentPhone: 'required', parentEmail: 'optional',
@@ -113,6 +113,7 @@ export default function ApplyPage() {
   const [customFields,  setCustomFields]  = useState<CustomFieldDef[]>([]);
   const [customValues,  setCustomValues]  = useState<Record<string, string>>({});
   const [configLoading, setConfigLoading] = useState(false);
+  const [grades,        setGrades]        = useState<string[]>(DEFAULT_GRADES);
 
   // Step 0 — parent
   const [parentName,         setParentName]         = useState('');
@@ -134,17 +135,25 @@ export default function ApplyPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedSchool) { setFieldRules(DEFAULT_RULES); setCustomFields([]); setCustomValues({}); return; }
+    if (!selectedSchool) {
+      setFieldRules(DEFAULT_RULES);
+      setCustomFields([]);
+      setCustomValues({});
+      setGrades(DEFAULT_GRADES);
+      return;
+    }
     setConfigLoading(true);
-    fetch(`/api/form-config/public?schoolId=${selectedSchool}&formId=admission_form`)
-      .then(r => r.json())
-      .then(d => {
-        setFieldRules(d.fieldRules ? { ...DEFAULT_RULES, ...d.fieldRules } : DEFAULT_RULES);
-        setCustomFields(d.customFields ?? []);
-        setCustomValues({});
-      })
-      .catch(() => { setFieldRules(DEFAULT_RULES); setCustomFields([]); })
-      .finally(() => setConfigLoading(false));
+
+    // Fetch form config and school grades in parallel
+    Promise.all([
+      fetch(`/api/form-config/public?schoolId=${selectedSchool}&formId=admission_form`).then(r => r.json()).catch(() => null),
+      fetch(`/api/admission/grades?schoolId=${selectedSchool}`).then(r => r.json()).catch(() => null),
+    ]).then(([cfg, gradeData]) => {
+      setFieldRules(cfg?.fieldRules ? { ...DEFAULT_RULES, ...cfg.fieldRules } : DEFAULT_RULES);
+      setCustomFields(cfg?.customFields ?? []);
+      setCustomValues({});
+      setGrades(gradeData?.grades ?? DEFAULT_GRADES);
+    }).finally(() => setConfigLoading(false));
   }, [selectedSchool]);
 
   const err = useCallback((msg: string) => {
@@ -493,7 +502,7 @@ export default function ApplyPage() {
                     <Label rules={fieldRules} id="gradeApplying">Class Applying For</Label>
                     <select className="input-field" value={child.classApplying} onChange={e => updateChild(i, 'classApplying', e.target.value)}>
                       <option value="">— Select Grade —</option>
-                      {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                      {grades.map(g => <option key={g} value={g}>{g}</option>)}
                     </select>
                   </div>
                 )}

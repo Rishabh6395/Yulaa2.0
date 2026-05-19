@@ -171,7 +171,7 @@ const makeModules = (schoolId: string): ConfigModule[] => [
     label: 'Performance Management',
     description: 'Configure monthly, mid-term, and year-end evaluation logic with weightage-based scoring.',
     color: 'bg-green-50 dark:bg-green-950/50 text-green-600 dark:text-green-400',
-    href: `/dashboard/performance`,
+    href: `/dashboard/schools/${schoolId}/performance`,
     status: 'available',
     icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/><polyline points="17,6 23,6 23,12"/></svg>,
   },
