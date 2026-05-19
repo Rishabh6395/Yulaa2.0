@@ -1,6 +1,7 @@
 import { getUserFromRequest } from '@/lib/auth';
 import { getTeacherBalances, getStudentLeaveBalance } from '@/modules/leave/leave.service';
 import { handleError, UnauthorizedError } from '@/utils/errors';
+import { currentAcademicYearLabel } from '@/lib/school-utils';
 
 export async function GET(request: Request) {
   try {
@@ -9,7 +10,7 @@ export async function GET(request: Request) {
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
     const { searchParams } = new URL(request.url);
     const studentId    = searchParams.get('student_id');
-    const academicYear = searchParams.get('year') || '2024-25';
+    const academicYear = searchParams.get('year') || currentAcademicYearLabel();
 
     if (studentId) {
       // school_id is null for parents — getStudentLeaveBalance derives it from the student record

@@ -5,9 +5,22 @@ import { useState, useEffect } from 'react';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface ChecklistItem {
-  label:      string;
-  actionRole: string;
+  label:        string;
+  actionRole:   string;
+  required:     boolean;
+  documentType?: string;
+  description?:  string;
 }
+
+const DOCUMENT_TYPES = [
+  { value: '',              label: 'None' },
+  { value: 'certificate',   label: 'Certificate' },
+  { value: 'id_proof',      label: 'ID Proof' },
+  { value: 'form',          label: 'Form / Application' },
+  { value: 'photo',         label: 'Photo' },
+  { value: 'report_card',   label: 'Report Card' },
+  { value: 'other',         label: 'Other Document' },
+];
 
 interface Step {
   stepOrder:      number;
@@ -165,12 +178,12 @@ export default function WorkflowPage() {
   function addChecklistItem(stepIdx: number) {
     setSteps(s => s.map((st, idx) =>
       idx === stepIdx
-        ? { ...st, checklistItems: [...st.checklistItems, { label: '', actionRole: 'school_admin' }] }
+        ? { ...st, checklistItems: [...st.checklistItems, { label: '', actionRole: 'school_admin', required: false }] }
         : st,
     ));
   }
 
-  function updateChecklistItem(stepIdx: number, itemIdx: number, field: keyof ChecklistItem, val: string) {
+  function updateChecklistItem(stepIdx: number, itemIdx: number, field: keyof ChecklistItem, val: string | boolean) {
     setSteps(s => s.map((st, idx) =>
       idx === stepIdx
         ? {
@@ -377,36 +390,69 @@ export default function WorkflowPage() {
 
                     {/* Checklist items */}
                     {step.checklistItems.length > 0 && (
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         {step.checklistItems.map((item, iIdx) => (
-                          <div key={iIdx} className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded border border-surface-300 dark:border-gray-600 shrink-0 flex items-center justify-center">
-                              <div className="w-1.5 h-1.5 rounded-full bg-surface-300 dark:bg-gray-600" />
+                          <div key={iIdx} className="rounded-lg border border-surface-200 dark:border-gray-700 bg-surface-50 dark:bg-gray-800/50 p-2.5 space-y-2">
+                            {/* Row 1: label + remove */}
+                            <div className="flex items-center gap-2">
+                              <div className="w-3.5 h-3.5 rounded border border-surface-300 dark:border-gray-600 shrink-0" />
+                              <input
+                                className="flex-1 text-sm border border-surface-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                                placeholder="Checklist item (e.g. Verify birth certificate)"
+                                value={item.label}
+                                onChange={e => updateChecklistItem(i, iIdx, 'label', e.target.value)}
+                              />
+                              <button type="button"
+                                onClick={() => removeChecklistItem(i, iIdx)}
+                                className="text-surface-300 hover:text-red-500 transition-colors p-1 shrink-0"
+                                title="Remove item"
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                              </button>
                             </div>
+
+                            {/* Row 2: role + doc type + required toggle */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <select
+                                className="text-xs border border-surface-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                                value={item.actionRole}
+                                onChange={e => updateChecklistItem(i, iIdx, 'actionRole', e.target.value)}
+                                title="Who needs to complete this item"
+                              >
+                                {ACTION_ROLES.map(r => (
+                                  <option key={r.value} value={r.value}>{r.label}</option>
+                                ))}
+                              </select>
+                              <select
+                                className="text-xs border border-surface-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                                value={item.documentType ?? ''}
+                                onChange={e => updateChecklistItem(i, iIdx, 'documentType', e.target.value)}
+                                title="Document type required for this item"
+                              >
+                                {DOCUMENT_TYPES.map(d => (
+                                  <option key={d.value} value={d.value}>{d.label}</option>
+                                ))}
+                              </select>
+                              <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none ml-auto">
+                                <input
+                                  type="checkbox"
+                                  checked={item.required}
+                                  onChange={e => updateChecklistItem(i, iIdx, 'required', e.target.checked)}
+                                  className="w-3.5 h-3.5 accent-brand-500 cursor-pointer"
+                                />
+                                Required
+                              </label>
+                            </div>
+
+                            {/* Row 3: description (optional) */}
                             <input
-                              className="flex-1 text-sm border border-surface-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
-                              placeholder="Checklist item (e.g. Verify birth certificate)"
-                              value={item.label}
-                              onChange={e => updateChecklistItem(i, iIdx, 'label', e.target.value)}
+                              className="w-full text-xs border border-surface-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 placeholder-surface-300 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                              placeholder="Instructions for applicant (optional)"
+                              value={item.description ?? ''}
+                              onChange={e => updateChecklistItem(i, iIdx, 'description', e.target.value)}
                             />
-                            <select
-                              className="text-xs border border-surface-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-400 shrink-0"
-                              value={item.actionRole}
-                              onChange={e => updateChecklistItem(i, iIdx, 'actionRole', e.target.value)}
-                              title="Who needs to complete this item"
-                            >
-                              {ACTION_ROLES.map(r => (
-                                <option key={r.value} value={r.value}>{r.label}</option>
-                              ))}
-                            </select>
-                            <button type="button"
-                              onClick={() => removeChecklistItem(i, iIdx)}
-                              className="text-surface-300 hover:text-red-500 transition-colors p-1 shrink-0"
-                            >
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                              </svg>
-                            </button>
                           </div>
                         ))}
                       </div>

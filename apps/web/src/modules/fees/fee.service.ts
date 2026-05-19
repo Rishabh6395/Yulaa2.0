@@ -111,7 +111,7 @@ export async function applyBulkFees(schoolId: string, body: Record<string, any>)
   return { created, failed };
 }
 
-export async function recordPayment(body: Record<string, any>) {
+export async function recordPayment(schoolId: string, body: Record<string, any>) {
   const { id, payment_amount, payment_method, transaction_ref } = body;
   if (!id || !payment_amount) throw new AppError('id and payment_amount are required');
 
@@ -120,6 +120,7 @@ export async function recordPayment(body: Record<string, any>) {
     paymentAmount:  payment_amount,
     paymentMethod:  payment_method,
     transactionRef: transaction_ref,
+    schoolId,
   });
 
   if (!result) throw new NotFoundError('Invoice');

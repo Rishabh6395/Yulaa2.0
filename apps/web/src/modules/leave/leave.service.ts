@@ -154,6 +154,7 @@ export async function submitLeaveRequest(
   // Block if any pending or approved leave overlaps with the requested dates
   const sd = new Date(start_date); sd.setUTCHours(0, 0, 0, 0);
   const ed = new Date(end_date);   ed.setUTCHours(0, 0, 0, 0);
+  if (ed < sd) throw new AppError('End date must be on or after start date', 400);
   const overlap = await repo.findOverlappingLeave(
     schoolId, userId, student_id || null, sd, ed,
   );

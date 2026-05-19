@@ -86,6 +86,13 @@ export function useFormConfig(formId: string) {
     Object.entries(rawRules).map(([k, v]) => [k, normalise(v)]),
   );
 
+  // Global label overrides set by super admin — used as fallback when the
+  // role-specific config has no label set.
+  const globalRawRules: Record<string, any> = cfgData?.configs?.[formId]?.['global'] ?? {};
+  const globalRules: Record<string, FieldRule> = Object.fromEntries(
+    Object.entries(globalRawRules).map(([k, v]) => [k, normalise(v)]),
+  );
+
   const fields: FieldDef[] = FORM_FIELDS_MAP[formId] ?? [];
 
   const masterOptions: Record<string, string[]> = {
@@ -112,8 +119,10 @@ export function useFormConfig(formId: string) {
     fields,
 
     label(fieldId: string): string {
-      const saved = rules[fieldId]?.label;
-      if (saved) return saved;
+      const roleLabel = rules[fieldId]?.label;
+      if (roleLabel) return roleLabel;
+      const globalLabel = globalRules[fieldId]?.label;
+      if (globalLabel) return globalLabel;
       return getDefaultLabel(formId, fieldId);
     },
 

@@ -15,7 +15,6 @@ export const menuItems: Record<string, MenuItem[]> = {
     { label: 'Online Class Config',     href: '/dashboard/super-admin/online-class-config', icon: 'Monitor',      key: 'super_online_class' },
     { label: 'Course Approvals',        href: '/dashboard/super-admin/courses',            icon: 'BookOpen',      key: 'super_courses' },
     { label: 'School Admin Queries',    href: '/dashboard/super-admin/queries',            icon: 'MessageSquare', key: 'super_queries' },
-    { label: 'Form Configuration',      href: '/dashboard/super-admin/form-config',         icon: 'Layout',        key: 'super_form_config' },
     { label: 'Performance Management', href: '/dashboard/super-admin/kpi-config',           icon: 'TrendingUp',    key: 'super_perf_config' },
   ],
   school_admin: [

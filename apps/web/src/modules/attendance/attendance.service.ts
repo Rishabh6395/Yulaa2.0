@@ -79,6 +79,11 @@ export async function bulkUploadAttendance(
       errors.push(`Row ${rowNum}: invalid date "${row.date}" — use YYYY-MM-DD format`);
       return;
     }
+    const todayLimit = new Date(); todayLimit.setUTCHours(23, 59, 59, 999);
+    if (parsedDate > todayLimit) {
+      errors.push(`Row ${rowNum}: cannot mark attendance for future date "${row.date}"`);
+      return;
+    }
     parsedDate.setUTCHours(0, 0, 0, 0);
     valid.push({ student_id: row.student_id, status, remarks: row.remarks || undefined, date: parsedDate });
   });
@@ -266,6 +271,9 @@ export async function markAttendance(schoolId: string, markedBy: string, body: R
 
   const parsedDate = new Date(date);
   parsedDate.setUTCHours(0, 0, 0, 0);
+
+  const today = new Date(); today.setUTCHours(23, 59, 59, 999);
+  if (parsedDate > today) throw new AppError('Cannot mark attendance for a future date', 400);
 
   await repo.upsertAttendanceRecords({
     schoolId,

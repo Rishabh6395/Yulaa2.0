@@ -11,14 +11,14 @@ export const PRINCIPAL_ADMIN_ROLES: readonly string[] = ['super_admin', 'school_
 /** Full management chain — leave admin, syllabus, announcements, timetable */
 export const MANAGEMENT_ROLES: readonly string[] = ['super_admin', 'school_admin', 'principal', 'hod'];
 
-/** Can review / approve workflow items (management + teachers) */
-export const REVIEWER_ROLES: readonly string[] = ['super_admin', 'school_admin', 'principal', 'hod', 'teacher'];
+/** Can review / approve workflow items (management + teachers + class_teacher) */
+export const REVIEWER_ROLES: readonly string[] = ['super_admin', 'school_admin', 'principal', 'hod', 'teacher', 'class_teacher'];
 
 /** Staff who hold leave balances and can submit leave */
-export const EMPLOYEE_ROLES: readonly string[] = ['teacher', 'school_admin', 'principal', 'hod', 'employee'];
+export const EMPLOYEE_ROLES: readonly string[] = ['teacher', 'class_teacher', 'school_admin', 'principal', 'hod', 'employee', 'accountant'];
 
 /** Roles that can view or manage timetable reassignments */
-export const TIMETABLE_ROLES: readonly string[] = ['teacher', 'school_admin', 'principal', 'hod'];
+export const TIMETABLE_ROLES: readonly string[] = ['teacher', 'class_teacher', 'school_admin', 'principal', 'hod'];
 
 export type RoleCode =
   | 'super_admin'
@@ -26,6 +26,8 @@ export type RoleCode =
   | 'principal'
   | 'hod'
   | 'teacher'
+  | 'class_teacher'
+  | 'accountant'
   | 'employee'
   | 'parent'
   | 'student'

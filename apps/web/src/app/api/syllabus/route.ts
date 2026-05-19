@@ -25,8 +25,12 @@ export async function GET(request: Request) {
     const classId = searchParams.get('classId') || undefined;
     const subject = searchParams.get('subject') || undefined;
 
-    // Teacher sees only their own syllabi
-    const teacherFilter = primary.role_code === 'teacher' ? { teacherId: user.id } : {};
+    // Teacher sees only their own syllabi — resolve Teacher.id from user.id
+    let teacherFilter: Record<string, any> = {};
+    if (primary.role_code === 'teacher' || primary.role_code === 'class_teacher') {
+      const teacherRecord = await prisma.teacher.findFirst({ where: { userId: user.id, schoolId } });
+      teacherFilter = teacherRecord ? { teacherId: teacherRecord.id } : { teacherId: '__none__' };
+    }
 
     const items = await prisma.syllabusItem.findMany({
       where: {
@@ -121,8 +125,11 @@ export async function PATCH(request: Request) {
     const existing = await prisma.syllabusItem.findUnique({ where: { id } });
     if (!existing) throw new AppError('Item not found');
     if (existing.schoolId !== schoolId) throw new ForbiddenError();
-    // Teacher can only update their own items
-    if (primary.role_code === 'teacher' && existing.teacherId !== user.id) throw new ForbiddenError();
+    // Teacher can only update their own items — resolve Teacher.id from user.id
+    if (primary.role_code === 'teacher' || primary.role_code === 'class_teacher') {
+      const teacherRecord = await prisma.teacher.findFirst({ where: { userId: user.id, schoolId } });
+      if (!teacherRecord || existing.teacherId !== teacherRecord.id) throw new ForbiddenError();
+    }
 
     const updated = await prisma.syllabusItem.update({
       where: { id },

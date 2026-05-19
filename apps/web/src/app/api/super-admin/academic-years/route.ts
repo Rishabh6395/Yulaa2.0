@@ -21,6 +21,8 @@ export async function GET(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
+    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
+    if (!ADMIN_ROLES.includes(primary.role_code)) throw new ForbiddenError('Admin role required');
     const { searchParams } = new URL(request.url);
     const schoolId = await resolveSchoolId(user, searchParams.get('school_id'));
 

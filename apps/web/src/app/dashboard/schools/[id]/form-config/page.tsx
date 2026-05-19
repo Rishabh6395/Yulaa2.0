@@ -830,7 +830,17 @@ export default function FormConfigPage() {
                       {allFields.map(field => (
                         <tr key={field.id} className="border-b border-surface-50 dark:border-gray-800/50">
                           <td className="py-1.5 pr-4 text-gray-700 dark:text-gray-300 truncate max-w-[11rem]">
-                            {field.label}
+                            {(() => {
+                              const anyCustom = form.roles.map(r => getRules(activeForm, r.id)[field.id]?.label).find(l => l && l !== field.label);
+                              const orgCustom = savedOrgKey ? getRules(activeForm, ORG_ROLE)[field.id]?.label : undefined;
+                              const display   = orgCustom || anyCustom;
+                              return display ? (
+                                <span title={`Original: ${field.label}`}>
+                                  <span className="line-through text-surface-300 dark:text-gray-600 mr-1">{field.label}</span>
+                                  {display}
+                                </span>
+                              ) : field.label;
+                            })()}
                             {'ctId' in field && (
                               <span className="ml-1 text-[9px] text-amber-500 font-medium">custom</span>
                             )}
@@ -907,12 +917,18 @@ function FieldList({
                   placeholder={field.label}
                 />
               ) : (
-                <button className="text-left" onClick={() => onEditLabel(field.id)} title="Click to edit label">
-                  <span className={`text-sm ${rule.visible ? 'text-gray-800 dark:text-gray-200' : 'line-through text-surface-300 dark:text-gray-600'}`}>
-                    {rule.label || field.label}
-                  </span>
-                  {rule.label && rule.label !== field.label && (
-                    <span className="ml-1.5 text-[10px] text-brand-400 italic">custom label</span>
+                <button className="text-left flex items-center gap-1.5 flex-wrap" onClick={() => onEditLabel(field.id)} title="Click to rename">
+                  {rule.label && rule.label !== field.label ? (
+                    <>
+                      <span className="text-sm text-surface-400 dark:text-gray-500 line-through">{field.label}</span>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-brand-400 shrink-0"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                      <span className={`text-sm font-medium ${rule.visible ? 'text-gray-900 dark:text-gray-100' : 'text-surface-300 dark:text-gray-600'}`}>{rule.label}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900/40 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800 shrink-0">renamed</span>
+                    </>
+                  ) : (
+                    <span className={`text-sm ${rule.visible ? 'text-gray-800 dark:text-gray-200' : 'line-through text-surface-300 dark:text-gray-600'}`}>
+                      {field.label}
+                    </span>
                   )}
                 </button>
               )}

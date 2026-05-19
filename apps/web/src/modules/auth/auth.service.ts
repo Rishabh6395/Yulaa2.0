@@ -4,16 +4,30 @@ import { signToken } from '@/lib/auth';
 import { AppError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 import type { LoginInput, LoginResponse, ChangePasswordInput } from './auth.types';
 
+async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
+  for (let i = 0; i <= retries; i++) {
+    try { return await fn(); }
+    catch (err: any) {
+      if (i < retries && (err?.code === 'ETIMEDOUT' || err?.code === 'ECONNRESET' || err?.code === 'ENOTFOUND')) {
+        await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error('unreachable');
+}
+
 export async function login({ email, password }: LoginInput): Promise<LoginResponse> {
   if (!email || !password) throw new AppError('Email / Admission No and password are required');
 
   const identifier = email.trim();
 
   // Primary: lookup by email
-  let user = await prisma.user.findFirst({
+  let user = await withRetry(() => prisma.user.findFirst({
     where: { email: identifier.toLowerCase(), status: 'active' },
     include: { userRoles: { include: { role: true, school: true } } },
-  });
+  }));
 
   // Fallback: lookup by admissionNo (student login with admission number)
   if (!user) {

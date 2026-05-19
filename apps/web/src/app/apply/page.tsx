@@ -114,6 +114,8 @@ export default function ApplyPage() {
   const [customValues,  setCustomValues]  = useState<Record<string, string>>({});
   const [configLoading, setConfigLoading] = useState(false);
   const [grades,        setGrades]        = useState<string[]>(DEFAULT_GRADES);
+  const [bloodGroups,   setBloodGroups]   = useState<string[]>(['A+','A-','B+','B-','AB+','AB-','O+','O-']);
+  const [genderOptions, setGenderOptions] = useState<string[]>(['Male','Female','Other']);
 
   // Step 0 — parent
   const [parentName,         setParentName]         = useState('');
@@ -140,19 +142,25 @@ export default function ApplyPage() {
       setCustomFields([]);
       setCustomValues({});
       setGrades(DEFAULT_GRADES);
+      setBloodGroups(['A+','A-','B+','B-','AB+','AB-','O+','O-']);
+      setGenderOptions(['Male','Female','Other']);
       return;
     }
     setConfigLoading(true);
 
-    // Fetch form config and school grades in parallel
+    // Fetch form config, grades, and master data in parallel
     Promise.all([
       fetch(`/api/form-config/public?schoolId=${selectedSchool}&formId=admission_form`).then(r => r.json()).catch(() => null),
       fetch(`/api/admission/grades?schoolId=${selectedSchool}`).then(r => r.json()).catch(() => null),
-    ]).then(([cfg, gradeData]) => {
+      fetch(`/api/admission/masters?schoolId=${selectedSchool}&type=blood-groups`).then(r => r.json()).catch(() => null),
+      fetch(`/api/admission/masters?schoolId=${selectedSchool}&type=gender`).then(r => r.json()).catch(() => null),
+    ]).then(([cfg, gradeData, bgData, genderData]) => {
       setFieldRules(cfg?.fieldRules ? { ...DEFAULT_RULES, ...cfg.fieldRules } : DEFAULT_RULES);
       setCustomFields(cfg?.customFields ?? []);
       setCustomValues({});
       setGrades(gradeData?.grades ?? DEFAULT_GRADES);
+      if (bgData?.values?.length)     setBloodGroups(bgData.values);
+      if (genderData?.values?.length) setGenderOptions(genderData.values);
     }).finally(() => setConfigLoading(false));
   }, [selectedSchool]);
 
@@ -488,9 +496,7 @@ export default function ApplyPage() {
                     <Label rules={fieldRules} id="childGender">Gender</Label>
                     <select className="input-field" value={child.gender} onChange={e => updateChild(i, 'gender', e.target.value)}>
                       <option value="">— Select —</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
+                      {genderOptions.map(g => <option key={g} value={g.toLowerCase()}>{g}</option>)}
                     </select>
                   </div>
                 )}
@@ -511,7 +517,7 @@ export default function ApplyPage() {
                     <Label rules={fieldRules} id="bloodGroup">Blood Group</Label>
                     <select className="input-field" value={child.bloodGroup} onChange={e => updateChild(i, 'bloodGroup', e.target.value)}>
                       <option value="">— Select —</option>
-                      {['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(g => <option key={g} value={g}>{g}</option>)}
+                      {bloodGroups.map(g => <option key={g} value={g}>{g}</option>)}
                     </select>
                   </div>
                 )}

@@ -3,7 +3,12 @@
  * Creates: User (parent), Parent profile, Student(s), ParentStudent links, UserRoles, FeeInvoice(s).
  */
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import prisma from '@/lib/prisma';
+
+function tempPassword(): string {
+  return randomBytes(5).toString('hex'); // 10-char hex, e.g. "a3f9c1d2e8"
+}
 
 function admissionNo(schoolId: string): string {
   const year = new Date().getFullYear();
@@ -34,7 +39,9 @@ export async function provisionApprovedApplication(applicationId: string) {
     }
 
     if (!user) {
-      const hash = await bcrypt.hash(app.parentPhone, 12);
+      const pw   = tempPassword();
+      const hash = await bcrypt.hash(pw, 12);
+      if (process.env.NODE_ENV === 'development') console.log(`[DEV] Parent temp password for ${app.parentEmail ?? app.parentPhone}: ${pw}`);
       const [firstName, ...rest] = app.parentName.trim().split(' ');
       user = await tx.user.create({
         data: {
@@ -70,7 +77,7 @@ export async function provisionApprovedApplication(applicationId: string) {
     for (const child of app.children) {
       // Resolve classId from classApplying label
       const cls = await tx.class.findFirst({
-        where: { schoolId: app.schoolId, ...(child.classApplying ? { grade: { contains: child.classApplying, mode: 'insensitive' } } : {}) },
+        where: { schoolId: app.schoolId, ...(child.classApplying ? { grade: { equals: child.classApplying, mode: 'insensitive' } } : {}) },
       });
 
       const student = await tx.student.create({
@@ -100,7 +107,9 @@ export async function provisionApprovedApplication(applicationId: string) {
         const studentUserEmail = `${student.admissionNo.toLowerCase()}@yulaa.student`;
         let sUser = await tx.user.findUnique({ where: { email: studentUserEmail } });
         if (!sUser) {
-          const hash = await bcrypt.hash(student.admissionNo, 12);
+          const spw  = tempPassword();
+          if (process.env.NODE_ENV === 'development') console.log(`[DEV] Student temp password for ${studentUserEmail}: ${spw}`);
+          const hash = await bcrypt.hash(spw, 12);
           sUser = await tx.user.create({
             data: {
               email:             studentUserEmail,

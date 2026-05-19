@@ -6,10 +6,10 @@ import { useApi } from '@/hooks/useApi';
 
 interface AcademicYear {
   id: string;
-  name: string;
+  label: string;
   startDate: string;
   endDate: string;
-  status: 'active' | 'upcoming' | 'completed';
+  isActive: boolean;
 }
 
 interface ClassRow {
@@ -36,9 +36,19 @@ function sortGrades(grades: string[]): string[] {
 
 export default function AcademicYearCyclePage({}) {
   const params = useParams<{ id: string }>();
+  const schoolId = params.id;
+
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') ?? '' : '';
+  const authHeaders = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
   const { data: classesData, isLoading: loadingClasses } = useApi<{ classes: ClassRow[] }>(
-    `/api/super-admin/schools/${params.id}/classes`,
+    `/api/super-admin/schools/${schoolId}/classes`,
   );
+  const { data: yearsData, isLoading: loadingYears, mutate: mutateYears } = useApi<{ years: AcademicYear[] }>(
+    `/api/super-admin/academic-years?school_id=${schoolId}`,
+  );
+
+  const years: AcademicYear[] = yearsData?.years ?? [];
 
   // Derive sorted unique grades from DB
   const classPromotions = useMemo(() => {
@@ -46,24 +56,39 @@ export default function AcademicYearCyclePage({}) {
     return grades.slice(0, -1).map((grade, i) => ({ from: grade, to: grades[i + 1] }));
   }, [classesData]);
 
-  const [years, setYears] = useState<AcademicYear[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPromoteModal, setShowPromoteModal] = useState(false);
-  const [newYear, setNewYear] = useState({ name: '', startDate: '', endDate: '' });
+  const [newYear, setNewYear] = useState({ label: '', startDate: '', endDate: '' });
   const [selectedPromotions, setSelectedPromotions] = useState<string[]>([]);
   const [promoting, setPromoting] = useState(false);
   const [promoted, setPromoted] = useState(false);
+  const [promotionResult, setPromotionResult] = useState<{ totalPromoted: number } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
-  function addYear() {
-    if (!newYear.name || !newYear.startDate || !newYear.endDate) return;
-    const y: AcademicYear = { id: Date.now().toString(), ...newYear, status: 'upcoming' };
-    setYears(ys => [...ys, y]);
-    setNewYear({ name: '', startDate: '', endDate: '' });
-    setShowAddModal(false);
+  async function addYear() {
+    if (!newYear.label || !newYear.startDate || !newYear.endDate) return;
+    setSaving(true); setSaveError('');
+    try {
+      const res = await fetch('/api/super-admin/academic-years', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ schoolId, label: newYear.label, startDate: newYear.startDate, endDate: newYear.endDate }),
+      });
+      if (!res.ok) { const d = await res.json(); setSaveError(d.error ?? 'Failed to add year'); return; }
+      setNewYear({ label: '', startDate: '', endDate: '' });
+      setShowAddModal(false);
+      mutateYears();
+    } finally { setSaving(false); }
   }
 
-  function setActive(id: string) {
-    setYears(ys => ys.map(y => ({ ...y, status: y.id === id ? 'active' : y.status === 'active' ? 'completed' : y.status })));
+  async function setActive(id: string) {
+    const res = await fetch(`/api/super-admin/academic-years?id=${id}`, {
+      method: 'PATCH',
+      headers: authHeaders,
+      body: JSON.stringify({ isActive: true }),
+    });
+    if (res.ok) mutateYears();
   }
 
   function togglePromotion(from: string) {
@@ -77,10 +102,23 @@ export default function AcademicYearCyclePage({}) {
 
   async function runPromotion() {
     setPromoting(true);
-    await new Promise(r => setTimeout(r, 1500));
-    setPromoting(false); setPromoted(true);
-    setShowPromoteModal(false);
-    setTimeout(() => setPromoted(false), 3000);
+    try {
+      const promotions = classPromotions
+        .filter(p => selectedPromotions.includes(p.from))
+        .map(p => ({ fromGrade: p.from, toGrade: p.to }));
+
+      const res = await fetch(`/api/super-admin/schools/${schoolId}/promote-students`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ promotions }),
+      });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error ?? 'Promotion failed'); return; }
+      setPromotionResult({ totalPromoted: data.totalPromoted ?? 0 });
+      setPromoted(true);
+      setShowPromoteModal(false);
+      setTimeout(() => { setPromoted(false); setPromotionResult(null); }, 5000);
+    } finally { setPromoting(false); }
   }
 
   return (
@@ -99,7 +137,9 @@ export default function AcademicYearCyclePage({}) {
             Add Year
           </button>
         </div>
-        {years.length === 0 ? (
+        {loadingYears ? (
+          <div className="h-10 w-full rounded-lg bg-surface-100 dark:bg-gray-700 animate-pulse" />
+        ) : years.length === 0 ? (
           <p className="text-sm text-surface-400">No academic years added yet. Use the button above to add one.</p>
         ) : (
           <div className="space-y-3">
@@ -107,21 +147,21 @@ export default function AcademicYearCyclePage({}) {
               <div key={y.id} className="flex items-center justify-between p-4 rounded-xl border border-surface-200 dark:border-gray-700">
                 <div className="flex items-center gap-4">
                   <div>
-                    <div className="font-semibold text-gray-900 dark:text-gray-100">{y.name}</div>
+                    <div className="font-semibold text-gray-900 dark:text-gray-100">{y.label}</div>
                     <div className="text-xs text-surface-400 mt-0.5">
                       {new Date(y.startDate).toLocaleDateString()} – {new Date(y.endDate).toLocaleDateString()}
                     </div>
                   </div>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-md capitalize ${STATUS_STYLES[y.status]}`}>
-                    {y.status}
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-md capitalize ${y.isActive ? STATUS_STYLES.active : STATUS_STYLES.completed}`}>
+                    {y.isActive ? 'active' : 'completed'}
                   </span>
                 </div>
-                {y.status !== 'active' && y.status !== 'completed' && (
+                {!y.isActive && (
                   <button onClick={() => setActive(y.id)} className="text-xs text-brand-600 hover:text-brand-700 font-medium">
                     Set Active
                   </button>
                 )}
-                {y.status === 'active' && (
+                {y.isActive && (
                   <span className="text-xs text-emerald-600 font-medium">Current Year</span>
                 )}
               </div>
@@ -159,7 +199,7 @@ export default function AcademicYearCyclePage({}) {
         {promoted && (
           <div className="text-sm text-emerald-600 font-medium flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20,6 9,17 4,12"/></svg>
-            Promotion completed successfully!
+            Promotion complete — {promotionResult?.totalPromoted ?? 0} student{promotionResult?.totalPromoted !== 1 ? 's' : ''} promoted.
           </div>
         )}
       </div>
@@ -171,8 +211,8 @@ export default function AcademicYearCyclePage({}) {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Add Academic Year</h2>
             <div className="space-y-3">
               <div>
-                <label className="label">Year Name</label>
-                <input className="input" placeholder="e.g. 2025–26" value={newYear.name} onChange={e => setNewYear(y => ({ ...y, name: e.target.value }))} />
+                <label className="label">Year Label</label>
+                <input className="input" placeholder="e.g. 2025-2026" value={newYear.label} onChange={e => setNewYear(y => ({ ...y, label: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -185,9 +225,10 @@ export default function AcademicYearCyclePage({}) {
                 </div>
               </div>
             </div>
+            {saveError && <p className="text-sm text-red-600">{saveError}</p>}
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowAddModal(false)} className="btn btn-secondary">Cancel</button>
-              <button onClick={addYear} className="btn btn-primary">Add Year</button>
+              <button onClick={addYear} disabled={saving} className="btn btn-primary">{saving ? 'Saving…' : 'Add Year'}</button>
             </div>
           </div>
         </div>

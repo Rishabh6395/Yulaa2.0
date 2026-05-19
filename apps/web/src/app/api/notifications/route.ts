@@ -195,24 +195,33 @@ export async function GET(request: Request) {
 
     const cacheKey = `notifications:${user.id}`;
 
-    const items = await withCache<NotifItem[]>(cacheKey, CacheTTL.notifications, async () => {
-      let result: NotifItem[] = [];
+    const [computedItems, persistedRows] = await Promise.all([
+      withCache<NotifItem[]>(cacheKey, CacheTTL.notifications, async () => {
+        let result: NotifItem[] = [];
 
-      if (['school_admin', 'principal', 'hod', 'super_admin'].includes(roleCode)) {
-        result = await getAdminNotifications(schoolId);
-      } else if (roleCode === 'teacher') {
-        result = await getTeacherNotifications(user.id, schoolId);
-      } else if (roleCode === 'parent') {
-        result = await getParentNotifications(user.id, schoolId);
-      }
+        if (['school_admin', 'principal', 'hod', 'super_admin'].includes(roleCode)) {
+          result = await getAdminNotifications(schoolId);
+        } else if (roleCode === 'teacher') {
+          result = await getTeacherNotifications(user.id, schoolId);
+        } else if (roleCode === 'parent') {
+          result = await getParentNotifications(user.id, schoolId);
+        }
 
-      // Sort by time desc, cap at 8
-      return result
-        .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
-        .slice(0, 8);
+        return result.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 8);
+      }),
+      prisma.notification.findMany({
+        where:   { userId: user.id },
+        orderBy: { createdAt: 'desc' },
+        take:    20,
+        select:  { id: true, title: true, body: true, isRead: true, data: true, createdAt: true },
+      }),
+    ]);
+
+    return Response.json({
+      notifications: computedItems,
+      inbox: persistedRows,
+      unreadCount: persistedRows.filter(n => !n.isRead).length,
     });
-
-    return Response.json({ notifications: items, count: items.length });
   } catch (err) {
     return handleError(err);
   }

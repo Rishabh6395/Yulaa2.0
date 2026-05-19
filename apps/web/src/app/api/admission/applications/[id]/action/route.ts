@@ -1,4 +1,4 @@
-import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
+import { PRINCIPAL_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { processAction } from '@/modules/admission/admission.service';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';

@@ -84,7 +84,14 @@ export async function createAction(applicationId: string, actorUserId: string | 
 export async function findApplicationByPhone(schoolId: string, phone: string) {
   return prisma.admissionApplication.findFirst({
     where: { schoolId, parentPhone: phone, status: { not: 'rejected' } },
-    select: { id: true },
+    select: { id: true, parentEmail: true },
+  });
+}
+
+export async function findChecklistProgress(applicationId: string, stepOrder: number) {
+  return prisma.admissionChecklistProgress.findMany({
+    where: { applicationId, stepOrder },
+    select: { itemIndex: true },
   });
 }
 

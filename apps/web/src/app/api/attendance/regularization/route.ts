@@ -50,6 +50,10 @@ export async function POST(request: Request) {
     if (!attendanceId || !studentId || !toStatus || !reason)
       throw new AppError('attendanceId, studentId, toStatus, reason required');
 
+    // Verify student belongs to caller's school (prevents cross-school tampering)
+    const studentRecord = await prisma.student.findFirst({ where: { id: studentId, schoolId } });
+    if (!studentRecord) throw new ForbiddenError('Student not found in your school');
+
     const attendance = await prisma.attendance.findFirst({
       where: { id: attendanceId, schoolId },
     });

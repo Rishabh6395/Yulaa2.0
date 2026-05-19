@@ -14,11 +14,24 @@ export interface NotificationPayload {
 }
 
 export async function sendNotification(payload: NotificationPayload): Promise<void> {
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[NotificationService] (dev — not sent)', payload.title, '->', payload.userId);
-    return;
+  // Persist in-app notification for all environments
+  try {
+    await prisma.notification.create({
+      data: {
+        userId: payload.userId,
+        title:  payload.title,
+        body:   payload.body,
+        data:   payload.data ? (payload.data as any) : undefined,
+      },
+    });
+  } catch {
+    // Non-fatal — notification store failure must not block the caller
   }
-  // TODO: integrate push/SMS provider (Firebase FCM, Twilio, etc.)
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[Notification]', payload.title, '->', payload.userId);
+  }
+  // SMS/push channel can be wired here when Twilio/FCM credentials are available
 }
 
 export async function notifyAttendanceMarked(userId: string, status: string, date: string) {

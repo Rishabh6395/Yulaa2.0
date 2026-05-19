@@ -4,6 +4,7 @@ import { parsePagination } from '@/utils/pagination';
 import * as repo from './admission.repo';
 import { runValidation } from './admission.validator';
 import { provisionApprovedApplication } from './admission.provisioner';
+import { sendNotification } from '@/services/notification.service';
 import type { ApplicationActionInput, CreateApplicationInput, CreateWorkflowInput } from './admission.types';
 
 // ── Public ────────────────────────────────────────────────────────────────────
@@ -18,9 +19,9 @@ export async function submitApplication(data: CreateApplicationInput) {
     throw new AppError(`Invalid phone number: ${phoneResult.error}. Please enter a valid 10-digit mobile number or international format.`, 400);
   const phone = phoneResult.e164!;
 
-  // Duplicate phone check
+  // Duplicate phone check — allow same family (same email) to apply for multiple children
   const phoneExists = await repo.findApplicationByPhone(data.schoolId, phone);
-  if (phoneExists)
+  if (phoneExists && phoneExists.parentEmail?.toLowerCase() !== data.parentEmail?.trim().toLowerCase())
     throw new AppError(
       'An application with this phone number already exists for this school. If this is a mistake, please contact the school admissions office.',
       409,
@@ -101,8 +102,30 @@ export async function processAction(input: ApplicationActionInput) {
   if (input.action === 'reject') {
     await repo.updateApplicationStatus(input.applicationId, 'rejected', app.currentStep);
     await repo.createAction(input.applicationId, input.actorUserId, app.currentStep, 'reject', input.comment);
-    if (process.env.NODE_ENV === 'development') console.log(`[NOTIFY] Application ${input.applicationId} rejected`);
+    if (app.parentUserId) {
+      await sendNotification({
+        userId: app.parentUserId,
+        title:  'Application Update',
+        body:   `Your admission application has been reviewed and unfortunately could not be approved at this time.${input.comment ? ` Note: ${input.comment}` : ''}`,
+        channels: ['in_app'],
+        data: { applicationId: input.applicationId, status: 'rejected' },
+      });
+    }
     return { status: 'rejected' };
+  }
+
+  // Approve — verify all required checklist items for current step are complete
+  const currentStepConfig = steps.find((s) => s.stepOrder === app.currentStep);
+  const checklistItems = (currentStepConfig?.checklistItems as any[] | null) ?? [];
+  const requiredItems  = checklistItems.filter((item: any) => item.required);
+  if (requiredItems.length > 0) {
+    const progress   = await repo.findChecklistProgress(input.applicationId, app.currentStep);
+    const completedIdxs = new Set(progress.map((p) => p.itemIndex));
+    const missing = requiredItems.filter((_: any, idx: number) => !completedIdxs.has(idx));
+    if (missing.length > 0) {
+      const names = missing.map((item: any) => item.label).join(', ');
+      throw new AppError(`Cannot advance: required checklist items not completed — ${names}`, 400);
+    }
   }
 
   // Approve — check if more steps remain
@@ -125,6 +148,15 @@ export async function processAction(input: ApplicationActionInput) {
   await repo.updateApplicationStatus(input.applicationId, 'approved', app.currentStep);
   await repo.createAction(input.applicationId, input.actorUserId, app.currentStep, 'approve', input.comment);
   await provisionApprovedApplication(input.applicationId);
+  if (app.parentUserId) {
+    await sendNotification({
+      userId: app.parentUserId,
+      title:  'Application Approved!',
+      body:   'Congratulations! Your admission application has been approved. Login details have been sent to your registered contact.',
+      channels: ['in_app'],
+      data: { applicationId: input.applicationId, status: 'approved' },
+    });
+  }
   return { status: 'approved' };
 }
 

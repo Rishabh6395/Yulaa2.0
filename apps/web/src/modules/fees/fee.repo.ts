@@ -1,6 +1,11 @@
+import { randomBytes } from 'crypto';
 import prisma from '@/lib/prisma';
 import type { CreateInvoiceInput, RecordPaymentInput } from './fee.types';
 import { currentAcademicYearLabel } from '@/lib/school-utils';
+
+function generateInvoiceNo(): string {
+  return `INV-${randomBytes(4).toString('hex').toUpperCase()}-${randomBytes(2).toString('hex').toUpperCase()}`;
+}
 
 export async function findInvoices(schoolId: string, status?: string | null, studentId?: string | null) {
   return prisma.feeInvoice.findMany({
@@ -26,7 +31,7 @@ export async function createInvoice(data: CreateInvoiceInput) {
     data: {
       schoolId:      data.schoolId,
       studentId:     data.studentId,
-      invoiceNo:     `INV-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+      invoiceNo:     generateInvoiceNo(),
       amount:        data.amount,
       dueDate:       new Date(data.dueDate),
       installmentNo: data.installmentNo || 1,
@@ -91,7 +96,7 @@ export async function bulkCreateInvoices(invoices: {
         data: {
           school:        { connect: { id: inv.schoolId } },
           student:       { connect: { id: inv.studentId } },
-          invoiceNo:     `INV-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+          invoiceNo:     generateInvoiceNo(),
           amount:        inv.amount,
           dueDate:       inv.dueDate,
           installmentNo: inv.installmentNo,
@@ -105,15 +110,15 @@ export async function bulkCreateInvoices(invoices: {
   return { created, failed };
 }
 
-export async function findInvoiceById(id: string) {
-  return prisma.feeInvoice.findUnique({
-    where: { id },
+export async function findInvoiceById(id: string, schoolId?: string) {
+  return prisma.feeInvoice.findFirst({
+    where: { id, ...(schoolId ? { schoolId } : {}) },
     select: { amount: true, paidAmount: true },
   });
 }
 
-export async function recordPayment(data: RecordPaymentInput) {
-  const invoice = await findInvoiceById(data.invoiceId);
+export async function recordPayment(data: RecordPaymentInput & { schoolId?: string }) {
+  const invoice = await findInvoiceById(data.invoiceId, data.schoolId);
   if (!invoice) return null;
 
   const newPaid  = Number(invoice.paidAmount) + Number(data.paymentAmount);

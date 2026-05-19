@@ -106,10 +106,57 @@ export async function PATCH(request: Request) {
     if (action === 'approve') {
       if (!APPROVAL_ROLES.includes(primary.role_code)) throw new ForbiddenError('Approval role required');
       if (concession.status !== 'pending') throw new AppError('Only pending concessions can be approved');
-      const updated = await prisma.feeConcession.update({
-        where: { id },
-        data:  { status: 'approved', isActive: true, approvedById: user.id, approvedAt: new Date() },
+
+      const updated = await prisma.$transaction(async (tx) => {
+        const approved = await tx.feeConcession.update({
+          where: { id },
+          data:  { status: 'approved', isActive: true, approvedById: user.id, approvedAt: new Date() },
+        });
+
+        // Apply concession as credit payments on unpaid/partial invoices for this student+year
+        const invoices = await tx.feeInvoice.findMany({
+          where: {
+            schoolId:   concession.schoolId,
+            studentId:  concession.studentId,
+            status:     { in: ['unpaid', 'partial', 'overdue'] },
+            ...(concession.feeStructureId ? { feeStructureId: concession.feeStructureId } : {}),
+          },
+        });
+
+        for (const inv of invoices) {
+          const total       = Number(inv.amount);
+          const alreadyPaid = Number(inv.paidAmount);
+          const outstanding = total - alreadyPaid;
+          if (outstanding <= 0) continue;
+
+          const creditAmt = concession.discountAmount
+            ? Math.min(Number(concession.discountAmount), outstanding)
+            : concession.discountPercent
+              ? Math.min((Number(concession.discountPercent) / 100) * total, outstanding)
+              : 0;
+
+          if (creditAmt <= 0) continue;
+
+          await tx.feePayment.create({
+            data: {
+              invoiceId:     inv.id,
+              amount:        creditAmt,
+              paymentMethod: 'concession',
+              remarks:       `Concession approved: ${concession.concessionType}`,
+            },
+          });
+
+          const newPaid  = alreadyPaid + creditAmt;
+          const newStatus = newPaid >= total ? 'paid' : 'partial';
+          await tx.feeInvoice.update({
+            where: { id: inv.id },
+            data:  { paidAmount: newPaid, status: newStatus, ...(newStatus === 'paid' ? { paidAt: new Date() } : {}) },
+          });
+        }
+
+        return approved;
       });
+
       return Response.json({ concession: updated });
     }
 

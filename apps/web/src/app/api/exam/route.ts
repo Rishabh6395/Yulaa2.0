@@ -7,6 +7,25 @@ function getPrimary(user: any) {
   return user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
 }
 
+// Resolve grade from GradingTypeMaster for the exam's type; fallback to hardcoded bands.
+async function computeGrade(schoolId: string, examTypeCode: string, marksObtained: number, maxMarks: number): Promise<string> {
+  const pct = (marksObtained / maxMarks) * 100;
+  const examType = await prisma.examTypeMaster.findFirst({
+    where: { schoolId, code: examTypeCode, isActive: true },
+    select: { id: true },
+  });
+  if (examType) {
+    const bands = await prisma.gradingTypeMaster.findMany({
+      where: { schoolId, examTypeId: examType.id, isActive: true },
+      orderBy: { minPercent: 'desc' },
+    });
+    const band = bands.find(b => pct >= Number(b.minPercent) && pct <= Number(b.maxPercent));
+    if (band) return band.grade;
+  }
+  // Fallback: standard Indian grading
+  return pct >= 90 ? 'A+' : pct >= 80 ? 'A' : pct >= 70 ? 'B+' : pct >= 60 ? 'B' : pct >= 50 ? 'C' : pct >= 40 ? 'D' : 'F';
+}
+
 function getSchoolId(user: any, override?: string | null): string {
   const primary = getPrimary(user);
   if (override && primary.role_code === 'super_admin') return override;
@@ -184,6 +203,10 @@ export async function POST(request: Request) {
       const student = await prisma.student.findFirst({ where: { id: studentId, schoolId }, select: { id: true } });
       if (!student) throw new AppError('Student not found in this school');
 
+      const effectiveMax = maxMarks ?? exam.maxMarks ?? 100;
+      if (Number(marksObtained) < 0 || Number(marksObtained) > effectiveMax)
+        throw new AppError(`Marks must be between 0 and ${effectiveMax}`);
+
       const result = await prisma.examResult.upsert({
         where:  { examId_studentId_subject: { examId, studentId, subject } },
         update: { marksObtained, maxMarks: maxMarks ?? 100, grade: grade || null, remarks: remarks || null, enteredById: user.id, approved: false, approvedById: null },
@@ -192,8 +215,8 @@ export async function POST(request: Request) {
 
       // Auto-compute grade if not provided
       if (!grade) {
-        const pct = Math.round((Number(marksObtained) / (maxMarks ?? 100)) * 100);
-        const autoGrade = pct >= 90 ? 'A+' : pct >= 80 ? 'A' : pct >= 70 ? 'B+' : pct >= 60 ? 'B' : pct >= 50 ? 'C' : pct >= 40 ? 'D' : 'F';
+        const effectiveMax2 = maxMarks ?? exam.maxMarks ?? 100;
+        const autoGrade = await computeGrade(schoolId, exam.examType, Number(marksObtained), effectiveMax2);
         await prisma.examResult.update({ where: { id: result.id }, data: { grade: autoGrade } });
         return Response.json({ result: { ...result, grade: autoGrade } }, { status: 201 });
       }
@@ -243,8 +266,9 @@ export async function POST(request: Request) {
           if (!validIds.has(r.studentId)) throw new Error(`Student ${r.studentId} not found in this school`);
 
           const maxMarks = r.maxMarks ?? 100;
-          const pct = Math.round((Number(r.marksObtained) / maxMarks) * 100);
-          const autoGrade = r.grade || (pct >= 90 ? 'A+' : pct >= 80 ? 'A' : pct >= 70 ? 'B+' : pct >= 60 ? 'B' : pct >= 50 ? 'C' : pct >= 40 ? 'D' : 'F');
+          if (Number(r.marksObtained) < 0 || Number(r.marksObtained) > maxMarks)
+            throw new Error(`Marks must be between 0 and ${maxMarks}`);
+          const autoGrade = r.grade || await computeGrade(schoolId, exam.examType, Number(r.marksObtained), maxMarks);
 
           await prisma.examResult.upsert({
             where:  { examId_studentId_subject: { examId, studentId: r.studentId, subject: r.subject.trim() } },
