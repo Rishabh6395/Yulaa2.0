@@ -26,6 +26,7 @@ model School {
   boardType             String?                @map("board_type") @db.VarChar(30)
   isDefault                Boolean                @default(false) @map("is_default")
   attendanceMode           String                 @default("class") @map("attendance_mode") @db.VarChar(20)
+  attendancePunchEnabled   Boolean                @default(false) @map("attendance_punch_enabled")
   latitude                 Float?
   longitude                Float?
   allowExternalConsultant  Boolean                @default(false) @map("allow_external_consultant")
@@ -124,6 +125,7 @@ model School {
   riskFlags                RiskFlag[]
   gradingSchemes           GradingScheme[]
   subjectCatalog           SubjectCatalog[]
+  yearbookEntries          YearbookEntry[]
 
   @@map("schools")
 }
@@ -170,6 +172,7 @@ model User {
   courseEnrollments     CourseEnrollment[]
   reportCardsSent       ReportCard[]           @relation("ReportCardSentBy")
   approvedExams         Exam[]                 @relation("ExamApprovedBy")
+  yearbookUploads       YearbookEntry[]        @relation("YearbookUploader")
 
   @@map("users")
 }
@@ -382,8 +385,9 @@ model Class {
   exams          Exam[]
   examEntries    ExamTimetableEntry[]
   streamMasters  StreamMaster[]
-  onlineClasses  OnlineClass[]
-  diaryEntries   DiaryEntry[]
+  onlineClasses   OnlineClass[]
+  diaryEntries    DiaryEntry[]
+  yearbookEntries YearbookEntry[]
 
   @@unique([schoolId, grade, section, academicYear])
   @@map("classes")
@@ -526,18 +530,19 @@ model HomeworkSubmission {
 }
 
 model Announcement {
-  id            String    @id @default(uuid())
-  schoolId      String    @map("school_id")
-  title         String    @db.VarChar(200)
-  content       String
-  targetRoles   String[]  @map("target_roles")
-  priority      String    @default("normal") @db.VarChar(20)
-  status        String    @default("active") @db.VarChar(20)
-  expiresAt     DateTime? @map("expires_at")
-  createdBy     String?   @map("created_by")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  createdByUser User?     @relation("CreatedBy", fields: [createdBy], references: [id])
-  school        School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  id             String    @id @default(uuid())
+  schoolId       String    @map("school_id")
+  title          String    @db.VarChar(200)
+  content        String
+  targetRoles    String[]  @map("target_roles")
+  targetClassIds String[]  @default([]) @map("target_class_ids")
+  priority       String    @default("normal") @db.VarChar(20)
+  status         String    @default("active") @db.VarChar(20)
+  expiresAt      DateTime? @map("expires_at")
+  createdBy      String?   @map("created_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  createdByUser  User?     @relation("CreatedBy", fields: [createdBy], references: [id])
+  school         School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([schoolId, status])
   @@index([createdAt])
@@ -1026,6 +1031,7 @@ model AdmissionChild {
   dateOfBirth    DateTime?            @map("date_of_birth") @db.Date
   gender         String?              @db.VarChar(10)
   aadhaarNo      String?              @map("aadhaar_no") @db.VarChar(12)
+  photoUrl       String?              @map("photo_url") @db.VarChar(500)
   classApplying  String?              @map("class_applying") @db.VarChar(30)
   section        String?              @db.VarChar(10)
   previousSchool String?              @map("previous_school") @db.VarChar(200)
@@ -1258,6 +1264,32 @@ model EventParticipant {
   @@unique([eventId, studentId])
   @@index([eventId])
   @@map("event_participants")
+}
+
+// ─── Yearbook ─────────────────────────────────────────────────────────────────
+model YearbookEntry {
+  id           String   @id @default(uuid())
+  schoolId     String   @map("school_id")
+  academicYear String   @map("academic_year") @db.VarChar(9)
+  classId      String?  @map("class_id")
+  title        String   @db.VarChar(200)
+  caption      String?  @db.VarChar(500)
+  mediaType    String   @map("media_type") @db.VarChar(20)
+  fileUrl      String   @map("file_url") @db.VarChar(1000)
+  fileName     String   @map("file_name") @db.VarChar(300)
+  fileSize     Int?     @map("file_size")
+  mimeType     String?  @map("mime_type") @db.VarChar(100)
+  uploadedBy   String   @map("uploaded_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class    Class?  @relation(fields: [classId], references: [id], onDelete: SetNull)
+  uploader User    @relation("YearbookUploader", fields: [uploadedBy], references: [id])
+
+  @@index([schoolId])
+  @@index([schoolId, academicYear])
+  @@index([schoolId, classId])
+  @@map("yearbook_entries")
 }
 
 // ─── Syllabus ─────────────────────────────────────────────────────────────────

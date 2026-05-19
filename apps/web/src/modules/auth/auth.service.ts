@@ -5,14 +5,31 @@ import { AppError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
 import type { LoginInput, LoginResponse, ChangePasswordInput } from './auth.types';
 
 export async function login({ email, password }: LoginInput): Promise<LoginResponse> {
-  if (!email || !password) throw new AppError('Email and password are required');
+  if (!email || !password) throw new AppError('Email / Admission No and password are required');
 
-  const user = await prisma.user.findFirst({
-    where: { email: email.toLowerCase().trim(), status: 'active' },
+  const identifier = email.trim();
+
+  // Primary: lookup by email
+  let user = await prisma.user.findFirst({
+    where: { email: identifier.toLowerCase(), status: 'active' },
     include: { userRoles: { include: { role: true, school: true } } },
   });
 
-  if (!user) throw new UnauthorizedError('Invalid email or password');
+  // Fallback: lookup by admissionNo (student login with admission number)
+  if (!user) {
+    const student = await prisma.student.findFirst({
+      where: { admissionNo: identifier, status: 'active' },
+      select: { userId: true },
+    });
+    if (student?.userId) {
+      user = await prisma.user.findFirst({
+        where: { id: student.userId, status: 'active' },
+        include: { userRoles: { include: { role: true, school: true } } },
+      });
+    }
+  }
+
+  if (!user) throw new UnauthorizedError('Invalid email / admission no or password');
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid)  throw new UnauthorizedError('Invalid email or password');

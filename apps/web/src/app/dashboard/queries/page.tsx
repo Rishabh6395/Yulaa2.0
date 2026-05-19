@@ -34,6 +34,7 @@ const STATUS: Record<string, { badge: string; label: string }> = {
   open:        { badge: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',     label: 'Open' },
   in_progress: { badge: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',         label: 'In Progress' },
   resolved:    { badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400', label: 'Resolved' },
+  closed:      { badge: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',             label: 'Closed' },
 };
 
 const CATEGORIES     = ['Academic', 'Fee', 'Transport', 'Attendance', 'Behaviour', 'Technical', 'HR', 'Infrastructure', 'Policy', 'Other'];
@@ -273,7 +274,7 @@ export default function QueriesPage() {
 
   // ── Status actions ────────────────────────────────────────────────────────────
 
-  const doAction = async (action: 'resolve' | 'reopen') => {
+  const doAction = async (action: 'resolve' | 'reopen' | 'close') => {
     if (!selected) return;
     setActioning(action);
     await fetch('/api/queries', {
@@ -389,7 +390,7 @@ export default function QueriesPage() {
 
           {/* Status filter */}
           <div className="flex gap-1 overflow-x-auto">
-            {[{ k: 'all', l: 'All' }, { k: 'open', l: 'Open' }, { k: 'in_progress', l: 'In Progress' }, { k: 'resolved', l: 'Resolved' }].map(({ k, l }) => (
+            {[{ k: 'all', l: 'All' }, { k: 'open', l: 'Open' }, { k: 'in_progress', l: 'In Progress' }, { k: 'resolved', l: 'Resolved' }, { k: 'closed', l: 'Closed' }].map(({ k, l }) => (
               <button key={k} onClick={() => setStatusFlt(k)}
                 className={`px-2 py-1 text-[11px] font-medium rounded-md whitespace-nowrap transition-colors flex-shrink-0 ${
                   statusFlt === k
@@ -513,8 +514,8 @@ export default function QueriesPage() {
                   </div>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
-                  {/* Admin / super_admin can resolve open/in_progress tickets */}
-                  {(isAdmin || isSuperAdm) && selected.status !== 'resolved' && (
+                  {/* Admin can resolve open/in_progress tickets */}
+                  {(isAdmin || isSuperAdm) && !['resolved', 'closed'].includes(selected.status) && (
                     <button onClick={() => doAction('resolve')} disabled={!!actioning}
                       className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 hover:bg-emerald-100 font-medium transition-colors disabled:opacity-50">
                       {actioning === 'resolve'
@@ -524,8 +525,19 @@ export default function QueriesPage() {
                       Resolve
                     </button>
                   )}
-                  {/* Original requester can reopen resolved ticket */}
-                  {selected.raised_by_id === user.id && selected.status === 'resolved' && (
+                  {/* Admin can close any non-closed ticket */}
+                  {(isAdmin || isSuperAdm) && selected.status !== 'closed' && (
+                    <button onClick={() => doAction('close')} disabled={!!actioning}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/40 hover:bg-gray-100 font-medium transition-colors disabled:opacity-50">
+                      {actioning === 'close'
+                        ? <svg width="12" height="12" className="animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                        : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                      }
+                      Close
+                    </button>
+                  )}
+                  {/* Requester can reopen resolved/closed ticket */}
+                  {selected.raised_by_id === user.id && ['resolved', 'closed'].includes(selected.status) && (
                     <button onClick={() => doAction('reopen')} disabled={!!actioning}
                       className="text-xs px-3 py-1.5 rounded-xl border border-surface-200 dark:border-gray-700 text-surface-500 hover:bg-surface-50 font-medium transition-colors disabled:opacity-50">
                       Reopen

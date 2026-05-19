@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import BackgroundBeams from '@/components/ui/BackgroundBeams';
+import PunchPopup from '@/components/attendance/PunchPopup';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
@@ -112,6 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Background Beams — sits behind everything */}
       <BackgroundBeams />
 
+      <PunchPopup />
       <Sidebar user={user} collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
       <Header
         user={user}

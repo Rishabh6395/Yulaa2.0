@@ -6,7 +6,6 @@ import { useApi } from '@/hooks/useApi';
 import { validatePhone } from '@/utils/phone';
 import Modal from '@/components/ui/Modal';
 import PageError from '@/components/ui/PageError';
-import PhotoUpload from '@/components/ui/PhotoUpload';
 
 const STATUS_COLORS: Record<string, string> = {
   submitted:    'badge-warning',
@@ -44,11 +43,12 @@ const FALLBACK_BLOODS  = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
 
 interface ChildEntry {
   name: string; grade: string; dob: string;
-  gender: string; bloodGroup: string; previousSchool: string; medicalNotes: string; photoUrl: string;
+  gender: string; bloodGroup: string; previousSchool: string; medicalNotes: string;
+  aadhaarNo: string; photoUrl: string;
 }
 
 function emptyChild(): ChildEntry {
-  return { name: '', grade: '', dob: '', gender: '', bloodGroup: '', previousSchool: '', medicalNotes: '', photoUrl: '' };
+  return { name: '', grade: '', dob: '', gender: '', bloodGroup: '', previousSchool: '', medicalNotes: '', aadhaarNo: '', photoUrl: '' };
 }
 
 function FieldLabel({ label, req }: { label: string; req: FieldRule }) {
@@ -91,8 +91,6 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
   const [children,      setChildren]      = useState<ChildEntry[]>([emptyChild()]);
   const [loading,       setLoading]       = useState(false);
   const [error,         setError]         = useState('');
-  const [customFields,  setCustomFields]  = useState<{ fieldSlot: string; label: string; fieldType: string; options: string[] }[]>([]);
-  const [customValues,  setCustomValues]  = useState<Record<string, string>>({});
 
   // Detect role on open
   const [isParentRole, setIsParentRole] = useState(false);
@@ -137,24 +135,14 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
       setSelectedSchool(schoolId ?? '');
     }
 
-    const CONFIG_ROLE_MAP: Record<string, string> = {
-      super_admin: 'admin', school_admin: 'admin', principal: 'admin',
-      hod: 'admin', vice_principal: 'admin',
-      teacher: 'teacher', student: 'student', parent: 'parent', applicant: 'applicant',
-    };
-    const configRole = CONFIG_ROLE_MAP[roleCode] ?? 'admin';
-
     Promise.allSettled([
-      fetch(`/api/form-config?schoolId=${schoolId}&formId=admission_form`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`/api/form-config?schoolId=${schoolId}&formId=admission`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch(`/api/masters/gender${qs}`,       { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch(`/api/masters/blood-groups${qs}`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch(`/api/masters/grades${qs}`,       { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch(`/api/masters/content-types?schoolId=${schoolId}&formName=admission_form`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([cfgRes, genderRes, bloodRes, gradeRes, ctRes]) => {
+    ]).then(([cfgRes, genderRes, bloodRes, gradeRes]) => {
       const cfgVal = cfgRes.status === 'fulfilled' ? cfgRes.value : null;
-      const rules  = cfgVal?.configs?.['admission_form']?.[configRole]
-                  ?? cfgVal?.configs?.['admission_form']?.org
-                  ?? cfgVal?.configs?.['admission_form']?.admin;
+      const rules  = cfgVal?.configs?.admission?.admin;
       if (rules) setFieldRules(rules);
 
       const gItems = parseMasterNames(genderRes.status === 'fulfilled' ? genderRes.value : null, 'genderMasters');
@@ -165,9 +153,6 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
 
       const grItems = parseMasterNames(gradeRes.status === 'fulfilled' ? gradeRes.value : null, 'gradeMasters');
       if (grItems.length > 0) setGradeOptions(grItems);
-
-      const ctVal = ctRes.status === 'fulfilled' ? ctRes.value : null;
-      setCustomFields((ctVal?.contentTypes ?? []).filter((f: any) => f.isActive !== false).sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)));
     }).finally(() => setConfigReady(true));
   }, [open]);
 
@@ -197,7 +182,6 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
       setParentName(''); setParentPhone(''); setParentEmail('');
       setParentOcc('');  setAddress('');     setChildren([emptyChild()]);
       setSelectedSchool(''); setSchools([]); setError(''); setIsParentRole(false);
-      setCustomFields([]); setCustomValues({});
     }
   }, [open]);
 
@@ -222,7 +206,6 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
           parentName, parentPhone, parentEmail,
           parentOccupation: parentOcc,
           address,
-          ...(Object.keys(customValues).length > 0 ? { customFieldValues: customValues } : {}),
           children: children.map(c => {
             const nameParts = c.name.trim().split(/\s+/);
             const firstName = nameParts[0] || '';
@@ -236,6 +219,7 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
               bloodGroup:     c.bloodGroup     || undefined,
               previousSchool: c.previousSchool || undefined,
               medicalNotes:   c.medicalNotes   || undefined,
+              aadhaarNo:      c.aadhaarNo      || undefined,
               photoUrl:       c.photoUrl       || undefined,
             };
           }),
@@ -380,16 +364,6 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
                       </button>
                     )}
                   </div>
-                  {isVisible(fieldRules, 'childPhoto') && (
-                    <div className="flex justify-center pb-2">
-                      <PhotoUpload
-                        value={ch.photoUrl}
-                        onChange={url => updateChild(i, 'photoUrl', url)}
-                        label="Child Photo"
-                        size={80}
-                      />
-                    </div>
-                  )}
                   <div className="grid grid-cols-2 gap-3">
                     {isVisible(fieldRules, 'childName') && (
                       <div className="col-span-2">
@@ -442,41 +416,46 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
                         <textarea className="input-field" rows={2} value={ch.medicalNotes} onChange={e => updateChild(i, 'medicalNotes', e.target.value)} placeholder="Any medical conditions or allergies" />
                       </div>
                     )}
+                    <div>
+                      <label className="label">Aadhar Card No <span className="text-surface-400 font-normal">(optional)</span></label>
+                      <input
+                        className="input-field font-mono"
+                        maxLength={12}
+                        pattern="\d{12}"
+                        placeholder="12-digit Aadhar number"
+                        value={ch.aadhaarNo}
+                        onChange={e => updateChild(i, 'aadhaarNo', e.target.value.replace(/\D/g, '').slice(0, 12))}
+                      />
+                      {ch.aadhaarNo && ch.aadhaarNo.length !== 12 && (
+                        <p className="text-xs text-amber-600 mt-1">Must be exactly 12 digits</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="label">Photo of Child <span className="text-surface-400 font-normal">(optional)</span></label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="input-field text-sm py-1.5"
+                        onChange={async e => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const token = localStorage.getItem('token') ?? '';
+                          const fd = new FormData();
+                          fd.append('file', file);
+                          const res = await fetch('/api/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+                          const data = await res.json();
+                          if (data.url) updateChild(i, 'photoUrl', data.url);
+                        }}
+                      />
+                      {ch.photoUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={ch.photoUrl} alt="Child" className="mt-2 h-16 w-16 rounded-lg object-cover border border-surface-200 dark:border-gray-700" />
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-
-            {/* Custom fields configured by super admin */}
-            {customFields.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Additional Information</p>
-                <div className="space-y-3">
-                  {customFields.map(f => (
-                    <div key={f.fieldSlot}>
-                      <label className="label">{f.label}</label>
-                      {f.fieldType === 'dropdown' || f.fieldType === 'select' ? (
-                        <select className="input-field"
-                          value={customValues[f.fieldSlot] ?? ''}
-                          onChange={e => setCustomValues(v => ({ ...v, [f.fieldSlot]: e.target.value }))}>
-                          <option value="">— Select —</option>
-                          {(f.options ?? []).map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
-                        </select>
-                      ) : f.fieldType === 'textarea' ? (
-                        <textarea className="input-field" rows={2}
-                          value={customValues[f.fieldSlot] ?? ''}
-                          onChange={e => setCustomValues(v => ({ ...v, [f.fieldSlot]: e.target.value }))} />
-                      ) : (
-                        <input className="input-field"
-                          type={f.fieldType === 'date' ? 'date' : f.fieldType === 'number' ? 'number' : 'text'}
-                          value={customValues[f.fieldSlot] ?? ''}
-                          onChange={e => setCustomValues(v => ({ ...v, [f.fieldSlot]: e.target.value }))} />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </>
         )}
 

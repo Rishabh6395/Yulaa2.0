@@ -110,9 +110,19 @@ export default function SyllabusPage() {
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
       const items: any[] = [];
       for (const line of lines.slice(1)) {
-        const parts = line.split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
-        const [chapter, topic, orderNo] = parts;
-        if (chapter) items.push({ classId: form.classId, subject: form.subject, chapter, topic: topic || null, orderNo: Number(orderNo) || items.length + 1 });
+        // Handle quoted CSV fields correctly
+        const parts = line.match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,))/g)
+          ?.map(s => s.trim().replace(/^"|"$/g, '')) ?? line.split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
+        const [chapter, topic, orderNo, startDate, endDate] = parts;
+        if (chapter) items.push({
+          classId:   form.classId,
+          subject:   form.subject,
+          chapter,
+          topic:     topic  || null,
+          orderNo:   Number(orderNo)  || items.length + 1,
+          startDate: startDate || null,
+          endDate:   endDate   || null,
+        });
       }
       if (items.length === 0) { setMsg({ type: 'error', text: 'No valid rows found in CSV' }); return; }
       const res = await fetch('/api/syllabus', {
@@ -363,13 +373,52 @@ export default function SyllabusPage() {
       <Modal open={showUpload} onClose={() => setShowUpload(false)} title="Upload Syllabus (CSV)">
         <form onSubmit={handleUpload} className="space-y-4">
           <ClassSectionSubjectFields isUpload />
+
+          {/* Template download */}
+          <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800 rounded-xl">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500 shrink-0 mt-0.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/>
+            </svg>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-blue-700 dark:text-blue-400 font-medium mb-0.5">CSV Format</p>
+              <p className="text-xs text-blue-600 dark:text-blue-500">
+                Columns: <code className="font-mono bg-blue-100 dark:bg-blue-900/40 px-1 rounded">chapter, topic, order_no, start_date, end_date</code>
+              </p>
+              <p className="text-xs text-blue-500 dark:text-blue-500 mt-0.5">
+                topic, order_no, start_date, end_date are optional. Class &amp; subject are taken from the dropdowns above.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const rows = [
+                  'chapter,topic,order_no,start_date,end_date',
+                  '"Chapter 1: Physical World","Nature of Physical Laws",1,2025-04-01,2025-04-10',
+                  '"Chapter 1: Physical World","Physics Technology and Society",2,2025-04-11,2025-04-15',
+                  '"Chapter 2: Units and Measurements","The International System of Units",3,2025-04-16,2025-04-25',
+                  '"Chapter 2: Units and Measurements","Significant Figures",4,2025-04-26,2025-04-30',
+                  '"Chapter 3: Motion in a Straight Line","Position Path Length and Displacement",5,,',
+                  '"Chapter 3: Motion in a Straight Line","Average Velocity and Speed",6,,',
+                ].join('\n');
+                const blob = new Blob([rows], { type: 'text/csv' });
+                const url  = URL.createObjectURL(blob);
+                const a    = document.createElement('a');
+                a.href     = url;
+                a.download = 'syllabus_template.csv';
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="btn btn-secondary btn-sm text-xs shrink-0"
+            >
+              ↓ Template
+            </button>
+          </div>
+
           <div>
             <label className="label">CSV File *</label>
             <input ref={fileRef} type="file" accept=".csv" className="input-field text-sm" required />
-            <p className="text-xs text-surface-400 dark:text-gray-500 mt-1">
-              Columns: <code className="font-mono bg-surface-100 dark:bg-gray-700 px-1 rounded">chapter, topic (optional), orderNo (optional)</code>. First row is header.
-            </p>
           </div>
+
           {msg && showUpload && (
             <div className={`px-3 py-2 rounded-lg text-sm ${msg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{msg.text}</div>
           )}

@@ -57,6 +57,7 @@ export const menuItems: Record<string, MenuItem[]> = {
       children: [
         { label: 'Events',        href: '/dashboard/events',        icon: 'CalendarStar', key: 'events' },
         { label: 'Announcements', href: '/dashboard/announcements', icon: 'Megaphone',    key: 'announcements' },
+        { label: 'Year Book',     href: '/dashboard/yearbook',      icon: 'BookMarked',   key: 'yearbook' },
       ],
     },
     {
@@ -103,7 +104,13 @@ export const menuItems: Record<string, MenuItem[]> = {
         { label: 'Courses',     href: '/dashboard/courses/manage', icon: 'BookOpen',       key: 'courses' },
       ],
     },
-    { label: 'Events',  href: '/dashboard/events',   icon: 'CalendarStar',  key: 'events' },
+    {
+      label: 'Events', href: '', icon: 'CalendarStar', key: 'events_group',
+      children: [
+        { label: 'Events',    href: '/dashboard/events',    icon: 'CalendarStar', key: 'events' },
+        { label: 'Year Book', href: '/dashboard/yearbook',  icon: 'BookMarked',   key: 'yearbook' },
+      ],
+    },
     { label: 'Queries', href: '/dashboard/queries',  icon: 'MessageSquare', key: 'queries' },
     { label: 'Profile', href: '/dashboard/settings', icon: 'UserCircle',    key: 'settings' },
   ],
@@ -132,6 +139,7 @@ export const menuItems: Record<string, MenuItem[]> = {
       children: [
         { label: 'Events',        href: '/dashboard/events',        icon: 'CalendarStar', key: 'events' },
         { label: 'Announcements', href: '/dashboard/announcements', icon: 'Megaphone',    key: 'announcements' },
+        { label: 'Year Book',     href: '/dashboard/yearbook',      icon: 'BookMarked',   key: 'yearbook' },
       ],
     },
     { label: 'Queries', href: '/dashboard/queries', icon: 'MessageSquare', key: 'queries' },
@@ -174,6 +182,7 @@ export const menuItems: Record<string, MenuItem[]> = {
       children: [
         { label: 'Events',        href: '/dashboard/events',        icon: 'CalendarStar', key: 'events' },
         { label: 'Announcements', href: '/dashboard/announcements', icon: 'Megaphone',    key: 'announcements' },
+        { label: 'Year Book',     href: '/dashboard/yearbook',      icon: 'BookMarked',   key: 'yearbook' },
       ],
     },
     { label: 'Queries',              href: '/dashboard/queries',         icon: 'MessageSquare', key: 'queries' },
@@ -213,6 +222,7 @@ export const menuItems: Record<string, MenuItem[]> = {
       children: [
         { label: 'Events',        href: '/dashboard/events',        icon: 'CalendarStar', key: 'events' },
         { label: 'Announcements', href: '/dashboard/announcements', icon: 'Megaphone',    key: 'announcements' },
+        { label: 'Year Book',     href: '/dashboard/yearbook',      icon: 'BookMarked',   key: 'yearbook' },
       ],
     },
     { label: 'Queries', href: '/dashboard/queries',  icon: 'MessageSquare', key: 'queries' },
@@ -250,6 +260,7 @@ export const menuItems: Record<string, MenuItem[]> = {
       children: [
         { label: 'Events',        href: '/dashboard/events',        icon: 'CalendarStar', key: 'events' },
         { label: 'Announcements', href: '/dashboard/announcements', icon: 'Megaphone',    key: 'announcements' },
+        { label: 'Year Book',     href: '/dashboard/yearbook',      icon: 'BookMarked',   key: 'yearbook' },
       ],
     },
     {

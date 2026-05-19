@@ -3,7 +3,9 @@
     "allow": [
       "Bash(Get-ChildItem -Path \"d:\\\\Code  Playground\\\\Experimental Lab\\\\schooll\\\\student-management-app\\\\apps\\\\web\\\\src\" -Recurse -Directory)",
       "Bash(Select-Object -ExpandProperty FullName)",
-      "Bash(Sort-Object)"
+      "Bash(Sort-Object)",
+      "Bash(grep -rl \"params: { id: string\" \"d:\\\\Code  Playground\\\\Experimental Lab\\\\schooll\\\\student-management-app\\\\apps\\\\web\\\\src\\\\app\\\\api\" 2>/dev/null | head -50)",
+      "Read(//d/Code Playground/Experimental Lab/schooll/student-management-app/apps/web/src/app/**)"
     ]
   }
 }

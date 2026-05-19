@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 
 type ClassItem = { id: string; name: string; grade: string; section: string };
 type Student   = { id: string; admission_no: string; first_name: string; last_name: string };
+type Subject   = string;
 
 type Exam = {
   id: string; title: string; examType: string; academicYear: string; status: string;
@@ -12,44 +13,43 @@ type Exam = {
   _count?: { results: number; entries: number };
 };
 
+type ExamResult = {
+  student: { id: string; admissionNo: string; firstName: string; lastName: string };
+  subject: string; marksObtained: number; maxMarks: number; grade: string | null; remarks: string | null;
+};
+
 const STATUS_CFG: Record<string, string> = {
-  scheduled: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
-  ongoing:   'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
-  completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400',
-  cancelled: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400',
+  scheduled:   'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
+  ongoing:     'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
+  completed:   'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400',
+  cancelled:   'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400',
 };
 
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-export default function ExamPage() {
-  const [token, setToken] = useState('');
-  const [role,  setRole]  = useState('');
+function activeAY() {
+  const y = new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+  return `${y}-${y + 1}`;
+}
 
-  useEffect(() => {
-    const t = localStorage.getItem('token') ?? '';
-    setToken(t);
-    try {
-      const user = JSON.parse(localStorage.getItem('user') ?? '{}');
-      setRole(user.primaryRole ?? '');
-    } catch { /* */ }
-  }, []);
+export default function ExamsPage() {
+  const token   = typeof window !== 'undefined' ? localStorage.getItem('token') ?? '' : '';
+  const auth    = { Authorization: `Bearer ${token}` };
+  const authJ   = { ...auth, 'Content-Type': 'application/json' };
 
-  const auth  = { Authorization: `Bearer ${token}` };
-  const authJ = { ...auth, 'Content-Type': 'application/json' };
+  const user    = typeof window !== 'undefined' ? (() => { try { return JSON.parse(localStorage.getItem('user') ?? '{}'); } catch { return {}; } })() : {};
+  const role    = user.primaryRole ?? '';
+  const isAdmin = ['school_admin', 'principal', 'hod', 'super_admin'].includes(role);
 
-  // Teacher, HOD, principal, school_admin can create & enter results
-  const canManage  = ['teacher', 'school_admin', 'principal', 'hod', 'super_admin'].includes(role);
-  // Only admin/principal can delete
-  const canDelete  = ['school_admin', 'principal', 'super_admin'].includes(role);
-
-  const [exams,       setExams]       = useState<Exam[]>([]);
-  const [classes,     setClasses]     = useState<ClassItem[]>([]);
-  const [loading,     setLoading]     = useState(true);
+  const [exams,      setExams]      = useState<Exam[]>([]);
+  const [classes,    setClasses]    = useState<ClassItem[]>([]);
+  const [loading,    setLoading]    = useState(true);
   const [classFilter, setClassFilter] = useState('');
-  const [tab,         setTab]         = useState<'list' | 'create' | 'results'>('list');
-  const [msg,         setMsg]         = useState<{ ok: boolean; text: string } | null>(null);
+  const [tab,        setTab]        = useState<'list' | 'create' | 'results'>('list');
+  const [selExam,    setSelExam]    = useState<Exam | null>(null);
+  const [msg,        setMsg]        = useState<{ ok: boolean; text: string } | null>(null);
 
   // Create exam form
   const [createForm, setCreateForm] = useState({
@@ -57,20 +57,19 @@ export default function ExamPage() {
   });
   const [creating, setCreating] = useState(false);
 
-  // Enter results state
-  const [resExamId,     setResExamId]     = useState('');
-  const [resClassId,    setResClassId]    = useState('');
-  const [resSubject,    setResSubject]    = useState('');
-  const [resStudents,   setResStudents]   = useState<Student[]>([]);
-  const [resSubjects,   setResSubjects]   = useState<string[]>([]);
-  const [resRows,       setResRows]       = useState<Record<string, { marks: string; maxMarks: string; grade: string; remarks: string }>>({});
-  const [selStudents,   setSelStudents]   = useState<Set<string>>(new Set());
-  const [savingRes,     setSavingRes]     = useState(false);
+  // Enter results form
+  const [resExamId,   setResExamId]   = useState('');
+  const [resClassId,  setResClassId]  = useState('');
+  const [resSubject,  setResSubject]  = useState('');
+  const [resStudents, setResStudents] = useState<Student[]>([]);
+  const [resSubjects, setResSubjects] = useState<Subject[]>([]);
+  const [resRows,     setResRows]     = useState<Record<string, { marks: string; maxMarks: string; grade: string; remarks: string }>>({});
+  const [selStudents, setSelStudents] = useState<Set<string>>(new Set());
+  const [savingRes,   setSavingRes]   = useState(false);
   const [uploadingXlsx, setUploadingXlsx] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = () => {
-    if (!token) return;
     setLoading(true);
     const qs = classFilter ? `?class_id=${classFilter}` : '';
     fetch(`/api/exams${qs}`, { headers: auth })
@@ -79,18 +78,16 @@ export default function ExamPage() {
       .finally(() => setLoading(false));
   };
 
-  // Initial data load — waits for token
   useEffect(() => {
-    if (!token) return;
     fetch('/api/classes', { headers: auth }).then(r => r.json()).then(d => setClasses(d.classes ?? []));
     load();
-  }, [token]);
+  }, []);
 
-  useEffect(() => { if (token) load(); }, [classFilter]);
+  useEffect(() => { load(); }, [classFilter]);
 
-  // Load students when class changes for results entry
+  // Load students when result class changes
   useEffect(() => {
-    if (!resClassId || !token) { setResStudents([]); return; }
+    if (!resClassId) { setResStudents([]); return; }
     fetch(`/api/students?class_id=${resClassId}&status=active`, { headers: auth })
       .then(r => r.json())
       .then(d => {
@@ -101,16 +98,15 @@ export default function ExamPage() {
         setResRows(rows);
         setSelStudents(new Set(studs.map((s: Student) => s.id)));
       });
-  }, [resClassId, token]);
+  }, [resClassId]);
 
-  // Load subjects from stream master when class changes
+  // Load subjects when class changes
   useEffect(() => {
-    if (!resClassId || !token) { setResSubjects([]); return; }
+    if (!resClassId) { setResSubjects([]); return; }
     fetch(`/api/masters/streams?classId=${resClassId}`, { headers: auth })
       .then(r => r.json())
-      .then(d => setResSubjects((d.streamMasters || []).map((m: any) => m.name)))
-      .catch(() => setResSubjects([]));
-  }, [resClassId, token]);
+      .then(d => setResSubjects((d.streamMasters || []).map((m: any) => m.name)));
+  }, [resClassId]);
 
   const createExam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,7 +115,7 @@ export default function ExamPage() {
       const res = await fetch('/api/exams', { method: 'POST', headers: authJ, body: JSON.stringify(createForm) });
       const d = await res.json();
       if (!res.ok) { setMsg({ ok: false, text: d.error ?? 'Failed to create exam' }); return; }
-      setMsg({ ok: true, text: 'Exam created successfully!' });
+      setMsg({ ok: true, text: 'Exam created!' });
       setCreateForm({ title: '', exam_type: '', class_id: '', start_date: '', end_date: '' });
       load(); setTab('list');
     } finally { setCreating(false); }
@@ -127,14 +123,13 @@ export default function ExamPage() {
 
   const saveResults = async () => {
     if (!resExamId || !resSubject) { setMsg({ ok: false, text: 'Select an exam and subject first' }); return; }
-    if (selStudents.size === 0) { setMsg({ ok: false, text: 'Select at least one student' }); return; }
     setSavingRes(true); setMsg(null);
     const results = [...selStudents].map(sid => ({
       student_id:     sid,
       subject:        resSubject,
       marks_obtained: Number(resRows[sid]?.marks ?? 0),
       max_marks:      Number(resRows[sid]?.maxMarks ?? 100),
-      grade:          resRows[sid]?.grade  || null,
+      grade:          resRows[sid]?.grade || null,
       remarks:        resRows[sid]?.remarks || null,
     }));
     try {
@@ -143,15 +138,14 @@ export default function ExamPage() {
         body: JSON.stringify({ action: 'bulk_results', examId: resExamId, results }),
       });
       const d = await res.json();
-      if (!res.ok) { setMsg({ ok: false, text: d.error ?? 'Failed to save' }); return; }
-      setMsg({ ok: true, text: `Results saved for ${d.created} student${d.created !== 1 ? 's' : ''}${d.failed ? ` (${d.failed} failed)` : ''}` });
+      if (!res.ok) { setMsg({ ok: false, text: d.error ?? 'Failed' }); return; }
+      setMsg({ ok: true, text: `Results saved for ${d.created} students${d.failed ? ` (${d.failed} failed)` : ''}` });
     } finally { setSavingRes(false); }
   };
 
   const handleXlsxUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    if (!resExamId) { setMsg({ ok: false, text: 'Select an exam first' }); return; }
+    if (!file || !resExamId) { setMsg({ ok: false, text: 'Select an exam first' }); return; }
     setUploadingXlsx(true); setMsg(null);
     try {
       const ExcelJS = (await import('exceljs')).default;
@@ -160,14 +154,12 @@ export default function ExamPage() {
       const ws = wb.worksheets[0];
       const results: any[] = [];
       ws.eachRow((row, i) => {
-        if (i === 1) return;
+        if (i === 1) return; // skip header
         const [, studentId, subject, marksObtained, maxMarks, grade, remarks] = row.values as any[];
         if (studentId && subject) {
-          results.push({
-            student_id: String(studentId), subject: String(subject),
+          results.push({ student_id: String(studentId), subject: String(subject),
             marks_obtained: marksObtained ?? 0, max_marks: maxMarks ?? 100,
-            grade: grade ?? null, remarks: remarks ?? null,
-          });
+            grade: grade ?? null, remarks: remarks ?? null });
         }
       });
       const res = await fetch('/api/exams', {
@@ -181,16 +173,10 @@ export default function ExamPage() {
   };
 
   const deleteExam = async (id: string) => {
-    if (!confirm('Delete this exam and all its results? This cannot be undone.')) return;
+    if (!confirm('Delete this exam and all its results?')) return;
     await fetch(`/api/exams?id=${id}`, { method: 'DELETE', headers: auth });
     load();
   };
-
-  const TABS: { id: 'list' | 'create' | 'results'; label: string }[] = [
-    { id: 'list',    label: 'All Exams' },
-    ...(canManage ? [{ id: 'create' as const, label: '+ Create Exam' }] : []),
-    ...(canManage ? [{ id: 'results' as const, label: 'Enter Results' }] : []),
-  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -198,15 +184,13 @@ export default function ExamPage() {
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Exams</h1>
-          <p className="text-sm text-surface-400 mt-0.5">
-            {canManage ? 'Create exams, enter results, and upload marks via Excel.' : 'View exam schedules and results.'}
-          </p>
+          <p className="text-sm text-surface-400 mt-0.5">Create exams, enter results, and upload marks via Excel.</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`px-3 py-1.5 text-sm rounded-lg font-medium border transition-all ${tab === t.id ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300' : 'border-surface-200 dark:border-gray-700 text-surface-400 hover:border-brand-300'}`}>
-              {t.label}
+          {(['list', 'create', 'results'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-3 py-1.5 text-sm rounded-lg font-medium border transition-all capitalize ${tab === t ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300' : 'border-surface-200 dark:border-gray-700 text-surface-400 hover:border-brand-300'}`}>
+              {t === 'results' ? 'Enter Results' : t === 'create' ? '+ Create Exam' : 'All Exams'}
             </button>
           ))}
         </div>
@@ -215,11 +199,11 @@ export default function ExamPage() {
       {msg && (
         <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm border ${msg.ok ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
           {msg.text}
-          <button onClick={() => setMsg(null)} className="ml-auto opacity-60 hover:opacity-100 text-lg leading-none">×</button>
+          <button onClick={() => setMsg(null)} className="ml-auto opacity-60 hover:opacity-100">×</button>
         </div>
       )}
 
-      {/* ── All Exams ── */}
+      {/* ── Exam List ── */}
       {tab === 'list' && (
         <div className="space-y-4">
           <div className="flex items-center gap-3 flex-wrap">
@@ -234,11 +218,7 @@ export default function ExamPage() {
           ) : exams.length === 0 ? (
             <div className="card p-12 text-center text-surface-400 text-sm">
               No exams found.
-              {canManage && (
-                <button onClick={() => setTab('create')} className="block mx-auto mt-2 text-brand-600 dark:text-brand-400 hover:underline">
-                  Create one →
-                </button>
-              )}
+              {isAdmin && <button onClick={() => setTab('create')} className="block mx-auto mt-2 text-brand-600 dark:text-brand-400 hover:underline">Create one →</button>}
             </div>
           ) : (
             <div className="space-y-3">
@@ -256,30 +236,14 @@ export default function ExamPage() {
                       {` · ${ex.academicYear}`}
                     </p>
                     {ex._count && (
-                      <p className="text-xs text-surface-400">{ex._count.results} results recorded</p>
+                      <p className="text-xs text-surface-400">{ex._count.results} results · {ex._count.entries} timetable entries</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2 flex-wrap shrink-0">
-                    {canManage && (
-                      <button
-                        onClick={() => {
-                          setResExamId(ex.id);
-                          const matchedClass = classes.find(c =>
-                            ex.class && (c.name === ex.class.name || (c.grade === ex.class.grade && c.section === ex.class.section))
-                          );
-                          setResClassId(matchedClass?.id ?? '');
-                          setTab('results');
-                        }}
-                        className="btn btn-secondary btn-sm"
-                      >
-                        Enter Results
-                      </button>
-                    )}
-                    {canDelete && (
-                      <button onClick={() => deleteExam(ex.id)}
-                        className="btn btn-sm text-xs text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30">
-                        Delete
-                      </button>
+                    <button onClick={() => { setResExamId(ex.id); setResClassId(ex.class ? classes.find(c => c.name === ex.class?.name)?.id ?? '' : ''); setTab('results'); }}
+                      className="btn btn-secondary btn-sm">Enter Results</button>
+                    {isAdmin && (
+                      <button onClick={() => deleteExam(ex.id)} className="btn btn-sm text-xs text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30">Delete</button>
                     )}
                   </div>
                 </div>
@@ -290,7 +254,7 @@ export default function ExamPage() {
       )}
 
       {/* ── Create Exam ── */}
-      {tab === 'create' && canManage && (
+      {tab === 'create' && (
         <div className="card p-6 max-w-xl space-y-4">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">Create New Exam</h2>
           <form onSubmit={createExam} className="space-y-4">
@@ -298,7 +262,7 @@ export default function ExamPage() {
               <label className="label">Exam Title *</label>
               <input className="input-field" required value={createForm.title}
                 onChange={e => setCreateForm(f => ({...f, title: e.target.value}))}
-                placeholder="e.g. Unit Test 1 — Mathematics" />
+                placeholder="e.g. Unit Test 1 — Math" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -307,7 +271,7 @@ export default function ExamPage() {
                   onChange={e => setCreateForm(f => ({...f, exam_type: e.target.value}))}
                   placeholder="e.g. Unit Test, Mid-Term" list="exam-types" />
                 <datalist id="exam-types">
-                  {['Unit Test', 'Mid-Term', 'Final', 'Pre-Board', 'Internal Assessment', 'Quarterly'].map(t => <option key={t} value={t} />)}
+                  {['Unit Test', 'Mid-Term', 'Final', 'Pre-Board', 'Internal Assessment'].map(t => <option key={t} value={t} />)}
                 </datalist>
               </div>
               <div>
@@ -333,22 +297,20 @@ export default function ExamPage() {
               </div>
             </div>
             <div className="flex gap-3 pt-1">
-              <button type="button" onClick={() => setTab('list')} className="btn btn-secondary flex-1">Cancel</button>
-              <button type="submit" disabled={creating} className="btn btn-primary flex-1">
-                {creating ? 'Creating...' : 'Create Exam'}
-              </button>
+              <button type="button" onClick={() => setTab('list')} className="btn-secondary flex-1">Cancel</button>
+              <button type="submit" disabled={creating} className="btn-primary flex-1">{creating ? 'Creating...' : 'Create Exam'}</button>
             </div>
           </form>
         </div>
       )}
 
       {/* ── Enter Results ── */}
-      {tab === 'results' && canManage && (
+      {tab === 'results' && (
         <div className="space-y-5">
           <div className="card p-5 space-y-4">
             <h2 className="font-semibold text-gray-900 dark:text-gray-100">Enter Exam Results</h2>
 
-            {/* Selectors row */}
+            {/* Selectors */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="label">Exam *</label>
@@ -358,34 +320,26 @@ export default function ExamPage() {
                 </select>
               </div>
               <div>
-                <label className="label">Class / Section *</label>
-                <select className="input-field" value={resClassId}
-                  onChange={e => { setResClassId(e.target.value); setResSubject(''); }}>
+                <label className="label">Class *</label>
+                <select className="input-field" value={resClassId} onChange={e => { setResClassId(e.target.value); setResSubject(''); }}>
                   <option value="">— Select Class —</option>
                   {classes.map(c => <option key={c.id} value={c.id}>{c.name || `${c.grade}-${c.section}`}</option>)}
                 </select>
               </div>
               <div>
                 <label className="label">Subject *</label>
-                {resSubjects.length > 0 ? (
-                  <select className="input-field" value={resSubject} onChange={e => setResSubject(e.target.value)}>
-                    <option value="">— Select Subject —</option>
-                    {resSubjects.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                ) : (
-                  <input className="input-field" value={resSubject} placeholder={resClassId ? 'Type subject name' : 'Select class first'}
-                    onChange={e => setResSubject(e.target.value)} />
-                )}
+                <select className="input-field" value={resSubject} onChange={e => setResSubject(e.target.value)}>
+                  <option value="">— Select Subject —</option>
+                  {resSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
               </div>
             </div>
 
-            {/* Excel upload bar */}
+            {/* Excel upload */}
             <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800 rounded-xl">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500 shrink-0">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/>
-              </svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500 shrink-0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
               <p className="text-xs text-blue-700 dark:text-blue-400 flex-1">
-                Excel upload columns: <strong>row# · student_id · subject · marks_obtained · max_marks · grade · remarks</strong>
+                Upload Excel: columns → <strong>row# · student_id · subject · marks_obtained · max_marks · grade · remarks</strong>
               </p>
               <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleXlsxUpload} />
               <button onClick={() => fileRef.current?.click()} disabled={!resExamId || uploadingXlsx}
@@ -395,19 +349,12 @@ export default function ExamPage() {
             </div>
           </div>
 
-          {/* Hint before selecting */}
-          {!resClassId && (
-            <div className="card p-8 text-center text-surface-400 text-sm">
-              Select an exam, class, and subject above to enter results.
-            </div>
-          )}
-
           {/* Student marks table */}
           {resStudents.length > 0 && resSubject && (
             <div className="card overflow-hidden">
               <div className="flex items-center justify-between px-5 py-3 border-b border-surface-100 dark:border-gray-800">
                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {resStudents.length} students · <span className="text-brand-600 dark:text-brand-400">{resSubject}</span>
+                  {resStudents.length} students · {resSubject}
                 </p>
                 <div className="flex items-center gap-3">
                   <button onClick={() => setSelStudents(new Set(resStudents.map(s => s.id)))}
@@ -420,11 +367,9 @@ export default function ExamPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-surface-100 dark:border-gray-800 bg-surface-50 dark:bg-gray-800/40">
-                      <th className="py-2.5 px-4 text-left w-8">
-                        <input type="checkbox"
-                          checked={selStudents.size === resStudents.length && resStudents.length > 0}
-                          onChange={e => setSelStudents(e.target.checked ? new Set(resStudents.map(s => s.id)) : new Set())} />
-                      </th>
+                      <th className="py-2.5 px-4 text-left w-8"><input type="checkbox"
+                        checked={selStudents.size === resStudents.length}
+                        onChange={e => setSelStudents(e.target.checked ? new Set(resStudents.map(s => s.id)) : new Set())} /></th>
                       <th className="py-2.5 px-4 text-left text-xs font-semibold text-surface-400 uppercase tracking-wide">Student</th>
                       <th className="py-2.5 px-4 text-left text-xs font-semibold text-surface-400 uppercase tracking-wide w-28">Marks</th>
                       <th className="py-2.5 px-4 text-left text-xs font-semibold text-surface-400 uppercase tracking-wide w-24">Max</th>
@@ -440,23 +385,19 @@ export default function ExamPage() {
                         <tr key={s.id} className={`border-b border-surface-100 dark:border-gray-800 transition-colors ${isSel ? '' : 'opacity-40'}`}>
                           <td className="py-2 px-4">
                             <input type="checkbox" checked={isSel}
-                              onChange={e => setSelStudents(prev => {
-                                const n = new Set(prev);
-                                e.target.checked ? n.add(s.id) : n.delete(s.id);
-                                return n;
-                              })} />
+                              onChange={e => setSelStudents(prev => { const n = new Set(prev); e.target.checked ? n.add(s.id) : n.delete(s.id); return n; })} />
                           </td>
                           <td className="py-2 px-4">
                             <p className="font-medium text-gray-800 dark:text-gray-200">{s.first_name} {s.last_name}</p>
                             {s.admission_no && <p className="text-[11px] text-surface-400">Adm: {s.admission_no}</p>}
                           </td>
                           <td className="py-2 px-4">
-                            <input type="number" min="0" className="input w-full text-xs py-1.5" value={row.marks}
+                            <input type="number" className="input w-full text-xs py-1.5" value={row.marks} min="0"
                               disabled={!isSel}
                               onChange={e => setResRows(r => ({...r, [s.id]: {...r[s.id], marks: e.target.value}}))} />
                           </td>
                           <td className="py-2 px-4">
-                            <input type="number" min="1" className="input w-full text-xs py-1.5" value={row.maxMarks}
+                            <input type="number" className="input w-full text-xs py-1.5" value={row.maxMarks} min="1"
                               disabled={!isSel}
                               onChange={e => setResRows(r => ({...r, [s.id]: {...r[s.id], maxMarks: e.target.value}}))} />
                           </td>
@@ -486,8 +427,8 @@ export default function ExamPage() {
             </div>
           )}
 
-          {resClassId && resSubject && resStudents.length === 0 && !loading && (
-            <div className="card p-8 text-center text-surface-400 text-sm">No active students found for this class.</div>
+          {resClassId && resSubject && resStudents.length === 0 && (
+            <div className="card p-8 text-center text-surface-400 text-sm">No students found for this class.</div>
           )}
         </div>
       )}

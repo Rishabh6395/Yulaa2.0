@@ -11,12 +11,6 @@ function fmtDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-const PLATFORM_LABELS: Record<string, string> = {
-  meet:  'Google Meet',
-  zoom:  'Zoom',
-  teams: 'Microsoft Teams',
-};
-
 // ── Slot type colours ────────────────────────────────────────────────────────
 const SLOT_STYLE = {
   assigned: {
@@ -42,47 +36,28 @@ const SLOT_STYLE = {
   },
 };
 
-const ONLINE_STATUS: Record<string, { label: string; cls: string }> = {
-  scheduled: { label: 'Scheduled', cls: 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400' },
-  live:      { label: '🔴 Live',   cls: 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400' },
-  ended:     { label: 'Ended',     cls: 'bg-surface-100 dark:bg-gray-700 text-surface-400 dark:text-gray-500' },
-  cancelled: { label: 'Cancelled', cls: 'bg-surface-100 dark:bg-gray-700 text-surface-400 dark:text-gray-500' },
-};
-
 export default function TimetablePage() {
-  const [date,             setDate]             = useState(todayStr());
-  const [slots,            setSlots]            = useState<any[]>([]);
-  const [loading,          setLoading]          = useState(true);
-  const [role,             setRole]             = useState('');
-  const [msg,              setMsg]              = useState<{ type: string; text: string } | null>(null);
+  const [date,        setDate]        = useState(todayStr());
+  const [slots,       setSlots]       = useState<any[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [role,        setRole]        = useState('');
+  const [msg,         setMsg]         = useState<{ type: string; text: string } | null>(null);
   const [dayReassignments, setDayReassignments] = useState<any[]>([]);
 
   // Log modal
-  const [activeSlot, setActiveSlot] = useState<any | null>(null);
-  const [logForm,    setLogForm]    = useState({ topic: '', notes: '', homeworkId: '' });
-  const [showLog,    setShowLog]    = useState(false);
-  const [saving,     setSaving]    = useState(false);
+  const [activeSlot,  setActiveSlot]  = useState<any | null>(null);
+  const [logForm,     setLogForm]     = useState({ topic: '', notes: '' });
+  const [hwForm,      setHwForm]      = useState({ enabled: false, title: '', dueDate: '', maxMarks: '', description: '' });
+  const [showLog,     setShowLog]     = useState(false);
+  const [saving,      setSaving]      = useState(false);
 
   // Reassign modal
-  const [showReassign,  setShowReassign]  = useState(false);
-  const [reassignSlot,  setReassignSlot]  = useState<any | null>(null);
-  const [teachers,      setTeachers]      = useState<any[]>([]);
-  const [reassignForm,  setReassignForm]  = useState({ substituteTeacherId: '', startDate: todayStr(), endDate: '', reason: '' });
-  const [reassigning,   setReassigning]   = useState(false);
+  const [showReassign,      setShowReassign]      = useState(false);
+  const [reassignSlot,      setReassignSlot]      = useState<any | null>(null);
+  const [teachers,          setTeachers]          = useState<any[]>([]);
+  const [reassignForm,      setReassignForm]      = useState({ substituteTeacherId: '', startDate: todayStr(), endDate: '', reason: '' });
+  const [reassigning,       setReassigning]       = useState(false);
 
-  // Online class state
-  const [onlineClasses,    setOnlineClasses]    = useState<any[]>([]);
-  const [onlineEnabled,    setOnlineEnabled]    = useState(false);
-  const [allowedPlatforms, setAllowedPlatforms] = useState<string[]>([]);
-  const [showOnlineModal,  setShowOnlineModal]  = useState(false);
-  const [onlineSlot,       setOnlineSlot]       = useState<any | null>(null);
-  const [existingOC,       setExistingOC]       = useState<any | null>(null);
-  const [onlineForm,       setOnlineForm]       = useState({
-    title: '', subject: '', platform: 'meet',
-    meeting_link: '', meeting_id: '', meeting_password: '',
-    scheduled_at: '', duration_minutes: 45,
-  });
-  const [savingOnline, setSavingOnline] = useState(false);
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const authH   = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -91,35 +66,26 @@ export default function TimetablePage() {
   const fetchSlots = useCallback(async (d: string) => {
     setLoading(true);
     try {
-      const [slotsRes, raRes, ocRes] = await Promise.all([
-        fetch(`/api/timetable/teacher?date=${d}`,  { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`/api/timetable/reassign?date=${d}`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`/api/online-classes?date=${d}`,     { headers: { Authorization: `Bearer ${token}` } }),
+      const [slotsRes, raRes] = await Promise.all([
+        fetch(`/api/timetable/teacher?date=${d}`,   { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`/api/timetable/reassign?date=${d}`,  { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const slotsData = await slotsRes.json();
       const raData    = await raRes.json();
-      const ocData    = await ocRes.json();
       setSlots(slotsData.slots || []);
       setDayReassignments(raData.reassignments || []);
-      setOnlineClasses(ocData.classes || []);
     } finally { setLoading(false); }
   }, [token]);
 
   useEffect(() => {
     const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
     setRole(user.primaryRole || '');
-    // fetchSlots is handled by the date-dependent effect below — no need to call it here
+    fetchSlots(date);
+    // Fetch school teachers for substitute selector — /api/teachers is scoped to caller's school
     fetch('/api/teachers', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => setTeachers(d.teachers || []))
       .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[teachers]', err); });
-    fetch('/api/school/online-config', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(d => {
-        setOnlineEnabled(d.online_class_enabled ?? false);
-        setAllowedPlatforms(d.allowed_platforms ?? []);
-      })
-      .catch(() => {});
   }, []);
 
   useEffect(() => { fetchSlots(date); }, [date, fetchSlots]);
@@ -127,8 +93,16 @@ export default function TimetablePage() {
   // ── Topic log ───────────────────────────────────────────────────────────────
   const openLog = (slot: any) => {
     const existingLog = slot.logs?.[0];
+    const existingHw  = existingLog?.homework;
     setActiveSlot(slot);
-    setLogForm({ topic: existingLog?.topic || '', notes: existingLog?.notes || '', homeworkId: existingLog?.homeworkId || '' });
+    setLogForm({ topic: existingLog?.topic || '', notes: existingLog?.notes || '' });
+    setHwForm({
+      enabled:     !!existingHw,
+      title:       existingHw?.title || '',
+      dueDate:     existingHw?.dueDate ? existingHw.dueDate.split('T')[0] : '',
+      maxMarks:    existingHw?.maxMarks?.toString() || '',
+      description: existingHw?.description || '',
+    });
     setShowLog(true);
   };
 
@@ -137,9 +111,18 @@ export default function TimetablePage() {
     if (!activeSlot) return;
     setSaving(true); setMsg(null);
     try {
+      const payload: any = { slotId: activeSlot.id, date, ...logForm };
+      if (hwForm.enabled && hwForm.title && hwForm.dueDate) {
+        payload.homework = {
+          title:       hwForm.title,
+          dueDate:     hwForm.dueDate,
+          maxMarks:    hwForm.maxMarks || null,
+          description: hwForm.description || null,
+        };
+      }
       const res = await fetch('/api/timetable/log', {
         method: 'POST', headers: authH,
-        body: JSON.stringify({ slotId: activeSlot.id, date, ...logForm }),
+        body: JSON.stringify(payload),
       });
       const d = await res.json();
       if (!res.ok) { setMsg({ type: 'error', text: d.error || 'Failed to save' }); return; }
@@ -181,94 +164,16 @@ export default function TimetablePage() {
 
   const cancelReassignment = async (id: string) => {
     await fetch(`/api/timetable/reassign?id=${id}`, { method: 'DELETE', headers: authH });
-    fetchSlots(date);
-  };
-
-  // ── Online class helpers ────────────────────────────────────────────────────
-  const getOC = (slotId: string) => onlineClasses.find(c => c.slotId === slotId);
-
-  const openOnlineModal = (slot: any) => {
-    const oc = getOC(slot.id);
-    setOnlineSlot(slot);
-    setExistingOC(oc || null);
-    const startTime = (slot.startTime || '09:00').slice(0, 5);
-    const scheduledAt = oc
-      ? new Date(oc.scheduledAt).toISOString().slice(0, 16)
-      : `${date}T${startTime}`;
-    const platforms = allowedPlatforms.length > 0 ? allowedPlatforms : ['meet', 'zoom', 'teams'];
-    setOnlineForm({
-      title:            oc?.title           || slot.subject || '',
-      subject:          oc?.subject         || slot.subject || '',
-      platform:         oc?.platform        || platforms[0],
-      meeting_link:     oc?.meetingLink     || '',
-      meeting_id:       oc?.meetingId       || '',
-      meeting_password: oc?.meetingPassword || '',
-      scheduled_at:     scheduledAt,
-      duration_minutes: oc?.durationMinutes ?? 45,
-    });
-    setShowOnlineModal(true);
-  };
-
-  const handleSaveOnline = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!onlineSlot) return;
-    setSavingOnline(true); setMsg(null);
-    try {
-      if (existingOC) {
-        const res = await fetch('/api/online-classes', {
-          method: 'PATCH', headers: authH,
-          body: JSON.stringify({ id: existingOC.id, meeting_link: onlineForm.meeting_link || null }),
-        });
-        const d = await res.json();
-        if (!res.ok) { setMsg({ type: 'error', text: d.error || 'Failed to update' }); return; }
-        setMsg({ type: 'success', text: 'Online class updated!' });
-      } else {
-        const classId = onlineSlot.timetable?.classId ?? onlineSlot.timetable?.class?.id;
-        const res = await fetch('/api/online-classes', {
-          method: 'POST', headers: authH,
-          body: JSON.stringify({
-            slot_id:          onlineSlot.id,
-            class_id:         classId,
-            title:            onlineForm.title,
-            subject:          onlineForm.subject,
-            platform:         onlineForm.platform,
-            meeting_link:     onlineForm.meeting_link  || null,
-            meeting_id:       onlineForm.meeting_id    || null,
-            meeting_password: onlineForm.meeting_password || null,
-            scheduled_at:     onlineForm.scheduled_at,
-            duration_minutes: Number(onlineForm.duration_minutes),
-          }),
-        });
-        const d = await res.json();
-        if (!res.ok) { setMsg({ type: 'error', text: d.error || 'Failed to schedule' }); return; }
-        setMsg({ type: 'success', text: 'Online class scheduled! Students and parents will be notified.' });
-      }
-      setShowOnlineModal(false);
-      fetchSlots(date);
-    } finally { setSavingOnline(false); }
-  };
-
-  const updateOCStatus = async (ocId: string, status: string) => {
-    setMsg(null);
-    const res = await fetch('/api/online-classes', {
-      method: 'PATCH', headers: authH,
-      body: JSON.stringify({ id: ocId, status }),
-    });
-    const d = await res.json();
-    if (!res.ok) { setMsg({ type: 'error', text: d.error || 'Failed' }); return; }
-    if (status === 'live') setMsg({ type: 'success', text: '🔴 Class is live! Students notified.' });
-    else                   setMsg({ type: 'success', text: 'Class ended.' });
-    fetchSlots(date);
+    fetchSlots(date); // refreshes both slots + dayReassignments
   };
 
   const dayName = DAYS[new Date(date + 'T00:00:00').getDay()];
   const isToday = date === todayStr();
 
-  const assignedCount   = slots.filter(s => s.slotType === 'assigned').length;
+  // Counts for legend
+  const assignedCount  = slots.filter(s => s.slotType === 'assigned').length;
   const substituteCount = slots.filter(s => s.slotType === 'substitute').length;
   const reassignedCount = slots.filter(s => s.slotType === 'reassigned_away').length;
-
-  const platformOptions = allowedPlatforms.length > 0 ? allowedPlatforms : ['meet', 'zoom', 'teams'];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -335,8 +240,6 @@ export default function TimetablePage() {
             const type     = slot.slotType ?? 'assigned';
             const style    = SLOT_STYLE[type as keyof typeof SLOT_STYLE] ?? SLOT_STYLE.assigned;
             const className = slot.timetable?.class?.name || `${slot.timetable?.class?.grade}-${slot.timetable?.class?.section}`;
-            const oc       = getOC(slot.id);
-            const ocStatus = oc ? (ONLINE_STATUS[oc.status] ?? ONLINE_STATUS.scheduled) : null;
 
             return (
               <div key={slot.id + type} className={`card p-4 border-2 ${style.card}`}>
@@ -386,6 +289,12 @@ export default function TimetablePage() {
                       <div className="space-y-0.5">
                         <p className="text-sm text-gray-700 dark:text-gray-300"><span className="font-medium">Topic:</span> {log.topic}</p>
                         {log.notes && <p className="text-xs text-surface-400">{log.notes}</p>}
+                        {log.homework && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-0.5">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                            HW: {log.homework.title} · Due {new Date(log.homework.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <p className="text-xs text-surface-400 italic">No topic logged yet</p>
@@ -404,6 +313,7 @@ export default function TimetablePage() {
                         {hasLog ? '✏️ Edit Log' : '+ Log Topic'}
                       </button>
                     )}
+                    {/* Reassign button — only for originally assigned slots */}
                     {isTeacher && type === 'assigned' && (
                       <button onClick={() => openReassign(slot)}
                         className="text-xs font-medium px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors">
@@ -412,51 +322,6 @@ export default function TimetablePage() {
                     )}
                   </div>
                 </div>
-
-                {/* ── Online class row ── */}
-                {isTeacher && onlineEnabled && type !== 'reassigned_away' && (
-                  <div className="mt-3 pt-3 border-t border-dashed border-surface-100 dark:border-gray-700/60">
-                    {oc ? (
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${ocStatus?.cls}`}>
-                          📹 {ocStatus?.label}
-                        </span>
-                        <span className="text-xs text-surface-400">
-                          {PLATFORM_LABELS[oc.platform] || oc.platform}
-                        </span>
-                        {oc.meetingLink && oc.status !== 'ended' && oc.status !== 'cancelled' && (
-                          <a href={oc.meetingLink} target="_blank" rel="noopener noreferrer"
-                            className="text-xs font-medium px-3 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 transition-colors">
-                            Join ↗
-                          </a>
-                        )}
-                        {oc.status === 'scheduled' && (
-                          <button onClick={() => updateOCStatus(oc.id, 'live')}
-                            className="text-xs font-medium px-3 py-1 rounded-lg bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors">
-                            🔴 Go Live
-                          </button>
-                        )}
-                        {oc.status === 'live' && (
-                          <button onClick={() => updateOCStatus(oc.id, 'ended')}
-                            className="text-xs font-medium px-3 py-1 rounded-lg bg-surface-100 dark:bg-gray-700 text-surface-600 dark:text-gray-300 hover:bg-surface-200 dark:hover:bg-gray-600 transition-colors">
-                            End Class
-                          </button>
-                        )}
-                        {oc.status !== 'ended' && oc.status !== 'cancelled' && (
-                          <button onClick={() => openOnlineModal(slot)}
-                            className="text-xs font-medium px-3 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-950/50 transition-colors">
-                            ✏️ Edit Link
-                          </button>
-                        )}
-                      </div>
-                    ) : (
-                      <button onClick={() => openOnlineModal(slot)}
-                        className="text-xs font-medium px-3 py-1.5 rounded-lg bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-950/50 transition-colors">
-                        📹 Schedule Online Class
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}
@@ -468,6 +333,7 @@ export default function TimetablePage() {
         <div className="space-y-3">
           <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Reassignments on this day</p>
           {dayReassignments.map((r: any) => {
+            const isOriginal = r.originalTeacherName && r.substituteTeacherName;
             return (
               <div key={r.id} className="card p-4 border-2 border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20">
                 <div className="flex items-start gap-4">
@@ -514,16 +380,57 @@ export default function TimetablePage() {
           </div>
           <div>
             <label className="label">Notes / Observations</label>
-            <textarea className="input-field" rows={3} value={logForm.notes}
+            <textarea className="input-field" rows={2} value={logForm.notes}
               onChange={e => setLogForm(f => ({...f, notes: e.target.value}))}
               placeholder="Any class notes, student queries, etc." />
           </div>
-          <div>
-            <label className="label">Homework ID (optional)</label>
-            <input className="input-field" value={logForm.homeworkId}
-              onChange={e => setLogForm(f => ({...f, homeworkId: e.target.value}))}
-              placeholder="Link to homework entry if any" />
+
+          {/* Homework section */}
+          <div className="border border-surface-200 dark:border-gray-700 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setHwForm(f => ({ ...f, enabled: !f.enabled }))}
+              className="w-full flex items-center justify-between px-4 py-3 bg-surface-50 dark:bg-gray-800/60 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-surface-100 dark:hover:bg-gray-700/60 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                {hwForm.enabled ? 'Homework assigned' : 'Assign homework (optional)'}
+              </span>
+              <span className={`w-8 h-4 rounded-full transition-colors relative ${hwForm.enabled ? 'bg-brand-500' : 'bg-surface-300 dark:bg-gray-600'}`}>
+                <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${hwForm.enabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </span>
+            </button>
+            {hwForm.enabled && (
+              <div className="px-4 pb-4 pt-3 space-y-3 border-t border-surface-200 dark:border-gray-700">
+                <div>
+                  <label className="label">Homework Title *</label>
+                  <input className="input-field" value={hwForm.title}
+                    onChange={e => setHwForm(f => ({...f, title: e.target.value}))}
+                    placeholder="e.g. Exercise 3.2 — solve Q1 to Q10" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Due Date *</label>
+                    <input type="date" className="input-field" value={hwForm.dueDate}
+                      onChange={e => setHwForm(f => ({...f, dueDate: e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className="label">Max Marks</label>
+                    <input type="number" className="input-field" value={hwForm.maxMarks}
+                      onChange={e => setHwForm(f => ({...f, maxMarks: e.target.value}))}
+                      placeholder="e.g. 10" min="0" />
+                  </div>
+                </div>
+                <div>
+                  <label className="label">Instructions</label>
+                  <textarea className="input-field" rows={2} value={hwForm.description}
+                    onChange={e => setHwForm(f => ({...f, description: e.target.value}))}
+                    placeholder="Any specific instructions for students..." />
+                </div>
+              </div>
+            )}
           </div>
+
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={() => setShowLog(false)} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving...' : 'Save Log'}</button>
@@ -571,93 +478,6 @@ export default function TimetablePage() {
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={() => setShowReassign(false)} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={reassigning} className="btn-primary flex-1">{reassigning ? 'Reassigning...' : 'Confirm Reassignment'}</button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Schedule / Edit Online Class Modal */}
-      <Modal
-        open={showOnlineModal}
-        onClose={() => setShowOnlineModal(false)}
-        title={existingOC
-          ? `Edit Online Class — ${onlineSlot?.subject} (P${onlineSlot?.periodNo})`
-          : `Schedule Online Class — ${onlineSlot?.subject} (P${onlineSlot?.periodNo})`}
-      >
-        <form onSubmit={handleSaveOnline} className="space-y-4">
-          {!existingOC && (
-            <div className="p-3 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-800 text-xs text-violet-700 dark:text-violet-400">
-              Students and parents in this class will be notified once you schedule. You can add the meeting link now or later.
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Title *</label>
-              <input className="input-field" required value={onlineForm.title}
-                onChange={e => setOnlineForm(f => ({...f, title: e.target.value}))}
-                placeholder="e.g. Physics – Chapter 5" />
-            </div>
-            <div>
-              <label className="label">Subject</label>
-              <input className="input-field" value={onlineForm.subject}
-                onChange={e => setOnlineForm(f => ({...f, subject: e.target.value}))}
-                placeholder="e.g. Physics" />
-            </div>
-          </div>
-
-          <div>
-            <label className="label">Platform *</label>
-            <select className="input-field" required value={onlineForm.platform}
-              onChange={e => setOnlineForm(f => ({...f, platform: e.target.value}))}>
-              {platformOptions.map(p => (
-                <option key={p} value={p}>{PLATFORM_LABELS[p] || p}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="label">Meeting Link</label>
-            <input className="input-field" type="url" value={onlineForm.meeting_link}
-              onChange={e => setOnlineForm(f => ({...f, meeting_link: e.target.value}))}
-              placeholder="https://meet.google.com/abc-defg-hij" />
-            <p className="text-[11px] text-surface-400 mt-1">You can add or update this after creating the class.</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Meeting ID (optional)</label>
-              <input className="input-field" value={onlineForm.meeting_id}
-                onChange={e => setOnlineForm(f => ({...f, meeting_id: e.target.value}))}
-                placeholder="123 456 7890" />
-            </div>
-            <div>
-              <label className="label">Password (optional)</label>
-              <input className="input-field" value={onlineForm.meeting_password}
-                onChange={e => setOnlineForm(f => ({...f, meeting_password: e.target.value}))}
-                placeholder="abc123" />
-            </div>
-          </div>
-
-          {!existingOC && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Scheduled At *</label>
-                <input type="datetime-local" className="input-field" required value={onlineForm.scheduled_at}
-                  onChange={e => setOnlineForm(f => ({...f, scheduled_at: e.target.value}))} />
-              </div>
-              <div>
-                <label className="label">Duration (minutes)</label>
-                <input type="number" className="input-field" min={5} max={300} value={onlineForm.duration_minutes}
-                  onChange={e => setOnlineForm(f => ({...f, duration_minutes: Number(e.target.value)}))} />
-              </div>
-            </div>
-          )}
-
-          <div className="flex gap-3 pt-1">
-            <button type="button" onClick={() => setShowOnlineModal(false)} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={savingOnline} className="btn-primary flex-1">
-              {savingOnline ? 'Saving...' : existingOC ? 'Update Link' : 'Schedule Class'}
-            </button>
           </div>
         </form>
       </Modal>

@@ -79,14 +79,16 @@ function CalendarCell({ record, isToday, onClick }: {
         transition-all duration-150 relative group
         ${isToday ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-gray-900' : ''}
         ${isInactive
-          ? 'text-surface-300 dark:text-gray-700 cursor-default'
+          ? `${cfg.bg} text-surface-300 dark:text-gray-600 cursor-default`
           : `${cfg.bg} ${cfg.text} hover:scale-105 hover:shadow-sm cursor-pointer active:scale-95`
         }
       `}
     >
       <span className={`text-sm leading-none ${isToday ? 'font-bold' : ''}`}>{day}</span>
-      {!isFuture && !isWeekoff && (
-        <span className={`text-[9px] mt-0.5 font-semibold opacity-70`}>{cfg.label}</span>
+      {!isFuture && (
+        <span className={`text-[8px] mt-0.5 font-semibold leading-tight truncate max-w-full px-0.5 ${isWeekoff ? 'opacity-50' : 'opacity-80'}`}>
+          {cfg.calLabel}
+        </span>
       )}
       {/* Punch times tooltip on hover */}
       {record.punch_in_time && (

@@ -72,7 +72,9 @@ export async function POST(request: Request) {
               orderNo:     it.orderNo ?? 0,
               academicYear: it.academicYear || '',
               status:      'pending',
-              ...(it.teacherId ? { teacher: { connect: { id: it.teacherId } } } : {}),
+              ...(it.startDate ? { startDate: new Date(it.startDate) } : {}),
+              ...(it.endDate   ? { endDate:   new Date(it.endDate)   } : {}),
+              ...(it.teacherId ? { teacher:   { connect: { id: it.teacherId } } } : {}),
             },
           })
         )

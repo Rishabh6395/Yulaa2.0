@@ -1,6 +1,6 @@
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError } from '@/utils/errors';
-import { listQueries, submitQuery, addReply, resolveQuery, reopenQuery } from '@/modules/queries/query.service';
+import { listQueries, submitQuery, addReply, resolveQuery, reopenQuery, closeQuery } from '@/modules/queries/query.service';
 
 function primaryRole(user: any) {
   return user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
@@ -43,6 +43,10 @@ export async function PATCH(request: Request) {
     }
     if (action === 'reopen') {
       await reopenQuery(user.id, id);
+      return Response.json({ ok: true });
+    }
+    if (action === 'close') {
+      await closeQuery(user.id, role.school_id ?? null, role.role_code, id);
       return Response.json({ ok: true });
     }
     return Response.json({ error: 'Unknown action' }, { status: 400 });
