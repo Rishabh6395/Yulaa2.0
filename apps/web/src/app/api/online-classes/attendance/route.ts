@@ -12,7 +12,8 @@ export async function GET(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    const { role_code: role, school_id: schoolId } = primary;
+    const { role_code: role } = primary;
+    const schoolId = primary.school_id ?? '';
 
     if (!['teacher', 'school_admin', 'principal', 'hod'].includes(role)) throw new ForbiddenError();
 
@@ -53,7 +54,8 @@ export async function POST(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    const { role_code: role, school_id: schoolId } = primary;
+    const { role_code: role } = primary;
+    const schoolId = primary.school_id ?? '';
 
     if (!['teacher', 'school_admin', 'principal'].includes(role)) throw new ForbiddenError();
 
@@ -71,7 +73,7 @@ export async function POST(request: Request) {
 
     // If teacher, verify ownership
     if (role === 'teacher') {
-      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id }, select: { id: true } });
+      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id ?? undefined }, select: { id: true } });
       if (!teacher || oc.teacherId !== teacher.id) throw new ForbiddenError();
     }
 
@@ -79,7 +81,7 @@ export async function POST(request: Request) {
     if (oc.classId && attendance.length > 0) {
       const requestedIds = attendance.map((a: { student_id: string }) => a.student_id);
       const validStudents = await prisma.student.findMany({
-        where: { classId: oc.classId, id: { in: requestedIds }, schoolId },
+        where: { classId: oc.classId ?? undefined, id: { in: requestedIds }, schoolId },
         select: { id: true },
       });
       const validSet = new Set(validStudents.map(s => s.id));

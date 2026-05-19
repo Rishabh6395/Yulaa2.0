@@ -65,6 +65,7 @@ export async function notifyOnlineClassScheduled(
   const promises: Promise<void>[] = [];
 
   for (const student of students) {
+    if (!student.userId) continue;
     promises.push(sendNotification({
       userId:   student.userId,
       title:    `Online Class Scheduled — ${subject}`,
@@ -114,6 +115,7 @@ export async function notifyOnlineClassLive(
   const promises: Promise<void>[] = [];
 
   for (const student of students) {
+    if (!student.userId) continue;
     promises.push(sendNotification({
       userId:   student.userId,
       title:    `🔴 Live Now — ${subject}`,

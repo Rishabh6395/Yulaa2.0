@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    const { school_id: schoolId } = primary;
+    const schoolId = primary.school_id ?? '';
 
     const { searchParams } = new URL(request.url);
     const academicYear = searchParams.get('academicYear') ?? undefined;
@@ -48,7 +48,8 @@ export async function POST(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    const { role_code: role, school_id: schoolId } = primary;
+    const { role_code: role } = primary;
+    const schoolId = primary.school_id ?? '';
 
     if (!MANAGE_ROLES.includes(role)) throw new ForbiddenError();
 
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
       data: {
         schoolId,
         academicYear,
-        classId:  classId ?? null,
+        classId:  classId ?? undefined,
         title,
         caption:  caption ?? null,
         mediaType,
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
         fileName,
         fileSize: fileSize ?? null,
         mimeType: mimeType ?? null,
-        uploadedBy: user.id,
+        uploadedBy: user.id!,
       },
       include: {
         class:    { select: { name: true, grade: true, section: true } },
@@ -96,7 +97,8 @@ export async function DELETE(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    const { role_code: role, school_id: schoolId } = primary;
+    const { role_code: role } = primary;
+    const schoolId = primary.school_id ?? '';
 
     const body = await request.json();
     const { id } = body;

@@ -17,7 +17,8 @@ export async function GET(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    const { role_code: role, school_id: schoolId } = primary;
+    const { role_code: role } = primary;
+    const schoolId = primary.school_id ?? '';
 
     const { searchParams } = new URL(request.url);
     const classId   = searchParams.get('class_id');
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
 
     // Teacher — see own classes only (within this school for data isolation)
     if (role === 'teacher') {
-      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id }, select: { id: true } });
+      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id ?? undefined }, select: { id: true } });
       if (!teacher) return Response.json({ classes: [] });
 
       const classes = await prisma.onlineClass.findMany({
@@ -48,11 +49,11 @@ export async function GET(request: Request) {
 
     // Student — only their class, same school; meeting links visible only if status != scheduled
     if (role === 'student') {
-      const student = await prisma.student.findFirst({ where: { schoolId, userId: user.id }, select: { id: true, classId: true } });
+      const student = await prisma.student.findFirst({ where: { schoolId, userId: user.id ?? undefined }, select: { id: true, classId: true } });
       if (!student?.classId) return Response.json({ classes: [] });
 
       const classes = await prisma.onlineClass.findMany({
-        where: { schoolId, classId: student.classId, status: { not: 'cancelled' }, ...dateFilter },
+        where: { schoolId, classId: student.classId ?? undefined, status: { not: 'cancelled' }, ...dateFilter },
         select: {
           id: true, title: true, subject: true, platform: true, scheduledAt: true,
           durationMinutes: true, status: true, isRecorded: true,
@@ -115,7 +116,8 @@ export async function POST(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    const { role_code: role, school_id: schoolId } = primary;
+    const { role_code: role } = primary;
+    const schoolId = primary.school_id ?? '';
 
     if (!['teacher', 'school_admin', 'principal'].includes(role)) throw new ForbiddenError();
 
@@ -134,7 +136,7 @@ export async function POST(request: Request) {
 
     let teacherId: string;
     if (role === 'teacher') {
-      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id }, select: { id: true } });
+      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id ?? undefined }, select: { id: true } });
       if (!teacher) throw new ForbiddenError('Teacher profile not found');
       teacherId = teacher.id;
     } else {
@@ -182,7 +184,8 @@ export async function PATCH(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    const { role_code: role, school_id: schoolId } = primary;
+    const { role_code: role } = primary;
+    const schoolId = primary.school_id ?? '';
 
     const body = await request.json();
     const { id, status, meeting_link, recording_url } = body;
@@ -196,7 +199,7 @@ export async function PATCH(request: Request) {
     if (!existing) throw new AppError('Online class not found');
 
     if (role === 'teacher') {
-      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id }, select: { id: true } });
+      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id ?? undefined }, select: { id: true } });
       if (!teacher || existing.teacherId !== teacher.id) throw new ForbiddenError();
     } else if (!['school_admin', 'principal'].includes(role)) {
       throw new ForbiddenError();
@@ -230,7 +233,8 @@ export async function DELETE(request: Request) {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
     const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    const { role_code: role, school_id: schoolId } = primary;
+    const { role_code: role } = primary;
+    const schoolId = primary.school_id ?? '';
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -240,7 +244,7 @@ export async function DELETE(request: Request) {
     if (!existing) throw new AppError('Online class not found');
 
     if (role === 'teacher') {
-      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id }, select: { id: true } });
+      const teacher = await prisma.teacher.findFirst({ where: { schoolId, userId: user.id ?? undefined }, select: { id: true } });
       if (!teacher || existing.teacherId !== teacher.id) throw new ForbiddenError();
     } else if (!['school_admin', 'principal'].includes(role)) {
       throw new ForbiddenError();

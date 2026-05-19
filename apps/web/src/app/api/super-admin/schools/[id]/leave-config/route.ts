@@ -85,7 +85,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     // Default: all (uses general admin access; holidays excluded for school_admin — they get empty array)
     assertAdminAccess(user);
-    const isHolidayAllowed = user.roles.some((r: any) => ['super_admin', 'principal'].includes(r.role_code));
+    const isHolidayAllowed = user!.roles.some((r: any) => ['super_admin', 'principal'].includes(r.role_code));
     const [leaveTypes, policies, holidays] = await Promise.all([
       prisma.leaveTypeMaster.findMany({ where: { schoolId }, orderBy: { name: 'asc' } }),
       prisma.leaveBalancePolicy.findMany({ where: { schoolId } }),

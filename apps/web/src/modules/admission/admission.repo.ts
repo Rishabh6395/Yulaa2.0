@@ -32,7 +32,6 @@ export async function createApplication(data: CreateApplicationInput, flags: obj
           photoUrl:       c.photoUrl       ?? null,
           classApplying:  c.classApplying,
           previousSchool: c.previousSchool ?? null,
-          photoUrl:       c.photoUrl       ?? null,
           ...(c.customFieldValues ? { customFieldValues: c.customFieldValues as any } : {}),
         })),
       },
@@ -112,7 +111,7 @@ export async function createWorkflow(data: CreateWorkflowInput) {
       schoolId: data.schoolId,
       name:     data.name,
       isActive: true,
-      steps: { create: data.steps },
+      steps: { create: data.steps as any },
     },
     include: { steps: { orderBy: { stepOrder: 'asc' } } },
   });
