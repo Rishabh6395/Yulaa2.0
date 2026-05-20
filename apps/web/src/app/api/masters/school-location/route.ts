@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const schoolId   = getSchoolId(user, searchParams.get('schoolId') ?? undefined);
     const activeOnly = searchParams.get('includeInactive') !== 'true';
-    return Response.json({ locations: await getSchoolLocations(schoolId, activeOnly) });
+    return Response.json({ schoolLocations: await getSchoolLocations(schoolId, activeOnly) });
   } catch (err) { return handleError(err); }
 }
 

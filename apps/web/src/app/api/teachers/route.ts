@@ -36,7 +36,7 @@ export async function PATCH(request: Request) {
     // Verify teacher belongs to admin's school before toggling
     const teacherRecord = await prisma.teacher.findFirst({ where: { id, schoolId: primaryRole.school_id! }, select: { id: true } });
     if (!teacherRecord) throw new ForbiddenError('Teacher not found in your school');
-    const teacher = await toggleTeacherStatus(id, status);
+    const teacher = await toggleTeacherStatus(id, status, primaryRole.school_id!);
     return Response.json({ teacher });
   } catch (err) { return handleError(err); }
 }

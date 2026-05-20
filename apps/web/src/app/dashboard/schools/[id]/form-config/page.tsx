@@ -85,7 +85,6 @@ export default function FormConfigPage() {
   const [loading,       setLoading]       = useState(true);
   const [saving,        setSaving]        = useState(false);
   const [saved,         setSaved]         = useState(false);
-  const [syncing,       setSyncing]       = useState(false);
   const [error,         setError]         = useState('');
   const [editingLabel,  setEditingLabel]  = useState<string | null>(null);
 
@@ -310,24 +309,6 @@ export default function FormConfigPage() {
     } catch (e: any) { setError(e.message); }
   }
 
-  // ── Sync from template ─────────────────────────────────────────────────────
-
-  async function syncFromTemplate() {
-    if (!confirm('This will overwrite all form configs for this school with the Super Admin template. Continue?')) return;
-    setSyncing(true); setError('');
-    try {
-      const token = localStorage.getItem('token') ?? '';
-      const res = await fetch('/api/form-config/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ schoolId }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || 'Sync failed');
-      window.location.reload();
-    } catch (e: any) { setError(e.message); setSyncing(false); }
-  }
-
   const switchForm = (fId: string) => {
     setActiveForm(fId);
     setActiveRole(FORMS.find(x => x.id === fId)!.roles[0].id);
@@ -361,14 +342,6 @@ export default function FormConfigPage() {
             Configure field visibility, permissions, labels, and add custom fields — per form, per role.
           </p>
         </div>
-        <button onClick={syncFromTemplate} disabled={syncing}
-          className="btn btn-secondary text-sm flex items-center gap-1.5">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-          </svg>
-          {syncing ? 'Syncing…' : 'Sync from Template'}
-        </button>
       </div>
 
       {loading ? (

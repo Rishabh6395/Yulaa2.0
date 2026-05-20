@@ -1,48 +1,82 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 function getToken() {
   if (typeof document === 'undefined') return '';
   return document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('token='))?.split('=')[1] ?? '';
 }
 
-const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
+function getStoredUser() {
+  try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
+}
+
+const inp = 'border border-surface-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full';
+const sel = 'border border-surface-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-sm px-3 py-2 w-72 focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 export default function GradingTypesPage() {
-  const [examTypes, setExamTypes] = useState<any[]>([]);
-  const [selectedExamType, setSelectedExamType] = useState('');
-  const [rows, setRows] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ grade: '', minPercent: 0, maxPercent: 100, gradePoints: '', description: '' });
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<any>({});
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState('');
+  const searchParams  = useSearchParams();
+  const schoolIdParam = searchParams.get('schoolId') ?? undefined;
+
+  const [isSA,      setIsSA]      = useState(false);
+  const [schools,   setSchools]   = useState<any[]>([]);
+  const [pickedId,  setPickedId]  = useState('');
 
   useEffect(() => {
-    fetch('/api/masters/exam-types', { headers: headers() })
-      .then(r => r.json()).then(d => setExamTypes(d.examTypes ?? []));
-  }, []);
+    if (typeof window === 'undefined') return;
+    const u  = getStoredUser();
+    const sa = u.primaryRole === 'super_admin' || u.roles?.some((r: any) => r.role_code === 'super_admin');
+    setIsSA(sa);
+    if (sa && !schoolIdParam) {
+      fetch('/api/super-admin/schools', { headers: { Authorization: `Bearer ${getToken()}` } })
+        .then(r => r.json()).then(d => setSchools(d.schools ?? []));
+    }
+  }, [schoolIdParam]);
+
+  const effectiveSchoolId = schoolIdParam || pickedId || undefined;
+  const schoolQ = effectiveSchoolId ? `&schoolId=${effectiveSchoolId}` : '';
+
+  const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
+
+  const [examTypes,        setExamTypes]        = useState<any[]>([]);
+  const [selectedExamType, setSelectedExamType] = useState('');
+  const [rows,             setRows]             = useState<any[]>([]);
+  const [loading,          setLoading]          = useState(false);
+  const [form,     setForm]    = useState({ grade: '', minPercent: 0, maxPercent: 100, gradePoints: '', description: '' });
+  const [editId,   setEditId]  = useState<string | null>(null);
+  const [editForm, setEditForm]= useState<any>({});
+  const [saving,   setSaving]  = useState(false);
+  const [err,      setErr]     = useState('');
+
+  useEffect(() => {
+    if (isSA && !effectiveSchoolId) return;
+    fetch(`/api/masters/exam-types?includeInactive=true${schoolQ}`, { headers: headers() })
+      .then(r => r.json())
+      .then(d => setExamTypes(d.examTypes ?? []));
+  }, [effectiveSchoolId, isSA]);
 
   const loadGrades = useCallback(async (examTypeId: string) => {
     if (!examTypeId) return;
     setLoading(true);
-    const res = await fetch(`/api/masters/grading-types?examTypeId=${examTypeId}`, { headers: headers() });
-    const d = await res.json();
+    const res = await fetch(`/api/masters/grading-types?examTypeId=${examTypeId}${schoolQ}`, { headers: headers() });
+    const d   = await res.json();
     setRows(d.gradingTypes ?? []);
     setLoading(false);
-  }, []);
+  }, [schoolQ]);
 
   useEffect(() => { loadGrades(selectedExamType); }, [selectedExamType, loadGrades]);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault(); setSaving(true); setErr('');
-    const res = await fetch('/api/masters/grading-types', {
-      method: 'POST', headers: headers(),
-      body: JSON.stringify({ examTypeId: selectedExamType, ...form, gradePoints: form.gradePoints ? Number(form.gradePoints) : undefined }),
-    });
-    const d = await res.json();
+    const body: any = {
+      examTypeId: selectedExamType,
+      ...form,
+      gradePoints: form.gradePoints ? Number(form.gradePoints) : undefined,
+    };
+    if (effectiveSchoolId) body.schoolId = effectiveSchoolId;
+    const res = await fetch('/api/masters/grading-types', { method: 'POST', headers: headers(), body: JSON.stringify(body) });
+    const d   = await res.json();
     setSaving(false);
     if (!res.ok) { setErr(d.error ?? 'Failed'); return; }
     setForm({ grade: '', minPercent: 0, maxPercent: 100, gradePoints: '', description: '' });
@@ -51,11 +85,8 @@ export default function GradingTypesPage() {
 
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault(); setSaving(true); setErr('');
-    const res = await fetch('/api/masters/grading-types', {
-      method: 'PATCH', headers: headers(),
-      body: JSON.stringify({ id: editId, ...editForm }),
-    });
-    const d = await res.json();
+    const res = await fetch('/api/masters/grading-types', { method: 'PATCH', headers: headers(), body: JSON.stringify({ id: editId, ...editForm }) });
+    const d   = await res.json();
     setSaving(false);
     if (!res.ok) { setErr(d.error ?? 'Failed'); return; }
     setEditId(null);
@@ -67,12 +98,12 @@ export default function GradingTypesPage() {
     loadGrades(selectedExamType);
   }
 
-  const inp = 'border border-surface-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full';
+  const backHref = schoolIdParam ? `/dashboard/masters?schoolId=${schoolIdParam}` : '/dashboard/masters';
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/masters" className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-gray-800 text-surface-400 transition-colors">
+        <Link href={backHref} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-gray-800 text-surface-400 transition-colors">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         </Link>
         <div>
@@ -81,18 +112,44 @@ export default function GradingTypesPage() {
         </div>
       </div>
 
-      <div className="card p-5">
-        <label className="block text-xs font-medium text-surface-400 mb-1">Select Exam Type</label>
-        <select value={selectedExamType} onChange={e => setSelectedExamType(e.target.value)} className="border border-surface-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-sm px-3 py-2 w-64 focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">— choose exam type —</option>
-          {examTypes.map(et => <option key={et.id} value={et.id}>{et.name} ({et.code})</option>)}
-        </select>
-      </div>
+      {/* Super-admin school picker */}
+      {isSA && !schoolIdParam && (
+        <div className="card p-5">
+          <label className="block text-xs font-medium text-surface-400 mb-1">Select School</label>
+          {schools.length === 0 ? <p className="text-xs text-surface-400">Loading schools…</p> : (
+            <select value={pickedId} onChange={e => { setPickedId(e.target.value); setExamTypes([]); setSelectedExamType(''); setRows([]); }} className={sel}>
+              <option value="">— choose a school —</option>
+              {schools.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          )}
+        </div>
+      )}
+
+      {(!isSA || effectiveSchoolId) && (
+        <div className="card p-5">
+          <label className="block text-xs font-medium text-surface-400 mb-1">
+            Select Exam Type (parent)
+          </label>
+          {examTypes.length === 0 ? (
+            <p className="text-xs text-amber-600 dark:text-amber-400">No exam types found. Add exam types first from the Exam Types master.</p>
+          ) : (
+            <select value={selectedExamType} onChange={e => setSelectedExamType(e.target.value)} className={sel}>
+              <option value="">— choose exam type —</option>
+              {examTypes.map(et => (
+                <option key={et.id} value={et.id}>{et.name} ({et.code})</option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
 
       {selectedExamType && (
         <>
           <div className="card p-5">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Add Grade</h2>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Add Grading Scale</h2>
+            <p className="text-xs text-surface-400 mb-4">
+              Exam Type: <span className="font-medium text-gray-700 dark:text-gray-300">{examTypes.find(e => e.id === selectedExamType)?.name}</span>
+            </p>
             <form onSubmit={handleAdd} className="space-y-3">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 <div><label className="block text-xs font-medium text-surface-400 mb-1">Grade *</label><input value={form.grade} onChange={e => setForm(p => ({...p, grade: e.target.value}))} placeholder="e.g. A+" className={inp} /></div>
@@ -107,7 +164,7 @@ export default function GradingTypesPage() {
           </div>
 
           <div className="card overflow-hidden">
-            {loading ? <div className="p-8 text-center text-sm text-surface-400">Loading…</div> : rows.length === 0 ? <div className="p-8 text-center text-sm text-surface-400">No grades yet.</div> : (
+            {loading ? <div className="p-8 text-center text-sm text-surface-400">Loading…</div> : rows.length === 0 ? <div className="p-8 text-center text-sm text-surface-400">No grades yet for this exam type.</div> : (
               <table className="w-full text-sm">
                 <thead><tr className="border-b border-surface-100 dark:border-gray-800 bg-surface-50 dark:bg-gray-900/50">
                   {['Grade','Min %','Max %','Grade Points','Description','Status',''].map(h => <th key={h} className="text-left px-4 py-3 font-medium text-surface-500 dark:text-gray-400">{h}</th>)}

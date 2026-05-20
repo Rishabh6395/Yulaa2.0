@@ -1,5 +1,9 @@
 import prisma from '@/lib/prisma';
 
+// Returns the default school (system tenant for shared location data)
+export const getSystemSchoolId = () =>
+  prisma.school.findFirst({ where: { isDefault: true }, select: { id: true } });
+
 // ─── Simple masters (school-specific) ────────────────────────────────────────
 
 export const listGenderMasters        = (schoolId: string, activeOnly = true) => prisma.genderMaster.findMany({ where: { schoolId, ...(activeOnly && { isActive: true }) }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });

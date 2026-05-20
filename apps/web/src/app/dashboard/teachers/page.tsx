@@ -16,7 +16,13 @@ export default function TeachersPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [form, setForm] = useState({ first_name: '', last_name: '', email: '', password: '', phone: '', employee_id: '', qualification: '', joining_date: '', avatar_url: '' });
+  const [form, setForm] = useState({ first_name: '', last_name: '', email: '', password: '', phone: '', employee_id: '', qualification: '', joining_date: '', avatar_url: '', designation_type: '', employment_type: '', teacher_cert: '', work_permit_type: '' });
+
+  // Staff & HR master options
+  const [designationTypes, setDesignationTypes] = useState<string[]>([]);
+  const [employmentTypes,   setEmploymentTypes]  = useState<string[]>([]);
+  const [teacherCerts,      setTeacherCerts]     = useState<string[]>([]);
+  const [workPermitTypes,   setWorkPermitTypes]  = useState<string[]>([]);
 
   // Bulk upload state
   const [uploadFile, setUploadFile]     = useState<File | null>(null);
@@ -30,6 +36,21 @@ export default function TeachersPage() {
   const user  = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
   const isAdmin = ['school_admin', 'super_admin'].includes(user.primaryRole);
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+  useEffect(() => {
+    if (!token) return;
+    const authH = { Authorization: `Bearer ${token}` };
+    const loadMaster = (slug: string, setter: (v: string[]) => void) => {
+      fetch(`/api/masters/custom/${slug}`, { headers: authH })
+        .then(r => r.json())
+        .then(d => setter((d.masterValues ?? []).filter((v: any) => v.isActive).map((v: any) => v.name)))
+        .catch(() => {});
+    };
+    loadMaster('designation_type', setDesignationTypes);
+    loadMaster('employment_type',  setEmploymentTypes);
+    loadMaster('teacher_cert',     setTeacherCerts);
+    loadMaster('visa_type',        setWorkPermitTypes);
+  }, [token]);
 
   const fetchTeachers = useCallback(async () => {
     setLoading(true);
@@ -56,7 +77,7 @@ export default function TeachersPage() {
     const data = await res.json();
     if (!res.ok) { setSaveError(data.error || 'Failed to add teacher'); setSaving(false); return; }
     setShowAddModal(false);
-    setForm({ first_name: '', last_name: '', email: '', password: '', phone: '', employee_id: '', qualification: '', joining_date: '', avatar_url: '' });
+    setForm({ first_name: '', last_name: '', email: '', password: '', phone: '', employee_id: '', qualification: '', joining_date: '', avatar_url: '', designation_type: '', employment_type: '', teacher_cert: '', work_permit_type: '' });
     fetchTeachers();
     setSaving(false);
   };
@@ -271,6 +292,52 @@ export default function TeachersPage() {
               </div>
             )}
           </div>
+
+          {/* Staff & HR Masters */}
+          {(designationTypes.length > 0 || employmentTypes.length > 0 || teacherCerts.length > 0 || workPermitTypes.length > 0) && (
+            <div className="border-t border-surface-100 dark:border-gray-800 pt-3">
+              <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Staff &amp; HR</p>
+              <div className="grid grid-cols-2 gap-3">
+                {designationTypes.length > 0 && (
+                  <div>
+                    <label className="label">Designation Type</label>
+                    <select className="input-field" value={form.designation_type} onChange={e => setForm({...form, designation_type: e.target.value})}>
+                      <option value="">— select —</option>
+                      {designationTypes.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                )}
+                {employmentTypes.length > 0 && (
+                  <div>
+                    <label className="label">Employment Type</label>
+                    <select className="input-field" value={form.employment_type} onChange={e => setForm({...form, employment_type: e.target.value})}>
+                      <option value="">— select —</option>
+                      {employmentTypes.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                )}
+                {teacherCerts.length > 0 && (
+                  <div>
+                    <label className="label">Teacher Certification</label>
+                    <select className="input-field" value={form.teacher_cert} onChange={e => setForm({...form, teacher_cert: e.target.value})}>
+                      <option value="">— select —</option>
+                      {teacherCerts.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                )}
+                {workPermitTypes.length > 0 && (
+                  <div>
+                    <label className="label">Visa / Work Permit</label>
+                    <select className="input-field" value={form.work_permit_type} onChange={e => setForm({...form, work_permit_type: e.target.value})}>
+                      <option value="">— select —</option>
+                      {workPermitTypes.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {saveError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{saveError}</p>}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>

@@ -17,8 +17,8 @@ export async function findTeacherRole() {
   return prisma.role.findUnique({ where: { code: 'teacher' } });
 }
 
-export async function updateTeacherStatus(teacherId: string, status: string) {
-  return prisma.teacher.update({ where: { id: teacherId }, data: { status } });
+export async function updateTeacherStatus(teacherId: string, status: string, schoolId?: string) {
+  return prisma.teacher.update({ where: { id: teacherId, ...(schoolId ? { schoolId } : {}) }, data: { status } });
 }
 
 export async function createTeacherWithUser(data: CreateTeacherInput & { passwordHash: string; roleId: string }) {
@@ -35,10 +35,14 @@ export async function createTeacherWithUser(data: CreateTeacherInput & { passwor
       },
       teachers: {
         create: {
-          schoolId:      data.schoolId,
-          employeeId:    data.employeeId    || null,
-          qualification: data.qualification || null,
-          joiningDate:   data.joiningDate   ? new Date(data.joiningDate) : null,
+          schoolId:        data.schoolId,
+          employeeId:      data.employeeId      || null,
+          qualification:   data.qualification   || null,
+          joiningDate:     data.joiningDate      ? new Date(data.joiningDate) : null,
+          designationType: (data as any).designationType || null,
+          employmentType:  (data as any).employmentType  || null,
+          teacherCert:     (data as any).teacherCert     || null,
+          workPermitType:  (data as any).workPermitType  || null,
         },
       },
     },

@@ -9,9 +9,9 @@ function generateTempPassword(): string {
   return randomBytes(9).toString('base64url').slice(0, 12);
 }
 
-export async function toggleTeacherStatus(teacherId: string, status: string) {
+export async function toggleTeacherStatus(teacherId: string, status: string, schoolId?: string) {
   if (!['active', 'inactive'].includes(status)) throw new AppError('status must be active or inactive');
-  return repo.updateTeacherStatus(teacherId, status);
+  return repo.updateTeacherStatus(teacherId, status, schoolId);
 }
 
 export async function listTeachers(schoolId: string): Promise<TeacherRow[]> {
@@ -31,7 +31,11 @@ export async function listTeachers(schoolId: string): Promise<TeacherRow[]> {
 }
 
 export async function createTeacher(schoolId: string, body: Record<string, any>) {
-  const { email, password, first_name, last_name, phone, employee_id, qualification, joining_date, avatar_url } = body;
+  const {
+    email, password, first_name, last_name, phone, employee_id,
+    qualification, joining_date, avatar_url,
+    designation_type, employment_type, teacher_cert, work_permit_type,
+  } = body;
 
   if (!email || !password || !first_name || !last_name) {
     throw new AppError('email, password, first_name, and last_name are required');
@@ -47,14 +51,18 @@ export async function createTeacher(schoolId: string, body: Record<string, any>)
     email,
     password,
     passwordHash,
-    roleId:        teacherRole.id,
-    firstName:     first_name,
-    lastName:      last_name,
-    phone:         phone         || null,
-    employeeId:    employee_id   || null,
-    qualification: qualification || null,
-    joiningDate:   joining_date  || null,
-    avatarUrl:     avatar_url    || null,
+    roleId:          teacherRole.id,
+    firstName:       first_name,
+    lastName:        last_name,
+    phone:           phone            || null,
+    employeeId:      employee_id      || null,
+    qualification:   qualification    || null,
+    joiningDate:     joining_date     || null,
+    avatarUrl:       avatar_url       || null,
+    designationType: designation_type || null,
+    employmentType:  employment_type  || null,
+    teacherCert:     teacher_cert     || null,
+    workPermitType:  work_permit_type || null,
   });
 
   return newUser.teachers[0];

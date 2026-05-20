@@ -23,9 +23,10 @@ export async function GET(request: Request) {
     const academicYear = url.searchParams.get('year') || currentAcademicYearLabel();
     const studentId    = url.searchParams.get('studentId');
 
-    // Resolve schoolId — prefer explicit query param, then role, then student
+    // Resolve schoolId — super_admin may pass explicit schoolId; others use their JWT role school
     const role = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-    let schoolId: string | null = url.searchParams.get('schoolId') ?? role?.school_id ?? null;
+    const isSuperAdmin = role?.role_code === 'super_admin';
+    let schoolId: string | null = (isSuperAdmin ? url.searchParams.get('schoolId') : null) ?? role?.school_id ?? null;
 
     if (studentId) {
       // When a studentId is provided, derive schoolId from the student record

@@ -8,15 +8,14 @@ export interface MenuItem {
 
 export const menuItems: Record<string, MenuItem[]> = {
   super_admin: [
-    { label: 'School Library',          href: '/dashboard/schools',                       icon: 'Building',      key: 'schools' },
-    { label: 'Default School Settings', href: '/dashboard/schools/default',               icon: 'Settings',      key: 'schools_default' },
+    { label: 'School Library',          href: '/dashboard/schools',                           icon: 'Building',      key: 'schools' },
+    { label: 'Location Masters',        href: '/dashboard/super-admin/location-masters',       icon: 'Globe',         key: 'location_masters' },
+    { label: 'Default School Settings', href: '/dashboard/schools/default',                   icon: 'Settings',      key: 'schools_default' },
     { label: 'All Consultants',         href: '/dashboard/super-admin/consultants',        icon: 'Briefcase',     key: 'super_consultants' },
     { label: 'All Vendors',             href: '/dashboard/super-admin/vendors',            icon: 'ShoppingBag',   key: 'super_vendors' },
     { label: 'Online Class Config',     href: '/dashboard/super-admin/online-class-config', icon: 'Monitor',      key: 'super_online_class' },
     { label: 'Course Approvals',        href: '/dashboard/super-admin/courses',            icon: 'BookOpen',      key: 'super_courses' },
     { label: 'School Admin Queries',    href: '/dashboard/super-admin/queries',            icon: 'MessageSquare', key: 'super_queries' },
-    { label: 'Form Configuration',      href: '/dashboard/super-admin/form-config',         icon: 'Layout',        key: 'super_form_config' },
-    { label: 'Performance Management', href: '/dashboard/super-admin/kpi-config',           icon: 'TrendingUp',    key: 'super_perf_config' },
   ],
   school_admin: [
     { label: 'Dashboard', href: '/dashboard',         icon: 'LayoutDashboard', key: 'dashboard' },

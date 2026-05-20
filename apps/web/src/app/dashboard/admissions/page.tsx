@@ -135,14 +135,24 @@ function NewApplicationModal({ open, onClose, onSuccess }: { open: boolean; onCl
       setSelectedSchool(schoolId ?? '');
     }
 
+    // Map system role to form-config role key
+    const ROLE_MAP: Record<string, string> = {
+      super_admin: 'admin', school_admin: 'admin', principal: 'admin',
+      hod: 'admin', vice_principal: 'admin', teacher: 'teacher',
+      student: 'student', parent: 'applicant', applicant: 'applicant',
+    };
+    const configRole = ROLE_MAP[roleCode] ?? 'admin';
+
     Promise.allSettled([
-      fetch(`/api/form-config?schoolId=${schoolId}&formId=admission`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`/api/form-config?schoolId=${schoolId}&formId=admission_form`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch(`/api/masters/gender${qs}`,       { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch(`/api/masters/blood-groups${qs}`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch(`/api/masters/grades${qs}`,       { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([cfgRes, genderRes, bloodRes, gradeRes]) => {
       const cfgVal = cfgRes.status === 'fulfilled' ? cfgRes.value : null;
-      const rules  = cfgVal?.configs?.admission?.admin;
+      // Try role-specific config first, fall back to admin config
+      const rules  = cfgVal?.configs?.admission_form?.[configRole]
+                  ?? cfgVal?.configs?.admission_form?.admin;
       if (rules) setFieldRules(rules);
 
       const gItems = parseMasterNames(genderRes.status === 'fulfilled' ? genderRes.value : null, 'genderMasters');

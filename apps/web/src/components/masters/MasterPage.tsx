@@ -36,6 +36,17 @@ function getToken() {
   return document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('token='))?.split('=')[1] ?? '';
 }
 
+function getStoredUser() {
+  try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
+}
+
+function isSuperAdmin() {
+  const u = getStoredUser();
+  return u.primaryRole === 'super_admin' || u.roles?.some((r: any) => r.role_code === 'super_admin');
+}
+
+const SEL_CLS = 'border border-surface-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-sm px-3 py-2 w-72 focus:outline-none focus:ring-2 focus:ring-blue-500';
+
 const ACTIVE_CLS = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800';
 const INACTIVE_CLS = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-surface-100 dark:bg-gray-800 text-surface-400 dark:text-gray-500 border border-surface-200 dark:border-gray-700';
 
@@ -44,12 +55,36 @@ export default function MasterPage({ title, description, apiPath, dataKey, itemK
   // schoolId comes from ?schoolId= (super admin via school config) or falls back to user's own school
   const schoolIdParam = searchParams.get('schoolId') ?? undefined;
 
+  // Super-admin school picker (when no schoolId provided via URL)
+  const [sa, setSa]                 = useState(false);
+  const [schools, setSchools]       = useState<any[]>([]);
+  const [pickedId, setPickedId]     = useState('');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!isSuperAdmin()) return;
+    setSa(true);
+    if (!schoolIdParam) {
+      fetch('/api/super-admin/schools', { headers: { Authorization: `Bearer ${getToken()}` } })
+        .then(r => r.json())
+        .then(d => setSchools(d.schools ?? []));
+    }
+  }, [schoolIdParam]);
+
+  // Effective schoolId: URL param > picker selection
+  const effectiveSchoolId = schoolIdParam || pickedId || undefined;
+
   // Build URL with schoolId and includeInactive=true (management view always shows all items)
   function withSchool(path: string) {
     const sep = path.includes('?') ? '&' : '?';
     const withInactive = `${path}${sep}includeInactive=true`;
-    if (!schoolIdParam) return withInactive;
-    return `${withInactive}&schoolId=${schoolIdParam}`;
+    if (!effectiveSchoolId) return withInactive;
+    return `${withInactive}&schoolId=${effectiveSchoolId}`;
+  }
+
+  function buildPostBody(extra: Record<string, any> = {}) {
+    if (effectiveSchoolId) return { ...extra, schoolId: effectiveSchoolId };
+    return extra;
   }
 
   const [rows, setRows] = useState<any[]>([]);
@@ -68,6 +103,8 @@ export default function MasterPage({ title, description, apiPath, dataKey, itemK
   const [bulkResult, setBulkResult] = useState<{ added: number; failed: number; errors: string[] } | null>(null);
 
   const load = useCallback(async () => {
+    // Super-admin with no school selected yet — don't attempt API call
+    if (sa && !effectiveSchoolId) { setLoading(false); return; }
     setLoading(true); setError('');
     try {
       const res = await fetch(withSchool(apiPath), { headers: { Authorization: `Bearer ${getToken()}` } });
@@ -76,14 +113,14 @@ export default function MasterPage({ title, description, apiPath, dataKey, itemK
       setRows(json[dataKey] ?? []);
     } catch { setError('Network error'); }
     finally { setLoading(false); }
-  }, [apiPath, dataKey, schoolIdParam]);
+  }, [apiPath, dataKey, effectiveSchoolId, sa]);
 
   useEffect(() => { load(); }, [load]);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault(); setSaving(true); setFormErr('');
     try {
-      const body = schoolIdParam ? { ...form, schoolId: schoolIdParam } : form;
+      const body = buildPostBody(form);
       const res = await fetch(apiPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
@@ -234,6 +271,22 @@ export default function MasterPage({ title, description, apiPath, dataKey, itemK
         </button>
       </div>
 
+      {/* Super-admin school picker */}
+      {sa && !schoolIdParam && (
+        <div className="card p-5">
+          <label className="block text-xs font-medium text-surface-400 dark:text-gray-500 mb-1">Select School</label>
+          {schools.length === 0 ? (
+            <p className="text-xs text-surface-400">Loading schools…</p>
+          ) : (
+            <select value={pickedId} onChange={e => { setPickedId(e.target.value); setRows([]); }} className={SEL_CLS}>
+              <option value="">— choose a school —</option>
+              {schools.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          )}
+        </div>
+      )}
+
+      {(!sa || effectiveSchoolId) && (<>
       {/* Add form */}
       <div className="card p-5">
         <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Add New</h2>
@@ -337,6 +390,7 @@ export default function MasterPage({ title, description, apiPath, dataKey, itemK
       </div>
       {/* Hidden file input for bulk upload */}
       <input ref={bulkFileRef} type="file" accept=".csv" className="hidden" onChange={handleBulkUpload} />
+      </>)}
 
       {/* Bulk Upload Modal */}
       {bulkModal && (

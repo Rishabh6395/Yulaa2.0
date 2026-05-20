@@ -54,25 +54,34 @@ export async function patchEventTypeMaster(id: string, data: { name?: string; co
   return repo.updateEventTypeMaster(id, data);
 }
 
-// ─── Location masters (school-specific) ──────────────────────────────────────
+// ─── Location masters (system-level — stored under the default school) ───────
 
-export async function getCountries(schoolId: string, activeOnly = true)                             { return repo.listCountries(schoolId, activeOnly); }
-export async function getStatesByCountry(schoolId: string, countryId: string, activeOnly = true)   { return repo.listStatesByCountry(schoolId, countryId, activeOnly); }
-export async function getDistrictsByState(schoolId: string, stateId: string, activeOnly = true)    { return repo.listDistrictsByState(schoolId, stateId, activeOnly); }
-export async function getAllStates(schoolId: string, activeOnly = true)                              { return repo.listAllStates(schoolId, activeOnly); }
-export async function getAllDistricts(schoolId: string, activeOnly = true)                           { return repo.listAllDistricts(schoolId, activeOnly); }
+async function resolveSystemSchoolId(): Promise<string> {
+  const s = await repo.getSystemSchoolId();
+  if (!s) throw new ConflictError('No default school configured — mark one school as default first');
+  return s.id;
+}
 
-export async function addCountry(schoolId: string, name: string, code: string, sortOrder?: number) {
+export async function getCountries(activeOnly = true)                          { return repo.listCountries(await resolveSystemSchoolId(), activeOnly); }
+export async function getStatesByCountry(countryId: string, activeOnly = true) { return repo.listStatesByCountry(await resolveSystemSchoolId(), countryId, activeOnly); }
+export async function getDistrictsByState(stateId: string, activeOnly = true)  { return repo.listDistrictsByState(await resolveSystemSchoolId(), stateId, activeOnly); }
+export async function getAllStates(activeOnly = true)                           { return repo.listAllStates(await resolveSystemSchoolId(), activeOnly); }
+export async function getAllDistricts(activeOnly = true)                        { return repo.listAllDistricts(await resolveSystemSchoolId(), activeOnly); }
+
+export async function addCountry(name: string, code: string, sortOrder?: number) {
   if (!name?.trim() || !code?.trim()) throw new ConflictError('Name and code are required');
-  return repo.createCountry({ schoolId, name: name.trim(), code: code.trim().toUpperCase(), sortOrder });
+  const sysId = await resolveSystemSchoolId();
+  return repo.createCountry({ schoolId: sysId, name: name.trim(), code: code.trim().toUpperCase(), sortOrder });
 }
-export async function addState(schoolId: string, countryId: string, name: string, code?: string, sortOrder?: number) {
+export async function addState(countryId: string, name: string, code?: string, sortOrder?: number) {
   if (!countryId || !name?.trim()) throw new ConflictError('countryId and name are required');
-  return repo.createState({ schoolId, countryId, name: name.trim(), code: code?.trim(), sortOrder });
+  const sysId = await resolveSystemSchoolId();
+  return repo.createState({ schoolId: sysId, countryId, name: name.trim(), code: code?.trim(), sortOrder });
 }
-export async function addDistrict(schoolId: string, stateId: string, name: string, sortOrder?: number) {
+export async function addDistrict(stateId: string, name: string, sortOrder?: number) {
   if (!stateId || !name?.trim()) throw new ConflictError('stateId and name are required');
-  return repo.createDistrict({ schoolId, stateId, name: name.trim(), sortOrder });
+  const sysId = await resolveSystemSchoolId();
+  return repo.createDistrict({ schoolId: sysId, stateId, name: name.trim(), sortOrder });
 }
 
 export async function patchCountry(id: string, data: { name?: string; code?: string; isActive?: boolean; sortOrder?: number }) {

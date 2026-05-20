@@ -30,6 +30,7 @@ function normalizeStages(stages: any[]) {
     initiatorRole:  s.initiatorRole ?? '',
     approverRole:   s.approverRole  ?? '',
     approverUserId: s.approverUserId ?? '',
+    spocUserId:     s.spocUserId    ?? '',
     systemTrigger:  s.systemTrigger ?? '',
     isFinal:        s.isFinal        ?? false,
     emailEnabled:   s.emailEnabled   ?? false,
@@ -90,6 +91,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             initiatorRole:  (s as any).initiatorRole ?? '',
             approverRole:   s.approverRole  ?? '',
             approverUserId: s.approverUserId ?? '',
+            spocUserId:     (s as any).spocUserId ?? '',
             systemTrigger:  (s as any).systemTrigger ?? '',
             isFinal:        false,
             emailEnabled:   s.emailEnabled,
@@ -144,25 +146,32 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     // ── Admission ──
     if (type === 'admission') {
-      const { name = 'Admission Workflow' } = body;
+      const { name = 'Admission Workflow', sameForAllRoles = true } = body;
       await prisma.admissionWorkflow.updateMany({ where: { schoolId }, data: { isActive: false } });
 
       const wf = await prisma.admissionWorkflow.create({
         data: {
           schoolId,
           name,
-          isActive: true,
+          isActive:        true,
+          sameForAllRoles: Boolean(sameForAllRoles),
           steps: {
             create: stages.map((s: any, i: number) => ({
-              stepOrder:     i,
-              label:         s.stageName    || `Stage ${i + 1}`,
-              initiatorRole: s.initiatorRole || null,
-              approverRole:  s.approverRole  || 'school_admin',
-              systemTrigger: s.systemTrigger || null,
-              emailEnabled:  s.emailEnabled  ?? false,
-              notifyEnabled: s.notifyEnabled ?? true,
-              notifyMessage: s.notifyMessage ?? null,
-              isFinal:       s.isFinal       ?? (i === stages.length - 1),
+              stepOrder:            i,
+              label:                s.stageName             || `Stage ${i + 1}`,
+              initiatorRole:        s.initiatorRole          || null,
+              approverRole:         s.approverRole           || 'school_admin',
+              systemTrigger:        s.systemTrigger          || null,
+              emailEnabled:         s.emailEnabled           ?? false,
+              notifyEnabled:        s.notifyEnabled          ?? true,
+              notifyMessage:        s.notifyMessage          ?? null,
+              isFinal:              s.isFinal                ?? (i === stages.length - 1),
+              checklistItems:       s.checklistItems         ?? null,
+              spocUserId:           s.spocUserId             || null,
+              paymentRequired:      s.paymentRequired        ?? false,
+              paymentGateway:       s.paymentGateway         || null,
+              paymentAmountOverride: s.paymentAmountOverride ? Number(s.paymentAmountOverride) : null,
+              allowReassign:        s.allowReassign          ?? false,
             })),
           },
         },
@@ -190,6 +199,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
               initiatorRole:  s.initiatorRole  || null,
               approverRole:   s.approverRole   || null,
               approverUserId: s.approverUserId || null,
+              spocUserId:     s.spocUserId     || null,
               systemTrigger:  s.systemTrigger  || null,
               emailEnabled:   s.emailEnabled   ?? false,
               notifyEnabled:  s.notifyEnabled  ?? true,
@@ -219,6 +229,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
               initiatorRole:  s.initiatorRole  || null,
               approverRole:   s.approverRole   || null,
               approverUserId: s.approverUserId || null,
+              spocUserId:     s.spocUserId     || null,
               systemTrigger:  s.systemTrigger  || null,
               isFinal:        s.isFinal        ?? (i === stages.length - 1),
               emailEnabled:   s.emailEnabled   ?? false,

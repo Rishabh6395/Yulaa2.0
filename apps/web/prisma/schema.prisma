@@ -34,6 +34,8 @@ model School {
   onlineClassEnabled       Boolean                @default(true)  @map("online_class_enabled")
   courseEnabled            Boolean                @default(false) @map("course_enabled")
   allowedPlatforms         String[]               @default([])    @map("allowed_platforms")
+  // Admission-specific settings (JSON): { allowTaskReassign, taskReassignRoles, spocEnabled, defaultSpocUserId }
+  admissionSettings        Json?                  @map("admission_settings")
   admissionApplications AdmissionApplication[]
   admissionWorkflows    AdmissionWorkflow[]
   announcements         Announcement[]
@@ -151,8 +153,10 @@ model User {
   status                String                 @default("active") @db.VarChar(20)
   createdAt             DateTime               @default(now()) @map("created_at")
   mustResetPassword     Boolean                @default(false) @map("must_reset_password")
-  admissionActions      AdmissionAction[]      @relation("AdmissionActionActor")
-  admissionApplications AdmissionApplication[] @relation("ApplicationParentUser")
+  admissionActions      AdmissionAction[]          @relation("AdmissionActionActor")
+  admissionApplications AdmissionApplication[]     @relation("ApplicationParentUser")
+  assignmentsReceived   AdmissionStepAssignment[]  @relation("AssignmentTarget")
+  assignmentsMade       AdmissionStepAssignment[]  @relation("AssignmentSource")
   announcements         Announcement[]         @relation("CreatedBy")
   markedAttendance      Attendance[]           @relation("MarkedBy")
   updatedAttendance     Attendance[]           @relation("UpdatedBy")
@@ -612,6 +616,7 @@ model LeaveWorkflowStep {
   initiatorRole  String?       @map("initiator_role") @db.VarChar(30)
   approverRole   String?       @map("approver_role") @db.VarChar(30)
   approverUserId String?       @map("approver_user_id")
+  spocUserId     String?       @map("spoc_user_id")
   systemTrigger  String?       @map("system_trigger") @db.VarChar(300)
   emailEnabled   Boolean       @default(false) @map("email_enabled")
   notifyEnabled  Boolean       @default(true)  @map("notify_enabled")
@@ -945,14 +950,15 @@ model OtpVerification {
 }
 
 model AdmissionWorkflow {
-  id           String                  @id @default(uuid())
-  schoolId     String                  @map("school_id")
-  name         String                  @db.VarChar(100)
-  isActive     Boolean                 @default(true) @map("is_active")
-  createdAt    DateTime                @default(now()) @map("created_at")
-  applications AdmissionApplication[]
-  steps        AdmissionWorkflowStep[]
-  school       School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  id              String                  @id @default(uuid())
+  schoolId        String                  @map("school_id")
+  name            String                  @db.VarChar(100)
+  isActive        Boolean                 @default(true)  @map("is_active")
+  sameForAllRoles Boolean                 @default(true)  @map("same_for_all_roles")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  applications    AdmissionApplication[]
+  steps           AdmissionWorkflowStep[]
+  school          School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, name])
   @@index([schoolId])
@@ -960,20 +966,29 @@ model AdmissionWorkflow {
 }
 
 model AdmissionWorkflowStep {
-  id             String            @id @default(uuid())
-  workflowId     String            @map("workflow_id")
-  stepOrder      Int               @map("step_order")
-  label          String            @db.VarChar(100)
-  initiatorRole  String?           @map("initiator_role") @db.VarChar(30)
-  approverRole   String            @map("approver_role") @db.VarChar(30)
-  systemTrigger  String?           @map("system_trigger") @db.VarChar(300)
-  emailEnabled   Boolean           @default(false) @map("email_enabled")
-  notifyEnabled  Boolean           @default(true)  @map("notify_enabled")
-  notifyMessage  String?           @map("notify_message") @db.VarChar(300)
-  isFinal        Boolean           @default(false) @map("is_final")
-  checklistItems Json?             @map("checklist_items")
-  createdAt      DateTime          @default(now()) @map("created_at")
-  workflow       AdmissionWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  id               String            @id @default(uuid())
+  workflowId       String            @map("workflow_id")
+  stepOrder        Int               @map("step_order")
+  label            String            @db.VarChar(100)
+  initiatorRole    String?           @map("initiator_role")   @db.VarChar(30)
+  approverRole     String            @map("approver_role")    @db.VarChar(30)
+  systemTrigger    String?           @map("system_trigger")   @db.VarChar(300)
+  emailEnabled     Boolean           @default(false) @map("email_enabled")
+  notifyEnabled    Boolean           @default(true)  @map("notify_enabled")
+  notifyMessage    String?           @map("notify_message")   @db.VarChar(300)
+  isFinal          Boolean           @default(false) @map("is_final")
+  checklistItems   Json?             @map("checklist_items")
+  // SPOC: point-of-contact user who gets visibility at this step
+  spocUserId       String?           @map("spoc_user_id")
+  // Payment: applicant must pay before this step can be approved
+  paymentRequired  Boolean           @default(false) @map("payment_required")
+  paymentGateway   String?           @map("payment_gateway")  @db.VarChar(30)
+  paymentAmountOverride Decimal?     @map("payment_amount_override") @db.Decimal(10, 2)
+  // Reassignment: can this step's task be reassigned to another user
+  allowReassign    Boolean           @default(false) @map("allow_reassign")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  workflow         AdmissionWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  checklistCompletions AdmissionChecklistCompletion[]
 
   @@unique([workflowId, stepOrder])
   @@index([workflowId])
@@ -1009,12 +1024,14 @@ model AdmissionApplication {
   submittedAt         DateTime           @default(now()) @map("submitted_at")
   updatedAt           DateTime           @default(now()) @updatedAt @map("updated_at")
 
-  actions             AdmissionAction[]
-  parentUser          User?              @relation("ApplicationParentUser", fields: [parentUserId], references: [id])
-  school              School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  workflow            AdmissionWorkflow? @relation(fields: [workflowId], references: [id])
-  children            AdmissionChild[]
-  transferCertificate TransferCertificate?
+  actions              AdmissionAction[]
+  checklistCompletions AdmissionChecklistCompletion[]
+  stepAssignments      AdmissionStepAssignment[]
+  parentUser           User?              @relation("ApplicationParentUser", fields: [parentUserId], references: [id])
+  school               School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  workflow             AdmissionWorkflow? @relation(fields: [workflowId], references: [id])
+  children             AdmissionChild[]
+  transferCertificate  TransferCertificate?
 
   @@index([schoolId, status])
   @@index([parentEmail])
@@ -1059,6 +1076,39 @@ model AdmissionAction {
 
   @@index([applicationId])
   @@map("admission_actions")
+}
+
+// Tracks which checklist items have been completed for a given application+step
+model AdmissionChecklistCompletion {
+  id            String                  @id @default(uuid())
+  applicationId String                  @map("application_id")
+  stepId        String                  @map("step_id")
+  itemIndex     Int                     @map("item_index")
+  completedBy   String?                 @map("completed_by")
+  completedAt   DateTime                @default(now()) @map("completed_at")
+  application   AdmissionApplication    @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  step          AdmissionWorkflowStep   @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, stepId, itemIndex])
+  @@index([applicationId])
+  @@map("admission_checklist_completions")
+}
+
+// Tracks step-level reassignments (task handed from one user to another)
+model AdmissionStepAssignment {
+  id             String               @id @default(uuid())
+  applicationId  String               @map("application_id")
+  stepOrder      Int                  @map("step_order")
+  assignedToId   String               @map("assigned_to_id")
+  assignedById   String?              @map("assigned_by_id")
+  note           String?
+  createdAt      DateTime             @default(now()) @map("created_at")
+  application    AdmissionApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  assignedTo     User                 @relation("AssignmentTarget", fields: [assignedToId], references: [id])
+  assignedBy     User?                @relation("AssignmentSource", fields: [assignedById], references: [id])
+
+  @@index([applicationId])
+  @@map("admission_step_assignments")
 }
 
 model LeaveTypeMaster {
@@ -1912,6 +1962,7 @@ model GenericWorkflowStage {
   initiatorRole  String?         @map("initiator_role") @db.VarChar(30)
   approverRole   String?         @map("approver_role") @db.VarChar(30)
   approverUserId String?         @map("approver_user_id")
+  spocUserId     String?         @map("spoc_user_id")
   systemTrigger  String?         @map("system_trigger") @db.VarChar(300)
   isFinal        Boolean         @default(false) @map("is_final")
   emailEnabled   Boolean         @default(false) @map("email_enabled")

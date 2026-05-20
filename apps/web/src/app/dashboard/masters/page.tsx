@@ -2,8 +2,13 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FORM_DEFINITIONS } from '@/lib/formDefinitions';
+
+function getToken() {
+  if (typeof document === 'undefined') return '';
+  return document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('token='))?.split('=')[1] ?? '';
+}
 
 const MASTER_SECTIONS = [
   {
@@ -18,7 +23,8 @@ const MASTER_SECTIONS = [
   {
     title: 'Academic',
     items: [
-      { label: 'Grades',          href: '/dashboard/masters/grades',        icon: 'ListOrdered',    desc: 'Grade / class levels used across forms' },
+      { label: 'Classes',         href: '/dashboard/masters/classes',       icon: 'ListOrdered',    desc: 'Class / section records used across the school' },
+      { label: 'Subjects',        href: '/dashboard/masters/subjects',      icon: 'BookMarked',     desc: 'Subject catalog linked to grade / class levels' },
       { label: 'Exam Types',      href: '/dashboard/masters/exam-types',    icon: 'ClipboardCheck', desc: 'Types of exams / terms' },
       { label: 'Grading Types',   href: '/dashboard/masters/grading-types', icon: 'BarChart',       desc: 'Grade scales per exam type' },
     ],
@@ -33,10 +39,7 @@ const MASTER_SECTIONS = [
   {
     title: 'Location',
     items: [
-      { label: 'Countries',        href: '/dashboard/masters/countries',        icon: 'Globe',    desc: 'Countries list' },
-      { label: 'States',           href: '/dashboard/masters/states',           icon: 'Map',      desc: 'States per country' },
-      { label: 'Districts',        href: '/dashboard/masters/districts',        icon: 'MapPin',   desc: 'Districts per state' },
-      { label: 'School Locations', href: '/dashboard/masters/school-location',  icon: 'Building', desc: 'Physical school addresses' },
+      { label: 'School Locations', href: '/dashboard/masters/school-location', icon: 'Building', desc: 'Physical campus addresses — uses system country/state/district' },
     ],
   },
   {
@@ -130,17 +133,30 @@ const icons: Record<string, React.ReactNode> = {
   Shield:          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
 };
 
-function getToken() {
-  if (typeof document === 'undefined') return '';
-  return document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('token='))?.split('=')[1] ?? '';
-}
-
 const AVAILABLE_FORMS = FORM_DEFINITIONS.map(f => ({ id: f.id, label: f.label }));
 
 export default function MastersPage() {
   const searchParams  = useSearchParams();
   const schoolId      = searchParams.get('schoolId');
-  const suffix        = schoolId ? `?schoolId=${schoolId}` : '';
+
+  // Super-admin school picker (when no schoolId in URL)
+  const [sa,        setSa]        = useState(false);
+  const [saSchools, setSaSchools] = useState<any[]>([]);
+  const [pickedId,  setPickedId]  = useState('');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const u = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+    if (!(u.primaryRole === 'super_admin' || u.roles?.some((r: any) => r.role_code === 'super_admin'))) return;
+    setSa(true);
+    if (!schoolId) {
+      fetch('/api/super-admin/schools', { headers: { Authorization: `Bearer ${getToken()}` } })
+        .then(r => r.json()).then(d => setSaSchools(d.schools ?? []));
+    }
+  }, [schoolId]);
+
+  const effectiveSchoolId = schoolId || pickedId;
+  const suffix = effectiveSchoolId ? `?schoolId=${effectiveSchoolId}` : '';
 
   const [customTypes, setCustomTypes] = useState<any[]>([]);
   const [showModal, setShowModal]     = useState(false);
@@ -150,21 +166,21 @@ export default function MastersPage() {
   const [seeding, setSeeding]         = useState(false);
   const [seedResult, setSeedResult]   = useState('');
 
-  const loadCustomTypes = () => {
-    const qs = schoolId ? `?schoolId=${schoolId}` : '';
+  const loadCustomTypes = useCallback(() => {
+    const qs = effectiveSchoolId ? `?schoolId=${effectiveSchoolId}` : '';
     fetch(`/api/masters/custom${qs}`, { headers: { Authorization: `Bearer ${getToken()}` } })
       .then(r => r.json())
       .then(d => setCustomTypes(d.masterTypes ?? []))
       .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[custom-types]', err); });
-  };
+  }, [effectiveSchoolId]);
 
-  useEffect(() => { loadCustomTypes(); }, [schoolId]);
+  useEffect(() => { loadCustomTypes(); }, [loadCustomTypes]);
 
   const handleSeedStandard = async () => {
     setSeeding(true); setSeedResult('');
     try {
       const body: any = {};
-      if (schoolId) body.schoolId = schoolId;
+      if (effectiveSchoolId) body.schoolId = effectiveSchoolId;
       const res  = await fetch('/api/masters/seed-standard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
@@ -183,8 +199,8 @@ export default function MastersPage() {
     setSaving(true); setError('');
     try {
       const body: any = { name: form.name, description: form.description };
-      if (schoolId)       body.schoolId  = schoolId;
-      if (form.formId)    body.formId    = form.formId;
+      if (effectiveSchoolId) body.schoolId  = effectiveSchoolId;
+      if (form.formId)       body.formId    = form.formId;
       if (form.fieldSlot) body.fieldSlot = form.fieldSlot;
 
       const res  = await fetch('/api/masters/custom', {
@@ -203,6 +219,29 @@ export default function MastersPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Super-admin school picker — shown when no schoolId in URL */}
+      {sa && !schoolId && (
+        <div className="card p-5 flex items-center gap-4">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500 shrink-0"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 13h4"/></svg>
+          <div className="flex-1">
+            <p className="text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">Managing masters for school</p>
+            {saSchools.length === 0 ? (
+              <p className="text-xs text-surface-400">Loading schools…</p>
+            ) : (
+              <select value={pickedId} onChange={e => { setPickedId(e.target.value); setCustomTypes([]); }} className={SEL_CLS}>
+                <option value="">— choose a school to manage —</option>
+                {saSchools.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            )}
+          </div>
+          {pickedId && (
+            <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+              ✓ {saSchools.find(s => s.id === pickedId)?.name}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

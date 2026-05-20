@@ -6,7 +6,7 @@ import prisma from '@/lib/prisma';
 
 async function getSchoolId(user: any, bodySchoolId?: string): Promise<string> {
   const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-  if (bodySchoolId && ADMIN_ROLES.includes(primary.role_code)) return bodySchoolId;
+  if (bodySchoolId && primary.role_code === 'super_admin') return bodySchoolId;
   if (primary.school_id) return primary.school_id;
   const def = await prisma.school.findFirst({ where: { isDefault: true }, select: { id: true } });
   if (def) return def.id;
