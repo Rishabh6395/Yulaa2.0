@@ -5,18 +5,18 @@ import { PrismaClient } from '@prisma/client';
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
 function createPrismaClient() {
-  // Use pooler URL for app connections; DIRECT_URL is reserved for migrations only.
-  // The pooler (PgBouncer) is more reliable for serverless/dev environments where
-  // port 5432 direct connections may timeout on cold-start or behind firewalls.
-  const connectionString = process.env.DATABASE_URL!;
-  // Strip pgbouncer param — pg.Pool doesn't understand it and it disables
-  // prepared statements which breaks the PrismaPg adapter.
-  const cleanUrl = connectionString.replace(/[?&]pgbouncer=true/i, '').replace(/[?&]connect_timeout=\d+/i, '');
+  // Prefer DIRECT_URL so pg.Pool manages its own connections without going
+  // through PgBouncer (pooler). Stacking pg.Pool on top of the pooler URL
+  // causes P1001 "Can't reach database" errors under concurrent requests.
+  // DIRECT_URL uses port 5432 directly — correct for the PrismaPg adapter.
+  const rawUrl = process.env.DIRECT_URL ?? process.env.DATABASE_URL!;
+  // Strip pgbouncer/connect_timeout params that pg.Pool doesn't understand.
+  const cleanUrl = rawUrl.replace(/[?&]pgbouncer=true/gi, '').replace(/[?&]connect_timeout=\d+/gi, '');
   const pool = new Pool({
     connectionString: cleanUrl,
     max: 3,                          // Neon free tier max connections
     idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 60_000,
+    connectionTimeoutMillis: 30_000, // Neon cold-start can take 15-25s
     ssl: { rejectUnauthorized: false },
   });
   const adapter = new PrismaPg(pool);
