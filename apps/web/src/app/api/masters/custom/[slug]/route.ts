@@ -7,6 +7,7 @@
 import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
+import { STANDARD_MASTERS_BY_SLUG } from '@/lib/standard-masters';
 import prisma from '@/lib/prisma';
 
 
@@ -17,9 +18,36 @@ function getSchoolId(user: NonNullable<Awaited<ReturnType<typeof getUserFromRequ
   return schoolId;
 }
 
+/**
+ * Finds the GenericMasterType for (schoolId, slug).
+ * For standard slugs: auto-seeds the type + default values on first access so
+ * schools don't need to run seed-standard before dropdowns appear.
+ */
 async function resolveType(schoolId: string, slug: string) {
-  const type = await prisma.genericMasterType.findUnique({ where: { schoolId_slug: { schoolId, slug } } });
-  if (!type) throw new AppError('Master type not found', 404);
+  let type = await prisma.genericMasterType.findUnique({ where: { schoolId_slug: { schoolId, slug } } });
+
+  if (!type) {
+    const standard = STANDARD_MASTERS_BY_SLUG.get(slug);
+    if (!standard) throw new AppError('Master type not found', 404);
+
+    // Auto-seed: create type + defaults atomically so concurrent requests don't race
+    type = await prisma.genericMasterType.upsert({
+      where:  { schoolId_slug: { schoolId, slug } },
+      create: { schoolId, slug, name: standard.name, description: standard.description },
+      update: {},
+    });
+
+    if (standard.defaults.length > 0) {
+      const existingCount = await prisma.genericMasterValue.count({ where: { typeId: type.id } });
+      if (existingCount === 0) {
+        await prisma.genericMasterValue.createMany({
+          data: standard.defaults.map((name, i) => ({ typeId: type!.id, name, sortOrder: i })),
+          skipDuplicates: true,
+        });
+      }
+    }
+  }
+
   return type;
 }
 

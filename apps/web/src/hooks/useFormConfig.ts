@@ -72,7 +72,7 @@ export function useFormConfig(formId: string) {
   const bgKey       = schoolId ? `/api/masters/blood-groups?schoolId=${schoolId}` : null;
   const qualKey     = schoolId ? `/api/masters/qualifications?schoolId=${schoolId}` : null;
   const ctKey       = schoolId ? `/api/masters/content-types?schoolId=${schoolId}&formName=${formId}` : null;
-  const streamKey   = schoolId ? `/api/masters/streams?schoolId=${schoolId}` : null;
+  const streamKey   = schoolId ? `/api/masters/custom/stream?schoolId=${schoolId}` : null;
   const religionKey = schoolId ? `/api/masters/custom/religion?schoolId=${schoolId}` : null;
   const mtKey       = schoolId ? `/api/masters/custom/mother_tongue?schoolId=${schoolId}` : null;
   const admCatKey   = schoolId ? `/api/masters/custom/admission_category?schoolId=${schoolId}` : null;
@@ -88,7 +88,7 @@ export function useFormConfig(formId: string) {
   const { data: bloodGroupData,    mutate: mutateBloodGroup  } = useSWR<{ bloodGroupMasters: { name: string }[] }>(bgKey,  fetcher, swrOpts);
   const { data: qualificationData, mutate: mutateQual        } = useSWR<{ qualificationMasters: { name: string }[] }>(qualKey, fetcher, swrOpts);
   const { data: contentTypeData,   mutate: mutateCt          } = useSWR<{ contentTypes: { fieldSlot: string; options: string[]; fieldType: string; label: string }[] }>(ctKey, fetcher, swrOpts);
-  const { data: streamData,        mutate: mutateStream       } = useSWR<{ streamMasters: { name: string }[] }>(streamKey, fetcher, swrOpts);
+  const { data: streamData,        mutate: mutateStream       } = useSWR<{ masterValues: { name: string }[] }>(streamKey, fetcher, customSwrOpts);
   const { data: religionData,      mutate: mutateReligion     } = useSWR<{ masterValues: { name: string }[] }>(religionKey, fetcher, customSwrOpts);
   const { data: mtData,            mutate: mutateMt           } = useSWR<{ masterValues: { name: string }[] }>(mtKey, fetcher, customSwrOpts);
   const { data: admCatData,        mutate: mutateAdmCat       } = useSWR<{ masterValues: { name: string }[] }>(admCatKey, fetcher, customSwrOpts);
@@ -115,7 +115,7 @@ export function useFormConfig(formId: string) {
     childGender:       (genderData?.genderMasters           ?? []).map(m => m.name),
     bloodGroup:        (bloodGroupData?.bloodGroupMasters   ?? []).map(m => m.name),
     qualification:     (qualificationData?.qualificationMasters ?? []).map(m => m.name),
-    stream:            (streamData?.streamMasters           ?? []).map(m => m.name),
+    stream:            (streamData?.masterValues             ?? []).map(v => v.name),
     religion:          (religionData?.masterValues          ?? []).map(v => v.name),
     motherTongue:      (mtData?.masterValues                ?? []).map(v => v.name),
     admissionCategory: (admCatData?.masterValues            ?? []).map(v => v.name),
