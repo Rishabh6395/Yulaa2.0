@@ -10,17 +10,15 @@
  *   body for generic   : { type: 'attendance'|'fee'|'query_parents'|'query_school_admin', stages: [...] }
  */
 
-import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 
 const GENERIC_TYPES = ['attendance', 'fee', 'query_parents', 'query_school_admin'];
 
-function assertAdmin(user: any) {
+function assertSuperAdmin(user: any) {
   if (!user) throw new UnauthorizedError();
-  const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
-  if (!ADMIN_ROLES.includes(primary.role_code)) throw new ForbiddenError();
+  if (!user.roles.some((r: any) => r.role_code === 'super_admin')) throw new ForbiddenError('Super admin access required');
 }
 
 // Normalize a stage array to a consistent shape for the frontend
@@ -44,7 +42,7 @@ function normalizeStages(stages: any[]) {
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
-    assertAdmin(user!);
+    assertSuperAdmin(user!);
 
     const { searchParams } = new URL(request.url);
     const type     = searchParams.get('type') || 'admission';
@@ -136,7 +134,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getUserFromRequest(request);
-    assertAdmin(user!);
+    assertSuperAdmin(user!);
 
     const schoolId = (await params).id;
     const body   = await request.json();

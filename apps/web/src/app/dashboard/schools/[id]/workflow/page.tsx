@@ -325,6 +325,7 @@ function StageCard({
 export default function WorkflowPage() {
   const { id: schoolId } = useParams<{ id: string }>();
 
+  const [isSuperAdmin,    setIsSuperAdmin]    = useState<boolean | null>(null);
   const [activeType,      setActiveType]     = useState<WorkflowType>('leave');
   const [activeLeaveRole, setActiveLeaveRole] = useState('teacher');
   const [stageMap,        setStageMap]        = useState<Record<string, Stage[]>>({});
@@ -334,6 +335,12 @@ export default function WorkflowPage() {
   const [savedKey,        setSavedKey]        = useState('');
   const [error,           setError]           = useState('');
   const [users,           setUsers]           = useState<any[]>([]);
+
+  useEffect(() => {
+    const u = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+    const sa = u.primaryRole === 'super_admin' || u.roles?.some((r: any) => r.role_code === 'super_admin');
+    setIsSuperAdmin(Boolean(sa));
+  }, []);
 
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') ?? '' : '';
   const authHdr = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -430,6 +437,13 @@ export default function WorkflowPage() {
   }
 
   const colorClass = COLOR_MAP[activeInfo.color];
+
+  if (isSuperAdmin === null) return null;
+  if (!isSuperAdmin) return (
+    <div className="card p-12 text-center">
+      <p className="text-surface-400 text-sm">Access denied — workflow configuration is restricted to super admin only.</p>
+    </div>
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
