@@ -28,6 +28,11 @@ export default function ApplicationDetailPage({}) {
   const [saving,     setSaving]     = useState(false);
   const [saveOk,     setSaveOk]     = useState(false);
 
+  // Checklist state
+  const [checklistItems,    setChecklistItems]    = useState<any[]>([]);
+  const [checklistLoading,  setChecklistLoading]  = useState(false);
+  const [markingItem,       setMarkingItem]       = useState<number | null>(null);
+
   // Edit state
   const [editParent,   setEditParent]   = useState({ parentName: '', parentPhone: '', parentEmail: '' });
   const [editChildren, setEditChildren] = useState<any[]>([]);
@@ -102,6 +107,40 @@ export default function ApplicationDetailPage({}) {
     setTimeout(() => setSaveOk(false), 3000);
     mutate();
   };
+
+  // Fetch checklist for the current step whenever the application or currentStep changes
+  useEffect(() => {
+    const done = app?.status === 'approved' || app?.status === 'rejected';
+    if (!app || done || app.currentStep < 1) { setChecklistItems([]); return; }
+    setChecklistLoading(true);
+    fetch(`/api/admission/applications/${params.id}/checklist?step=${app.currentStep}`, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { setChecklistItems(d?.items ?? []); })
+      .catch(() => setChecklistItems([]))
+      .finally(() => setChecklistLoading(false));
+  }, [app?.id, app?.currentStep, app?.status]);
+
+  async function toggleChecklistItem(itemIndex: number, currentlyCompleted: boolean) {
+    if (markingItem !== null) return;
+    setMarkingItem(itemIndex);
+    try {
+      await fetch(`/api/admission/applications/${params.id}/checklist`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stepOrder: app.currentStep, itemIndex }),
+      });
+      const d = await fetch(`/api/admission/applications/${params.id}/checklist?step=${app.currentStep}`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      }).then(r => r.json());
+      setChecklistItems(d?.items ?? []);
+    } catch {
+      // silent — keep existing state
+    } finally {
+      setMarkingItem(null);
+    }
+  }
 
   // Exact-match sections from the class master for a given grade
   const sectionsForGrade = (grade: string): string[] =>
@@ -361,38 +400,166 @@ export default function ApplicationDetailPage({}) {
         </div>
       )}
 
-      {/* Approve / Reject panel */}
-      {!isFinal && (
-        <div className="card p-5 space-y-4">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100">Take Action</h3>
-          {error && <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{error}</div>}
-          {isFinalStep && childrenMissingSection.length > 0 && (
-            <div className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 rounded-lg flex items-start gap-2">
-              <svg className="shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              <span>
-                <strong>Section required before final approval.</strong> Please edit and assign a section for:{' '}
-                {childrenMissingSection.map((c: any) => `${c.firstName} ${c.lastName}`.trim()).join(', ')}
+      {/* Checklist for current step */}
+      {!isFinal && app.currentStep >= 1 && (checklistLoading || checklistItems.length > 0) && (
+        <div className="card p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+              </svg>
+              Checklist — Step {app.currentStep}
+            </h3>
+            {checklistItems.length > 0 && (
+              <span className="text-xs text-surface-400">
+                {checklistItems.filter((it: any) => it.completed).length} / {checklistItems.length} done
+                {checklistItems.some((it: any) => it.required && !it.completed) && (
+                  <span className="ml-2 text-amber-600 dark:text-amber-400 font-medium">· required items pending</span>
+                )}
               </span>
-            </div>
-          )}
-          <textarea
-            className="input-field" rows={2}
-            placeholder="Add a comment (optional)…"
-            value={comment} onChange={e => setComment(e.target.value)}
-          />
-          <div className="flex gap-3">
-            <button onClick={() => handleAction('reject')} disabled={busy}
-              className="flex-1 text-sm bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 px-4 py-2.5 rounded-xl hover:bg-red-100 font-medium transition-colors disabled:opacity-50">
-              Reject
-            </button>
-            <button onClick={() => handleAction('approve')}
-              disabled={busy || (isFinalStep && childrenMissingSection.length > 0)}
-              className="flex-2 btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed">
-              {busy ? 'Processing…' : isFinalStep ? 'Final Approve' : 'Advance to Next Step'}
-            </button>
+            )}
           </div>
+
+          {checklistLoading && (
+            <div className="text-sm text-surface-400 animate-pulse">Loading checklist…</div>
+          )}
+
+          {!checklistLoading && checklistItems.length > 0 && (() => {
+            // Group by actionRole for display
+            const roleOrder = ['school_admin', 'principal', 'teacher', 'parent'];
+            const grouped: Record<string, any[]> = {};
+            for (const item of checklistItems) {
+              const r = item.actionRole ?? 'school_admin';
+              if (!grouped[r]) grouped[r] = [];
+              grouped[r].push(item);
+            }
+            const roleLabels: Record<string, string> = {
+              school_admin: 'School Admin', principal: 'Principal',
+              teacher: 'Teacher', parent: 'Parent / Applicant',
+            };
+            const presentRoles = roleOrder.filter(r => grouped[r]?.length);
+
+            return (
+              <div className="space-y-3">
+                {presentRoles.map(role => (
+                  <div key={role}>
+                    <p className="text-[11px] font-semibold text-surface-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                      {roleLabels[role] ?? role}
+                    </p>
+                    <div className="space-y-1.5">
+                      {grouped[role].map((item: any) => (
+                        <div key={item.index}
+                          className={`flex items-start gap-3 px-3 py-2.5 rounded-lg border transition-colors cursor-pointer group ${
+                            item.completed
+                              ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900'
+                              : item.required
+                                ? 'bg-amber-50/50 dark:bg-amber-950/10 border-amber-200 dark:border-amber-900/50'
+                                : 'bg-surface-50 dark:bg-gray-800/30 border-surface-100 dark:border-gray-700/50'
+                          }`}
+                          onClick={() => !item.completed && toggleChecklistItem(item.index, item.completed)}
+                        >
+                          {/* Checkbox */}
+                          <div className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                            item.completed
+                              ? 'bg-emerald-500 border-emerald-500'
+                              : markingItem === item.index
+                                ? 'border-brand-400 animate-pulse'
+                                : 'border-surface-300 dark:border-gray-600 group-hover:border-brand-400'
+                          }`}>
+                            {item.completed && (
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                              </svg>
+                            )}
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm ${item.completed ? 'line-through text-surface-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-200'}`}>
+                              {item.label}
+                            </p>
+                            {item.description && !item.completed && (
+                              <p className="text-xs text-surface-400 mt-0.5">{item.description}</p>
+                            )}
+                            {item.completed && item.completedAt && (
+                              <p className="text-[10px] text-emerald-600 dark:text-emerald-500 mt-0.5">
+                                Completed {new Date(item.completedAt).toLocaleString('en-IN')}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Badges */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {item.documentType && (
+                              <span className="text-[10px] bg-surface-100 dark:bg-gray-700 text-surface-500 dark:text-gray-400 px-1.5 py-0.5 rounded capitalize">
+                                {item.documentType.replace('_', ' ')}
+                              </span>
+                            )}
+                            {item.required && !item.completed && (
+                              <span className="text-[10px] bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">
+                                Required
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
+
+      {/* Approve / Reject panel */}
+      {!isFinal && (() => {
+        const requiredPending = checklistItems.some((it: any) => it.required && !it.completed);
+        const sectionBlocked  = isFinalStep && childrenMissingSection.length > 0;
+        const approveBlocked  = busy || sectionBlocked || requiredPending;
+        return (
+          <div className="card p-5 space-y-4">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Take Action</h3>
+            {error && <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg">{error}</div>}
+
+            {sectionBlocked && (
+              <div className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 rounded-lg flex items-start gap-2">
+                <svg className="shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>
+                  <strong>Section required before final approval.</strong> Please edit and assign a section for:{' '}
+                  {childrenMissingSection.map((c: any) => `${c.firstName} ${c.lastName}`.trim()).join(', ')}
+                </span>
+              </div>
+            )}
+
+            {requiredPending && (
+              <div className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 rounded-lg flex items-start gap-2">
+                <svg className="shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                <span>
+                  <strong>Required checklist items are incomplete.</strong> Complete all required items above before advancing this step.
+                </span>
+              </div>
+            )}
+
+            <textarea
+              className="input-field" rows={2}
+              placeholder="Add a comment (optional)…"
+              value={comment} onChange={e => setComment(e.target.value)}
+            />
+            <div className="flex gap-3">
+              <button onClick={() => handleAction('reject')} disabled={busy}
+                className="flex-1 text-sm bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 px-4 py-2.5 rounded-xl hover:bg-red-100 font-medium transition-colors disabled:opacity-50">
+                Reject
+              </button>
+              <button onClick={() => handleAction('approve')}
+                disabled={approveBlocked}
+                className="flex-2 btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                {busy ? 'Processing…' : isFinalStep ? 'Final Approve' : 'Advance to Next Step'}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
