@@ -249,6 +249,7 @@ model Teacher {
   @@unique([userId, schoolId])
   @@index([schoolId])
   @@index([status])
+  @@index([schoolId, status])
   @@map("teachers")
 }
 
@@ -326,6 +327,7 @@ model Student {
   @@index([schoolId])
   @@index([classId])
   @@index([status])
+  @@index([schoolId, status])
   @@map("students")
 }
 
@@ -469,6 +471,7 @@ model FeeInvoice {
   @@index([studentId])
   @@index([status])
   @@index([dueDate])
+  @@index([schoolId, status])
   @@map("fee_invoices")
 }
 
@@ -513,6 +516,7 @@ model Homework {
   @@index([classId])
   @@index([teacherId])
   @@index([dueDate])
+  @@index([schoolId, classId])
   @@map("homework")
 }
 
@@ -576,6 +580,7 @@ model LeaveRequest {
 
   @@index([schoolId, status])
   @@index([userId])
+  @@index([schoolId, userId])
   @@map("leave_requests")
 }
 

@@ -28,14 +28,14 @@ async function readOrCompute<T>(
   // 1. Redis hit (precomputed by cron)
   const cached = await cacheGet<T>(key);
   if (cached !== null) {
-    if (process.env.NODE_ENV === 'development') console.log(`[dashboard] ${label} — cache hit (${Date.now() - t0}ms)`);
+    console.log(`[cache] dashboard:${label} — hit (${Date.now() - t0}ms)`);
     return cached;
   }
 
   // 2. Miss — compute with stampede protection
-  if (process.env.NODE_ENV === 'development') console.log(`[dashboard] ${label} — cache miss, computing…`);
+  console.log(`[cache] dashboard:${label} — miss, computing…`);
   const result = await withCacheLock(key, ttl, fn);
-  if (process.env.NODE_ENV === 'development') console.log(`[dashboard] ${label} — computed + stored (${Date.now() - t0}ms)`);
+  console.log(`[cache] dashboard:${label} — stored (${Date.now() - t0}ms)`);
   return result;
 }
 

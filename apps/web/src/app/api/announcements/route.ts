@@ -1,6 +1,7 @@
 import { getUserFromRequest } from '@/lib/auth';
 import { listAnnouncements, createAnnouncement } from '@/modules/announcements/announcement.service';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
+import { cacheInvalidate } from '@/services/cache.service';
 import prisma from '@/lib/prisma';
 
 async function resolveSchoolId(primaryRole: any, fallbackId?: string | null): Promise<string> {
@@ -51,6 +52,8 @@ export async function DELETE(request: Request) {
     const schoolId = await resolveSchoolId(primaryRole, undefined);
     const deleted  = await prisma.announcement.deleteMany({ where: { id, schoolId } });
     if (deleted.count === 0) throw new AppError('Announcement not found or access denied', 403);
+    await cacheInvalidate(`announcements:${schoolId}`);
+    console.log(`[cache] announcements:${schoolId} — invalidated after delete`);
     return Response.json({ ok: true });
   } catch (err) { return handleError(err); }
 }

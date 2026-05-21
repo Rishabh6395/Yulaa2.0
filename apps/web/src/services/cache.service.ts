@@ -7,6 +7,7 @@ export const CacheTTL = {
   dashboardParent: parseInt(process.env.CACHE_TTL_DASHBOARD_PARENT || '60',  10),
   notifications:   parseInt(process.env.CACHE_TTL_NOTIFICATIONS    || '60',  10),
   list:            parseInt(process.env.CACHE_TTL_LIST             || '300', 10),
+  mutable:         parseInt(process.env.CACHE_TTL_MUTABLE          || '60',  10),
 };
 
 /**

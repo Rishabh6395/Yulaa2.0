@@ -1,20 +1,40 @@
 import { parsePagination } from '@/utils/pagination';
 import { AppError } from '@/utils/errors';
 import { parseCSV, generateCSV } from '@/services/upload.service';
+import { withCache, cacheInvalidate, CacheTTL } from '@/services/cache.service';
 import * as repo from './student.repo';
 import type { StudentRow } from './student.types';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
 
+function studentListKey(schoolId: string, classId?: string | null, status?: string | null) {
+  return `students:${schoolId}:${classId || 'all'}:${status || 'all'}`;
+}
+
 export async function listStudents(schoolId: string, searchParams: URLSearchParams) {
   const pagination = parsePagination(searchParams);
-  const { total, students } = await repo.findStudents({
-    schoolId,
-    status:  searchParams.get('status')   ?? undefined,
-    classId: searchParams.get('class_id') ?? undefined,
-    search:  searchParams.get('search')   ?? undefined,
-    ...pagination,
-  });
+  const status  = searchParams.get('status')   ?? undefined;
+  const classId = searchParams.get('class_id') ?? undefined;
+  const search  = searchParams.get('search')   ?? undefined;
+
+  // Only cache non-search, first-page results — search results are user-specific and short-lived
+  const cacheable = !search && pagination.page === 1;
+  const key = studentListKey(schoolId, classId, status);
+  const t0  = Date.now();
+
+  const fetch = () => repo.findStudents({ schoolId, status, classId, search, ...pagination });
+
+  const { total, students } = cacheable
+    ? await withCache(key, CacheTTL.list, async () => {
+        console.log(`[cache] ${key} — miss, querying DB`);
+        const data = await fetch();
+        console.log(`[cache] ${key} — stored (${Date.now() - t0}ms, ${data.students.length} rows)`);
+        return data;
+      }).then((data) => {
+        if (Date.now() - t0 < 10) console.log(`[cache] ${key} — hit`);
+        return data;
+      })
+    : await fetch();
 
   const rows: StudentRow[] = students.map((s) => ({
     id:               s.id,
@@ -77,6 +97,8 @@ export async function createStudent(schoolId: string, body: Record<string, any>)
     });
   }
 
+  await cacheInvalidate(`students:${schoolId}:*`);
+  console.log(`[cache] students:${schoolId}:* — invalidated after create`);
   return student;
 }
 
@@ -138,7 +160,11 @@ export async function updateStudent(body: Record<string, any>) {
   if (!id || !admission_status) {
     throw new AppError('id and admission_status are required');
   }
-  return repo.updateStudentStatus(id, admission_status);
+  const student = await repo.updateStudentStatus(id, admission_status);
+  // Invalidate all school student lists — we don't know schoolId here so use wildcard
+  await cacheInvalidate('students:*');
+  console.log(`[cache] students:* — invalidated after status update for ${id}`);
+  return student;
 }
 
 /**
@@ -214,6 +240,10 @@ export async function bulkUploadStudents(
     }
   }
 
+  if (created > 0) {
+    await cacheInvalidate(`students:${schoolId}:*`);
+    console.log(`[cache] students:${schoolId}:* — invalidated after bulk upload (${created} created)`);
+  }
   return { created, errors, total: rows.length };
 }
 
