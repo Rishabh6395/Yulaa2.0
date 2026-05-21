@@ -146,10 +146,56 @@ export const getExamResults = (p?: string) => apiFetch<any>(`/api/exam${p ? '?' 
 export const getSchools = () => apiFetch<any>('/api/schools');
 
 // ─── Super admin config ───────────────────────────────────────────────────────
-export const getSuperAdminKpiConfig       = ()        => apiFetch<any>('/api/super-admin/kpi-config');
-export const getAdmissionWorkflow         = ()        => apiFetch<any>('/api/admission/workflow');
+export const getSuperAdminKpiConfig       = ()           => apiFetch<any>('/api/super-admin/kpi-config');
+export const getAdmissionWorkflow         = ()           => apiFetch<any>('/api/admission/workflow');
 export const getSuperAdminUsers           = (p?: string) => apiFetch<any>(`/api/super-admin/users${p ? '?' + p : ''}`);
 export const getMasterItems               = (type: string) => apiFetch<any>(`/api/masters/${type}`);
+export const getSuperAdminConsultants     = (p?: string) => apiFetch<any>(`/api/super-admin/consultants${p ? '?' + p : ''}`);
+export const getSuperAdminVendors         = (p?: string) => apiFetch<any>(`/api/super-admin/vendors${p ? '?' + p : ''}`);
+export const getSuperAdminOnlineClassConfig = ()         => apiFetch<any>('/api/super-admin/online-class-config');
+export const getSuperAdminCourses         = (p?: string) => apiFetch<any>(`/api/super-admin/courses${p ? '?' + p : ''}`);
+export const getSuperAdminQueries         = (p?: string) => apiFetch<any>(`/api/super-admin/queries${p ? '?' + p : ''}`);
+export const getLocationMasters           = ()           => apiFetch<any>('/api/super-admin/location-masters');
+export const getSchoolDetail              = (id: string) => apiFetch<any>(`/api/schools/${id}`);
+
+// ─── Academic ─────────────────────────────────────────────────────────────────
+export const getTimetable         = (p?: string) => apiFetch<any>(`/api/timetable/teacher${p ? '?' + p : ''}`);
+export const getSyllabus          = (p?: string) => apiFetch<any>(`/api/syllabus${p ? '?' + p : ''}`);
+export const getScheduling        = (p?: string) => apiFetch<any>(`/api/schedule${p ? '?' + p : ''}`);
+export const getHomeworkItems     = (p?: string) => apiFetch<any>(`/api/homework${p ? '?' + p : ''}`);
+export const submitHomeworkItem   = (body: any)  => apiFetch<any>('/api/homework', { method: 'POST', body: JSON.stringify(body) });
+
+// ─── Assessment ───────────────────────────────────────────────────────────────
+export const getExamSchedule      = ()           => apiFetch<any>('/api/exams/datesheet');
+export const getExamResults       = (p?: string) => apiFetch<any>(`/api/exams/results${p ? '?' + p : ''}`);
+export const getPerformance       = (p?: string) => apiFetch<any>(`/api/performance${p ? '?' + p : ''}`);
+
+// ─── Operations ───────────────────────────────────────────────────────────────
+export const getQueries           = (p?: string) => apiFetch<any>(`/api/queries${p ? '?' + p : ''}`);
+export const createQueryItem      = (body: any)  => apiFetch<any>('/api/queries', { method: 'POST', body: JSON.stringify(body) });
+export const getTransport         = (p?: string) => apiFetch<any>(`/api/transport${p ? '?' + p : ''}`);
+export const getCompliance        = (p?: string) => apiFetch<any>(`/api/compliance${p ? '?' + p : ''}`);
+export const getSchoolInventory   = (p?: string) => apiFetch<any>(`/api/school-inventory${p ? '?' + p : ''}`);
+export const getLetterTemplates   = (p?: string) => apiFetch<any>(`/api/letter-templates${p ? '?' + p : ''}`);
+export const getYearbook          = (p?: string) => apiFetch<any>(`/api/yearbook${p ? '?' + p : ''}`);
+export const getContracts         = ()           => apiFetch<any>('/api/contracts');
+
+// ─── Consultant ───────────────────────────────────────────────────────────────
+export const getConsultantSessions      = () => apiFetch<any>('/api/consultant/sessions');
+export const getConsultantAvailability  = () => apiFetch<any>('/api/career-sessions/availability');
+export const getConsultantBookings      = () => apiFetch<any>('/api/career-sessions/bookings');
+export const updateConsultantAvailability = (body: any) =>
+  apiFetch<any>('/api/career-sessions/availability', { method: 'POST', body: JSON.stringify(body) });
+
+// ─── Career sessions (non-consultant) ─────────────────────────────────────────
+export const getCareerSessions    = (p?: string) => apiFetch<any>(`/api/career-sessions${p ? '?' + p : ''}`);
+export const manageCareerSessions = (p?: string) => apiFetch<any>(`/api/career-sessions${p ? '?' + p : ''}`);
+
+// ─── Vendor ───────────────────────────────────────────────────────────────────
+export const getVendorManage      = (p?: string) => apiFetch<any>(`/api/vendor${p ? '?' + p : ''}`);
+export const getVendorOrders      = (p?: string) => apiFetch<any>(`/api/vendor/orders${p ? '?' + p : ''}`);
+export const getVendorProductList = (p?: string) => apiFetch<any>(`/api/vendor/products${p ? '?' + p : ''}`);
+export const getVendorRatings     = ()           => apiFetch<any>('/api/vendor/ratings');
 
 // ─── Holidays ─────────────────────────────────────────────────────────────────
 export const getHolidays = (year: string) => apiFetch<any>(`/api/holidays?year=${year}`);
