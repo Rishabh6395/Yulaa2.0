@@ -12,11 +12,14 @@ function createPrismaClient() {
   const rawUrl = process.env.DIRECT_URL ?? process.env.DATABASE_URL!;
   // Strip pgbouncer/connect_timeout params that pg.Pool doesn't understand.
   const cleanUrl = rawUrl.replace(/[?&]pgbouncer=true/gi, '').replace(/[?&]connect_timeout=\d+/gi, '');
+  // DB_POOL_MAX: tune per plan. Free Neon = 20 total; paid = 100+.
+  // Keep headroom for migrations and direct psql sessions.
+  const maxConn = parseInt(process.env.DB_POOL_MAX || '10', 10);
   const pool = new Pool({
     connectionString: cleanUrl,
-    max: 3,                          // Neon free tier max connections
-    idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 30_000, // Neon cold-start can take 15-25s
+    max:                    maxConn,
+    idleTimeoutMillis:      30_000,
+    connectionTimeoutMillis:30_000, // Neon cold-start can take 15-25s
     ssl: { rejectUnauthorized: false },
   });
   const adapter = new PrismaPg(pool);
