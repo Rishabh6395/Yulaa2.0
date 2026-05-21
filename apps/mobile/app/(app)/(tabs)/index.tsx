@@ -29,6 +29,12 @@ function getGreeting() {
 }
 
 const ALL_QUICK_ACTIONS = [
+  { label: 'Form Config',   emoji: '📝', route: '/(app)/super-admin/form-config',        roles: ['super_admin'] },
+  { label: 'KPI Config',    emoji: '📊', route: '/(app)/super-admin/kpi-config',         roles: ['super_admin'] },
+  { label: 'Adm. Workflow', emoji: '🔀', route: '/(app)/super-admin/admission-workflow', roles: ['super_admin'] },
+  { label: 'Users',         emoji: '👥', route: '/(app)/users',                          roles: ['super_admin'] },
+  { label: 'Masters',       emoji: '🗄️', route: '/(app)/masters',                        roles: ['super_admin'] },
+  { label: 'Reports',       emoji: '📈', route: '/(app)/reports',                        roles: ['super_admin'] },
   { label: 'Admissions',  emoji: '📋', route: '/(app)/admissions',       roles: ['school_admin','principal','super_admin'] },
   { label: 'Students',    emoji: '🎓', route: '/(app)/students',          roles: ['school_admin','principal','teacher','hod'] },
   { label: 'Fees',        emoji: '💰', route: '/(app)/fees',              roles: ['school_admin','principal','parent','student'] },

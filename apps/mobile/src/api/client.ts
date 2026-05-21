@@ -145,6 +145,12 @@ export const getExamResults = (p?: string) => apiFetch<any>(`/api/exam${p ? '?' 
 // ─── Schools (super admin) ───────────────────────────────────────────────────
 export const getSchools = () => apiFetch<any>('/api/schools');
 
+// ─── Super admin config ───────────────────────────────────────────────────────
+export const getSuperAdminKpiConfig       = ()        => apiFetch<any>('/api/super-admin/kpi-config');
+export const getAdmissionWorkflow         = ()        => apiFetch<any>('/api/admission/workflow');
+export const getSuperAdminUsers           = (p?: string) => apiFetch<any>(`/api/super-admin/users${p ? '?' + p : ''}`);
+export const getMasterItems               = (type: string) => apiFetch<any>(`/api/masters/${type}`);
+
 // ─── Holidays ─────────────────────────────────────────────────────────────────
 export const getHolidays = (year: string) => apiFetch<any>(`/api/holidays?year=${year}`);
 
