@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
 import { FORM_DEFINITIONS } from '@/lib/formDefinitions';
 
+const SEL_CLS = 'input text-sm w-full';
+
 function getToken() {
   if (typeof document === 'undefined') return '';
   return document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('token='))?.split('=')[1] ?? '';

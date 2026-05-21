@@ -21,5 +21,9 @@ export interface CreateTeacherInput {
   employeeId?:    string | null;
   qualification?: string | null;
   joiningDate?:   string | null;
-  avatarUrl?:     string | null;
+  avatarUrl?:        string | null;
+  designationType?:  string | null;
+  employmentType?:   string | null;
+  teacherCert?:      string | null;
+  workPermitType?:   string | null;
 }
