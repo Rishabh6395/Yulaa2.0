@@ -196,20 +196,11 @@ const makeModules = (schoolId: string): ConfigModule[] => [
   {
     id: 'admissions',
     label: 'Admissions',
-    description: 'Configure admission forms, approval workflow, and public portal settings.',
+    description: 'Manage applications and configure admission workflow, approval stages, SPOC, and reassignment settings.',
     color: 'bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-brand-400',
-    href: `/dashboard/admissions`,
+    href: `/dashboard/schools/${schoolId}/admissions`,
     status: 'available',
     icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>,
-  },
-  {
-    id: 'admission-settings',
-    label: 'Admission Settings',
-    description: 'Configure task reassignment permissions, SPOC involvement, and other admission workflow controls.',
-    color: 'bg-cyan-50 dark:bg-cyan-950/50 text-cyan-600 dark:text-cyan-400',
-    href: `/dashboard/schools/${schoolId}/admission-settings`,
-    status: 'available',
-    icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>,
   },
   {
     id: 'external-config',

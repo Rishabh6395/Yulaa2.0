@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -356,6 +357,9 @@ function StepCard({
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function WorkflowPage() {
+  const searchParams = useSearchParams();
+  const urlSchoolId  = searchParams.get('schoolId') ?? '';
+
   const [steps,           setSteps]           = useState<Step[]>(toSteps(PRESETS[0].steps));
   const [activePreset,    setActivePreset]    = useState('direct');
   const [workflowName,    setWorkflowName]    = useState('Default Workflow');
@@ -387,7 +391,9 @@ export default function WorkflowPage() {
         .then(d => {
           const list = d.schools ?? [];
           setSchools(list);
-          if (list.length > 0) setSchoolId(list[0].id);
+          // prefer schoolId from URL param (coming from school config), else first in list
+          const pre = urlSchoolId && list.find((s: { id: string }) => s.id === urlSchoolId);
+          setSchoolId(pre ? urlSchoolId : (list[0]?.id ?? ''));
         })
         .catch(() => setError('Failed to load schools'));
     } else {

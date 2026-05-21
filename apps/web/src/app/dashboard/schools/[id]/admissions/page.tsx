@@ -1,5 +1,5 @@
 'use client';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 import { useEffect, useState } from 'react';
 
@@ -13,6 +13,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function SchoolAdmissionsPage({}) {
   const { id: schoolId } = useParams<{ id: string }>();
+  const router = useRouter();
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
@@ -55,6 +56,73 @@ export default function SchoolAdmissionsPage({}) {
 
   return (
     <div className="space-y-6 animate-fade-in">
+
+      {/* ── Admission Configuration ─────────────────────────────────────────── */}
+      <div>
+        <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Configuration</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          {/* Admission Workflow */}
+          <button
+            onClick={() => router.push(`/dashboard/admissions/workflow?schoolId=${schoolId}`)}
+            className="card p-5 text-left group hover:shadow-md transition-all hover:-translate-y-0.5 cursor-pointer"
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-brand-400 group-hover:scale-110 transition-transform">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/>
+                  <path d="M12 7v4M5 17V13a7 7 0 0 1 14 0v4"/>
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                    Admission Workflow
+                  </h3>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-surface-300 dark:text-gray-600 group-hover:text-brand-400 transition-colors flex-shrink-0">
+                    <polyline points="9,18 15,12 9,6"/>
+                  </svg>
+                </div>
+                <p className="text-xs text-surface-400 dark:text-gray-500 mt-1 leading-relaxed">
+                  Configure multi-step approval stages, checklists, payment gates, SPOC, and reassignment.
+                </p>
+              </div>
+            </div>
+          </button>
+
+          {/* Admission Settings */}
+          <button
+            onClick={() => router.push(`/dashboard/schools/${schoolId}/admission-settings`)}
+            className="card p-5 text-left group hover:shadow-md transition-all hover:-translate-y-0.5 cursor-pointer"
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-cyan-50 dark:bg-cyan-950/50 text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/>
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                    Admission Settings
+                  </h3>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-surface-300 dark:text-gray-600 group-hover:text-brand-400 transition-colors flex-shrink-0">
+                    <polyline points="9,18 15,12 9,6"/>
+                  </svg>
+                </div>
+                <p className="text-xs text-surface-400 dark:text-gray-500 mt-1 leading-relaxed">
+                  Configure task reassignment permissions, SPOC involvement, and workflow controls.
+                </p>
+              </div>
+            </div>
+          </button>
+
+        </div>
+      </div>
+
+      {/* ── Applications ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-gray-100">Admissions</h1>
