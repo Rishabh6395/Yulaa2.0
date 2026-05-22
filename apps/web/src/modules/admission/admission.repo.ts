@@ -9,6 +9,13 @@ const applicationInclude = {
 } as const;
 
 export async function createApplication(data: CreateApplicationInput, flags: object, riskScore: number, workflowId: string | null) {
+  // Merge parentOccupation and any other non-column parent fields into customFieldValues
+  const parentExtras: Record<string, string> = {};
+  if (data.parentOccupation?.trim()) parentExtras['parentOccupation'] = data.parentOccupation.trim();
+  const mergedCustomFieldValues = Object.keys(parentExtras).length > 0 || data.customFieldValues
+    ? { ...(data.customFieldValues ?? {}), ...parentExtras }
+    : undefined;
+
   return prisma.admissionApplication.create({
     data: {
       schoolId:        data.schoolId,
@@ -21,7 +28,7 @@ export async function createApplication(data: CreateApplicationInput, flags: obj
       permanentAddress:     data.permanentAddress ?? null,
       validationFlags:  flags,
       riskScore,
-      ...(data.customFieldValues ? { customFieldValues: data.customFieldValues as any } : {}),
+      ...(mergedCustomFieldValues ? { customFieldValues: mergedCustomFieldValues as any } : {}),
       children: {
         create: data.children.map((c) => ({
           firstName:      c.firstName,
@@ -103,14 +110,15 @@ export async function findActiveWorkflow(schoolId: string) {
   });
 }
 
-export async function createWorkflow(data: CreateWorkflowInput) {
-  // Deactivate previous workflows for this school
-  await prisma.admissionWorkflow.updateMany({ where: { schoolId: data.schoolId }, data: { isActive: false } });
+export async function createWorkflow(data: CreateWorkflowInput & { sameForAllRoles?: boolean }) {
+  // Delete previous workflows for this school to avoid unique(schoolId, name) constraint violations
+  await prisma.admissionWorkflow.deleteMany({ where: { schoolId: data.schoolId } });
   return prisma.admissionWorkflow.create({
     data: {
-      schoolId: data.schoolId,
-      name:     data.name,
-      isActive: true,
+      schoolId:        data.schoolId,
+      name:            data.name,
+      isActive:        true,
+      sameForAllRoles: data.sameForAllRoles ?? true,
       steps: { create: data.steps as any },
     },
     include: { steps: { orderBy: { stepOrder: 'asc' } } },

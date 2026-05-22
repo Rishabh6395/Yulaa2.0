@@ -14,6 +14,8 @@ interface HeaderProps {
   onChildSwitch: (child: any) => void;
 }
 
+const REASSIGN_ROLES = ['principal', 'teacher', 'hod', 'super_admin', 'school_admin'];
+
 // ── Notification item types ───────────────────────────────────────────────────
 
 interface NotifItem {
@@ -138,23 +140,134 @@ function NotificationPanel({ onClose, onLoad }: { onClose: () => void; onLoad: (
   );
 }
 
+// ── Task Reassignment Panel ───────────────────────────────────────────────────
+
+function TaskReassignPanel({ onClose, isSuperAdmin }: { onClose: () => void; isSuperAdmin: boolean }) {
+  const [users,      setUsers]      = useState<any[]>([]);
+  const [targetId,   setTargetId]   = useState('');
+  const [fromId,     setFromId]     = useState('');
+  const [note,       setNote]       = useState('');
+  const [loading,    setLoading]    = useState(false);
+  const [fetching,   setFetching]   = useState(true);
+  const [result,     setResult]     = useState<{ count: number; message: string } | null>(null);
+  const [error,      setError]      = useState('');
+
+  useEffect(() => {
+    const token = localStorage.getItem('token') ?? '';
+    fetch('/api/school/users', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : { users: [] })
+      .then(d => { setUsers(d.users ?? []); setFetching(false); })
+      .catch(() => setFetching(false));
+  }, []);
+
+  async function handleReassign() {
+    setLoading(true); setError(''); setResult(null);
+    const token = localStorage.getItem('token') ?? '';
+    try {
+      const body: any = { assignedToId: targetId, note: note || undefined };
+      if (isSuperAdmin && fromId) body.fromUserId = fromId;
+      const res = await fetch('/api/tasks/reassign', {
+        method:  'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Reassignment failed');
+      setResult({ count: d.count, message: d.message });
+    } catch (e: any) { setError(e.message); }
+    setLoading(false);
+  }
+
+  return (
+    <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-surface-200 dark:border-gray-700 overflow-hidden z-50">
+      <div className="px-4 py-3 border-b border-surface-100 dark:border-gray-800 flex items-center justify-between">
+        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/>
+            <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+          </svg>
+          Reassign My Tasks
+        </span>
+        <button onClick={onClose} className="text-surface-400 hover:text-gray-600 dark:hover:text-gray-300 p-0.5">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div className="p-4 space-y-3">
+        <p className="text-xs text-surface-400">Transfer all your pending approval tasks to another team member.</p>
+
+        {/* Super admin: from user */}
+        {isSuperAdmin && (
+          <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">From (optional — leave blank for all)</label>
+            <select className="w-full text-sm border border-surface-200 dark:border-gray-700 rounded-lg px-2.5 py-2 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              value={fromId} onChange={e => setFromId(e.target.value)}>
+              <option value="">— Any user (all schools) —</option>
+              {users.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
+            </select>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Reassign to *</label>
+          {fetching ? (
+            <div className="h-9 bg-surface-100 dark:bg-gray-800 rounded-lg animate-pulse"/>
+          ) : (
+            <select className="w-full text-sm border border-surface-200 dark:border-gray-700 rounded-lg px-2.5 py-2 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              value={targetId} onChange={e => setTargetId(e.target.value)}>
+              <option value="">— Select user —</option>
+              {users.map(u => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
+            </select>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Note (optional)</label>
+          <input className="w-full text-sm border border-surface-200 dark:border-gray-700 rounded-lg px-2.5 py-2 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            placeholder="Reason for reassignment…"
+            value={note} onChange={e => setNote(e.target.value)} />
+        </div>
+
+        {error && <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2.5 py-1.5 rounded-lg">{error}</p>}
+        {result && (
+          <div className="text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            {result.message}
+          </div>
+        )}
+
+        <button
+          disabled={!targetId || loading}
+          onClick={handleReassign}
+          className="w-full py-2 text-sm font-medium rounded-xl bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {loading ? 'Reassigning…' : 'Reassign All My Tasks'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Header ────────────────────────────────────────────────────────────────────
 
 export default function Header({ user, collapsed, onToggle, parentChildren, activeChild, onChildSwitch }: HeaderProps) {
   const router = useRouter();
   const isParent = user?.primaryRole === 'parent';
-  const [showNotif,  setShowNotif]  = useState(false);
+  const canReassign = REASSIGN_ROLES.includes(user?.primaryRole ?? '');
+  const isSuperAdmin = user?.primaryRole === 'super_admin';
+  const [showNotif,   setShowNotif]   = useState(false);
+  const [showReassign, setShowReassign] = useState(false);
   const [notifCount, setNotifCount] = useState(_notifCache?.items.length ?? 0);
-  const notifRef = useRef<HTMLDivElement>(null);
+  const notifRef    = useRef<HTMLDivElement>(null);
+  const reassignRef = useRef<HTMLDivElement>(null);
 
   const handleNotifLoad = useCallback((count: number) => setNotifCount(count), []);
 
-  // Close on outside click
+  // Close panels on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setShowNotif(false);
-      }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotif(false);
+      if (reassignRef.current && !reassignRef.current.contains(e.target as Node)) setShowReassign(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -209,9 +322,29 @@ export default function Header({ user, collapsed, onToggle, parentChildren, acti
         )}
       </div>
 
-      {/* Right: theme toggle, notifications, logout */}
+      {/* Right: theme toggle, reassign, notifications, logout */}
       <div className="flex items-center gap-1">
         <ThemeToggle />
+
+        {/* Task Reassignment button — for principal, teacher, hod, super_admin, school_admin */}
+        {canReassign && (
+          <div className="relative" ref={reassignRef}>
+            <button
+              onClick={() => { setShowReassign(v => !v); setShowNotif(false); }}
+              className={`relative p-2 rounded-lg transition-colors ${showReassign ? 'bg-brand-100 dark:bg-brand-950/50 text-brand-600 dark:text-brand-400' : 'hover:bg-surface-100 dark:hover:bg-gray-800 text-surface-400 dark:text-gray-500'}`}
+              aria-label="Reassign tasks"
+              title="Reassign your pending tasks to another user"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/>
+                <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+              </svg>
+            </button>
+            {showReassign && (
+              <TaskReassignPanel onClose={() => setShowReassign(false)} isSuperAdmin={isSuperAdmin} />
+            )}
+          </div>
+        )}
 
         {/* Notifications bell */}
         <div className="relative" ref={notifRef}>

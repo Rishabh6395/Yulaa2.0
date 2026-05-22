@@ -5,14 +5,18 @@ import { useSearchParams } from 'next/navigation';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+type ChecklistItemType = 'yes_no' | 'remarks' | 'payment' | 'class_section' | 'document';
+
 interface ChecklistItem {
   label:      string;
   actionRole: string;
+  type:       ChecklistItemType;
 }
 
 interface Step {
   stepOrder:            number;
   label:                string;
+  initiatorRole:        string;
   approverRole:         string;
   checklistItems:       ChecklistItem[];
   // SPOC
@@ -31,14 +35,33 @@ const APPROVER_ROLES = [
   { value: 'school_admin', label: 'School Admin' },
   { value: 'principal',    label: 'Principal' },
   { value: 'teacher',      label: 'Teacher' },
+  { value: 'hod',          label: 'HOD' },
   { value: 'super_admin',  label: 'Super Admin' },
+];
+
+const INITIATOR_ROLES = [
+  { value: '',             label: '— None —' },
+  { value: 'school_admin', label: 'School Admin' },
+  { value: 'principal',    label: 'Principal' },
+  { value: 'teacher',      label: 'Teacher' },
+  { value: 'hod',          label: 'HOD' },
+  { value: 'parent',       label: 'Parent / Applicant' },
 ];
 
 const ACTION_ROLES = [
   { value: 'school_admin', label: 'School Admin' },
   { value: 'principal',    label: 'Principal' },
   { value: 'teacher',      label: 'Teacher' },
+  { value: 'hod',          label: 'HOD' },
   { value: 'parent',       label: 'Parent / Applicant' },
+];
+
+const CHECKLIST_TYPES: { value: ChecklistItemType; label: string; description: string }[] = [
+  { value: 'yes_no',        label: 'Yes / No',        description: 'Simple checkbox — approver marks yes or no' },
+  { value: 'remarks',       label: 'Remarks',          description: 'Approver must enter a written comment' },
+  { value: 'payment',       label: 'Payment',          description: 'Confirm fee payment receipt' },
+  { value: 'class_section', label: 'Class & Section',  description: 'Assign class, grade, and section to the child' },
+  { value: 'document',      label: 'Document Upload',  description: 'Upload or verify a required document' },
 ];
 
 const PAYMENT_GATEWAYS = [
@@ -56,31 +79,31 @@ const PRESETS: {
     id: 'direct', label: 'Direct (1 Step)',
     description: 'School Admin reviews and approves in one step.',
     steps: [
-      { label: 'Admin Review', approverRole: 'school_admin', checklistItems: [], spocUserId: '', paymentRequired: false, paymentGateway: 'razorpay', paymentAmountOverride: '', allowReassign: false },
+      { label: 'Admin Review', initiatorRole: '', approverRole: 'school_admin', checklistItems: [], spocUserId: '', paymentRequired: false, paymentGateway: 'razorpay', paymentAmountOverride: '', allowReassign: false },
     ],
   },
   {
     id: 'standard', label: 'Standard (2 Steps)',
     description: 'School Admin reviews, then Principal gives final approval.',
     steps: [
-      { label: 'Admin Review',       approverRole: 'school_admin', checklistItems: [], spocUserId: '', paymentRequired: false, paymentGateway: 'razorpay', paymentAmountOverride: '', allowReassign: false },
-      { label: 'Principal Approval', approverRole: 'principal',    checklistItems: [], spocUserId: '', paymentRequired: false, paymentGateway: 'razorpay', paymentAmountOverride: '', allowReassign: false },
+      { label: 'Admin Review',       initiatorRole: '', approverRole: 'school_admin', checklistItems: [], spocUserId: '', paymentRequired: false, paymentGateway: 'razorpay', paymentAmountOverride: '', allowReassign: false },
+      { label: 'Principal Approval', initiatorRole: 'school_admin', approverRole: 'principal', checklistItems: [], spocUserId: '', paymentRequired: false, paymentGateway: 'razorpay', paymentAmountOverride: '', allowReassign: false },
     ],
   },
   {
     id: 'full', label: 'Full (3 Steps)',
     description: 'Teacher pre-screens → Admin reviews → Principal approves.',
     steps: [
-      { label: 'Teacher Pre-screen', approverRole: 'teacher',      checklistItems: [], spocUserId: '', paymentRequired: false, paymentGateway: 'razorpay', paymentAmountOverride: '', allowReassign: false },
-      { label: 'Admin Review',       approverRole: 'school_admin', checklistItems: [], spocUserId: '', paymentRequired: false, paymentGateway: 'razorpay', paymentAmountOverride: '', allowReassign: false },
-      { label: 'Principal Approval', approverRole: 'principal',    checklistItems: [], spocUserId: '', paymentRequired: false, paymentGateway: 'razorpay', paymentAmountOverride: '', allowReassign: false },
+      { label: 'Teacher Pre-screen', initiatorRole: '', approverRole: 'teacher',      checklistItems: [], spocUserId: '', paymentRequired: false, paymentGateway: 'razorpay', paymentAmountOverride: '', allowReassign: false },
+      { label: 'Admin Review',       initiatorRole: 'teacher', approverRole: 'school_admin', checklistItems: [], spocUserId: '', paymentRequired: false, paymentGateway: 'razorpay', paymentAmountOverride: '', allowReassign: false },
+      { label: 'Principal Approval', initiatorRole: 'school_admin', approverRole: 'principal', checklistItems: [], spocUserId: '', paymentRequired: false, paymentGateway: 'razorpay', paymentAmountOverride: '', allowReassign: false },
     ],
   },
 ];
 
 function blankStep(order: number): Step {
   return {
-    stepOrder: order, label: '', approverRole: 'school_admin',
+    stepOrder: order, label: '', initiatorRole: '', approverRole: 'school_admin',
     checklistItems: [], spocUserId: '', paymentRequired: false,
     paymentGateway: 'razorpay', paymentAmountOverride: '', allowReassign: false,
   };
@@ -109,10 +132,10 @@ function StepCard({
   const [expanded, setExpanded] = useState(false);
 
   const checklistCount = step.checklistItems.length;
-  const hasExtras = step.paymentRequired || step.spocUserId || step.allowReassign || checklistCount > 0;
+  const hasExtras = step.paymentRequired || step.spocUserId || step.allowReassign || checklistCount > 0 || step.initiatorRole;
 
   function addChecklist() {
-    onChange({ checklistItems: [...step.checklistItems, { label: '', actionRole: 'school_admin' }] });
+    onChange({ checklistItems: [...step.checklistItems, { label: '', actionRole: 'school_admin', type: 'yes_no' }] });
   }
 
   function updateChecklist(idx: number, field: keyof ChecklistItem, val: string) {
@@ -123,6 +146,10 @@ function StepCard({
   function removeChecklist(idx: number) {
     onChange({ checklistItems: step.checklistItems.filter((_, i) => i !== idx) });
   }
+
+  const checklistTypeLabel: Record<ChecklistItemType, string> = {
+    yes_no: '✓/✗', remarks: '✏️', payment: '₹', class_section: '🏫', document: '📄',
+  };
 
   return (
     <div className={`rounded-xl border transition-colors ${
@@ -144,7 +171,7 @@ function StepCard({
           {isFinal ? '✓' : index + 1}
         </div>
 
-        {/* Name + approver */}
+        {/* Name + roles */}
         <div className="flex-1 flex items-center gap-2 flex-wrap min-w-0">
           <input
             className="input-field flex-1 min-w-36 text-sm"
@@ -152,12 +179,24 @@ function StepCard({
             value={step.label}
             onChange={e => onChange({ label: e.target.value })}
           />
+          {/* Initiator role — only for steps after the first */}
+          {index > 0 && (
+            <select
+              className="input-field w-36 text-sm shrink-0"
+              value={step.initiatorRole}
+              onChange={e => onChange({ initiatorRole: e.target.value })}
+              title="Who initiates / triggers this stage"
+            >
+              {INITIATOR_ROLES.map(r => <option key={r.value} value={r.value}>{r.label ? `▶ ${r.label}` : '▶ None'}</option>)}
+            </select>
+          )}
           <select
             className="input-field w-40 text-sm shrink-0"
             value={step.approverRole}
             onChange={e => onChange({ approverRole: e.target.value })}
+            title="Who approves this stage"
           >
-            {APPROVER_ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+            {APPROVER_ROLES.map(r => <option key={r.value} value={r.value}>✓ {r.label}</option>)}
           </select>
           {isFinal && (
             <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded-full shrink-0 font-medium">
@@ -221,35 +260,48 @@ function StepCard({
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
                 </svg>
-                Checklist
+                Checklist Items
               </p>
               <p className="text-[10px] text-surface-400">Tasks the approver must complete before advancing</p>
             </div>
             {step.checklistItems.map((item, iIdx) => (
-              <div key={iIdx} className="flex items-center gap-2 mb-1.5">
-                <div className="w-4 h-4 rounded border border-surface-300 dark:border-gray-600 shrink-0 flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 rounded-full bg-surface-300 dark:bg-gray-600"/>
+              <div key={iIdx} className="flex items-start gap-2 mb-2 p-2 rounded-lg bg-surface-50 dark:bg-gray-800/40">
+                {/* Type badge */}
+                <span className="text-base shrink-0 mt-0.5" title={CHECKLIST_TYPES.find(t => t.value === item.type)?.label}>
+                  {checklistTypeLabel[item.type] || '✓'}
+                </span>
+                <div className="flex-1 space-y-1.5">
+                  <input
+                    className="w-full text-sm border border-surface-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    placeholder="Checklist item label (e.g. Verify birth certificate)"
+                    value={item.label}
+                    onChange={e => updateChecklist(iIdx, 'label', e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <select
+                      className="flex-1 text-xs border border-surface-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      value={item.type}
+                      onChange={e => updateChecklist(iIdx, 'type', e.target.value)}
+                      title="Checklist item type"
+                    >
+                      {CHECKLIST_TYPES.map(t => <option key={t.value} value={t.value}>{t.label} — {t.description}</option>)}
+                    </select>
+                    <select
+                      className="w-36 text-xs border border-surface-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 shrink-0 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      value={item.actionRole}
+                      onChange={e => updateChecklist(iIdx, 'actionRole', e.target.value)}
+                      title="Assigned to role"
+                    >
+                      {ACTION_ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                    <button onClick={() => removeChecklist(iIdx)}
+                      className="text-surface-300 hover:text-red-500 transition-colors p-1 shrink-0">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-                <input
-                  className="flex-1 text-sm border border-surface-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
-                  placeholder="Checklist item (e.g. Verify birth certificate)"
-                  value={item.label}
-                  onChange={e => updateChecklist(iIdx, 'label', e.target.value)}
-                />
-                <select
-                  className="text-xs border border-surface-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 shrink-0 focus:outline-none focus:ring-2 focus:ring-brand-400"
-                  value={item.actionRole}
-                  onChange={e => updateChecklist(iIdx, 'actionRole', e.target.value)}
-                  title="Assigned to"
-                >
-                  {ACTION_ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
-                <button onClick={() => removeChecklist(iIdx)}
-                  className="text-surface-300 hover:text-red-500 transition-colors p-1 shrink-0">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                  </svg>
-                </button>
               </div>
             ))}
             <button onClick={addChecklist}
@@ -379,16 +431,28 @@ export default function WorkflowPage() {
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   // Detect role + load schools for super admin
+  // NOTE: isSuperAdmin is verified against the API response to prevent client-side spoofing
   useEffect(() => {
     const stored = localStorage.getItem('user');
     if (!stored) return;
     const user = JSON.parse(stored);
-    const isSA = user.primaryRole === 'super_admin';
-    setIsSuperAdmin(isSA);
-    if (isSA) {
+    const localIsSA = user.primaryRole === 'super_admin';
+
+    if (localIsSA) {
+      // Verify super-admin status server-side by calling the protected schools endpoint
       fetch('/api/super-admin/schools', { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) {
+            // Not actually a super admin — fall back to own school
+            setIsSuperAdmin(false);
+            setSchoolId(user.schoolId ?? '');
+            return null;
+          }
+          return r.json();
+        })
         .then(d => {
+          if (!d) return;
+          setIsSuperAdmin(true);
           const list = d.schools ?? [];
           setSchools(list);
           // prefer schoolId from URL param (coming from school config), else first in list
@@ -397,21 +461,20 @@ export default function WorkflowPage() {
         })
         .catch(() => setError('Failed to load schools'));
     } else {
+      setIsSuperAdmin(false);
       setSchoolId(user.schoolId ?? '');
     }
   }, []);
 
-  // Load school users for SPOC dropdown
+  // Load school users for SPOC dropdown (scoped to the selected school)
   useEffect(() => {
     if (!schoolId) return;
-    const url = isSuperAdmin
-      ? `/api/super-admin/schools/${schoolId}/users`
-      : '/api/super-admin/users';
+    const url = `/api/school/users${isSuperAdmin ? `?schoolId=${schoolId}` : ''}`;
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : { users: [] })
       .then(d => setUsers(d.users ?? []))
       .catch(() => {});
-  }, [schoolId]);
+  }, [schoolId, isSuperAdmin]);
 
   // Load existing workflow when schoolId is known
   useEffect(() => {
@@ -431,8 +494,13 @@ export default function WorkflowPage() {
         const loaded: Step[] = (wf.steps ?? []).map((s: any) => ({
           stepOrder:            s.stepOrder,
           label:                s.label,
+          initiatorRole:        s.initiatorRole         ?? '',
           approverRole:         s.approverRole,
-          checklistItems:       (s.checklistItems as ChecklistItem[] | null) ?? [],
+          checklistItems:       ((s.checklistItems as any[] | null) ?? []).map((it: any) => ({
+            label:      it.label      ?? '',
+            actionRole: it.actionRole ?? 'school_admin',
+            type:       it.type       ?? 'yes_no',
+          })),
           spocUserId:           s.spocUserId           ?? '',
           paymentRequired:      s.paymentRequired      ?? false,
           paymentGateway:       s.paymentGateway       ?? 'razorpay',

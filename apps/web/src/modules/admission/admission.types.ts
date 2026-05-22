@@ -65,7 +65,8 @@ export interface WorkflowStepInput {
 }
 
 export interface CreateWorkflowInput {
-  schoolId: string;
-  name:     string;
-  steps:    WorkflowStepInput[];
+  schoolId:        string;
+  name:            string;
+  steps:           WorkflowStepInput[];
+  sameForAllRoles?: boolean;
 }

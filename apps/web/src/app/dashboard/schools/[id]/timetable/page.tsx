@@ -441,23 +441,15 @@ export default function TimetablePage({}) {
                       return (
                         <td key={day} className="py-1 px-1 align-top">
                           <div className={`rounded-xl border p-2 space-y-1.5 transition-colors ${hasSubject ? 'border-brand-200 dark:border-brand-800 bg-brand-50/60 dark:bg-brand-950/20' : 'border-surface-200 dark:border-gray-700 bg-surface-50 dark:bg-gray-800/40'}`}>
-                            {classSubjects.length > 0 ? (
-                              <select
-                                className="w-full text-xs bg-transparent border-0 outline-none text-gray-800 dark:text-gray-200 font-medium cursor-pointer"
-                                value={slot.subject}
-                                onChange={e => updateSlot(day, period.no, 'subject', e.target.value)}
-                              >
-                                <option value="">— Subject —</option>
-                                {classSubjects.map(s => <option key={s} value={s}>{s}</option>)}
-                              </select>
-                            ) : (
-                              <input
-                                className="w-full text-xs bg-transparent border-0 outline-none text-gray-800 dark:text-gray-200 placeholder-surface-300 dark:placeholder-gray-600 font-medium"
-                                placeholder="Subject..."
-                                value={slot.subject}
-                                onChange={e => updateSlot(day, period.no, 'subject', e.target.value)}
-                              />
-                            )}
+                            <select
+                              className="w-full text-xs bg-transparent border-0 outline-none text-gray-800 dark:text-gray-200 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                              value={slot.subject}
+                              onChange={e => updateSlot(day, period.no, 'subject', e.target.value)}
+                              disabled={classSubjects.length === 0}
+                            >
+                              <option value="">{classSubjects.length === 0 ? 'No subjects configured' : '— Subject —'}</option>
+                              {classSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
                             <select
                               className="w-full text-[11px] bg-white dark:bg-gray-800 border border-surface-200 dark:border-gray-600 rounded-lg px-1.5 py-1 text-gray-600 dark:text-gray-400 focus:outline-none focus:border-brand-400"
                               value={slot.teacherId}

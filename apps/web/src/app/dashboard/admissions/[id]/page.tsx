@@ -28,6 +28,10 @@ export default function ApplicationDetailPage({}) {
   const [saving,     setSaving]     = useState(false);
   const [saveOk,     setSaveOk]     = useState(false);
 
+  // Reassignment history
+  const [assignments,      setAssignments]      = useState<any[]>([]);
+  const [showAssignments,  setShowAssignments]  = useState(false);
+
   // Edit state
   const [editParent,   setEditParent]   = useState({ parentName: '', parentPhone: '', parentEmail: '' });
   const [editChildren, setEditChildren] = useState<any[]>([]);
@@ -79,6 +83,15 @@ export default function ApplicationDetailPage({}) {
       })
       .catch((err: unknown) => { if (process.env.NODE_ENV === 'development') console.error('[classes]', err); });
   }, [token]);
+
+  // Fetch reassignment history for this application
+  useEffect(() => {
+    if (!token || !params.id) return;
+    fetch(`/api/tasks/reassign?applicationId=${params.id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : { assignments: [] })
+      .then(d => setAssignments(d.assignments ?? []))
+      .catch(() => {});
+  }, [token, params.id]);
 
   const handleAction = async (action: 'approve' | 'reject') => {
     setBusy(true); setError('');
@@ -320,17 +333,63 @@ export default function ApplicationDetailPage({}) {
       {/* Workflow steps */}
       {steps.length > 0 && (
         <div className="card p-5">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Approval Workflow</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Approval Workflow</h3>
+            {assignments.length > 0 && (
+              <button
+                onClick={() => setShowAssignments(v => !v)}
+                className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-2.5 py-1 rounded-full font-medium hover:bg-amber-100 transition-colors"
+                title="This application has been reassigned — click to view history"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/>
+                  <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/>
+                </svg>
+                Reassigned · {showAssignments ? 'Hide' : 'View'} history
+              </button>
+            )}
+          </div>
+
+          {/* Reassignment history panel */}
+          {showAssignments && assignments.length > 0 && (
+            <div className="mb-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 space-y-2">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Reassignment History</p>
+              {assignments.map((a: any) => (
+                <div key={a.id} className="flex items-start gap-2 text-xs text-amber-800 dark:text-amber-300">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 mt-0.5">
+                    <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/>
+                  </svg>
+                  <div>
+                    <span className="font-medium">Step {a.stepOrder}</span>
+                    {' '}reassigned to{' '}
+                    <span className="font-medium">{a.assignedTo?.firstName} {a.assignedTo?.lastName}</span>
+                    {a.assignedBy && <span className="text-amber-600 dark:text-amber-400"> by {a.assignedBy.firstName} {a.assignedBy.lastName}</span>}
+                    {a.note && <span className="block text-amber-500 dark:text-amber-500 italic mt-0.5">"{a.note}"</span>}
+                    <span className="block text-amber-400 dark:text-amber-600 mt-0.5">{new Date(a.createdAt).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="space-y-2">
             {steps.map((s: any) => {
               const done   = app.currentStep > s.stepOrder || app.status === 'approved';
               const active = app.currentStep === s.stepOrder && !isFinal;
+              // Find latest assignment for this step
+              const stepAssignment = assignments.find((a: any) => a.stepOrder === s.stepOrder);
               return (
                 <div key={s.id} className={`flex items-center gap-3 text-sm px-3 py-2 rounded-lg ${active ? 'bg-brand-50 dark:bg-brand-950/30' : ''}`}>
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${done ? 'bg-emerald-500 text-white' : active ? 'bg-brand-500 text-white' : 'bg-surface-100 text-surface-400'}`}>
                     {done ? '✓' : s.stepOrder}
                   </div>
                   <span className={active ? 'font-semibold text-brand-700 dark:text-brand-400' : done ? 'text-emerald-700 dark:text-emerald-400' : 'text-surface-400'}>{s.label}</span>
+                  {stepAssignment && (
+                    <span className="ml-1 text-[10px] bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 px-1.5 py-0.5 rounded-full shrink-0"
+                      title={`Reassigned to ${stepAssignment.assignedTo?.firstName} ${stepAssignment.assignedTo?.lastName}`}>
+                      ⇄ Reassigned
+                    </span>
+                  )}
                   <span className="text-xs text-surface-400 ml-auto">{s.approverRole}</span>
                 </div>
               );

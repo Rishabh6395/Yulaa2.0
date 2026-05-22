@@ -23,6 +23,9 @@ interface School {
   _count: { students: number; teachers: number };
 }
 
+interface StateMaster  { id: string; name: string; code?: string | null }
+interface DistrictMaster { id: string; name: string }
+
 const PLAN_STYLES: Record<string, string> = {
   basic:      'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
   standard:   'bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400',
@@ -31,7 +34,8 @@ const PLAN_STYLES: Record<string, string> = {
 };
 
 const EMPTY_FORM = {
-  name: '', email: '', phone: '', address: '', city: '', state: '',
+  name: '', email: '', phone: '', address: '',
+  state: '', district: '', city: '',
   website: '', latitude: '', longitude: '', boardType: '', subscriptionPlan: 'basic', configSource: '',
 };
 
@@ -45,6 +49,14 @@ export default function SchoolLibraryPage() {
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState('');
 
+  // Master data for location
+  const [states,    setStates]    = useState<StateMaster[]>([]);
+  const [districts, setDistricts] = useState<DistrictMaster[]>([]);
+  const [mastersReady, setMastersReady] = useState(false);
+
+  // Temp admin credentials returned after school creation
+  const [adminCreds, setAdminCreds] = useState<{ email: string; tempPassword: string } | null>(null);
+
   const getToken = () => typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const authHeaders = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
 
@@ -57,12 +69,34 @@ export default function SchoolLibraryPage() {
     } finally { setLoading(false); }
   }
 
+  // Load states from sys type master on mount
+  useEffect(() => {
+    fetch('/api/masters/states', { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.states) setStates(d.states); })
+      .catch(() => {/* states unavailable, fallback to text input */})
+      .finally(() => setMastersReady(true));
+  }, []);
+
+  // Load districts when selected state changes
+  useEffect(() => {
+    if (!form.state) { setDistricts([]); setForm(f => ({ ...f, district: '' })); return; }
+    const stateObj = states.find(s => s.name === form.state);
+    if (!stateObj) { setDistricts([]); return; }
+    fetch(`/api/masters/districts?stateId=${stateObj.id}`, { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.districts) setDistricts(d.districts); else setDistricts([]); })
+      .catch(() => setDistricts([]));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.state, states]);
+
   useEffect(() => { load(); }, []);
 
   function openCreate() {
     setEditSchool(null);
     setForm({ ...EMPTY_FORM, configSource: schools.find(s => s.isDefault)?.id || '' });
     setError('');
+    setAdminCreds(null);
     setShowForm(true);
   }
 
@@ -70,12 +104,14 @@ export default function SchoolLibraryPage() {
     setEditSchool(school);
     setForm({
       name: school.name, email: school.email || '', phone: school.phone || '',
-      address: school.address || '', city: school.city || '', state: school.state || '',
+      address: school.address || '', state: school.state || '',
+      district: '', city: school.city || '',
       website: school.website || '', latitude: school.latitude?.toString() || '',
       longitude: school.longitude?.toString() || '', boardType: school.boardType || '',
       subscriptionPlan: school.subscriptionPlan, configSource: '',
     });
     setError('');
+    setAdminCreds(null);
     setShowForm(true);
   }
 
@@ -88,7 +124,13 @@ export default function SchoolLibraryPage() {
       const res    = await fetch('/api/super-admin/schools', { method, headers: authHeaders(), body: JSON.stringify(body) });
       const data   = await res.json();
       if (!res.ok) { setError(data.error || 'Failed to save school details — please try again'); return; }
-      setShowForm(false);
+
+      // Show temp admin credentials if returned (new school with email)
+      if (!editSchool && data.adminUser?.tempPassword) {
+        setAdminCreds({ email: data.adminUser.email, tempPassword: data.adminUser.tempPassword });
+      } else {
+        setShowForm(false);
+      }
       await load();
     } catch { setError('Network error'); }
     finally { setSaving(false); }
@@ -169,93 +211,140 @@ export default function SchoolLibraryPage() {
       )}
 
       {/* Register / Edit Modal */}
-      <Modal open={showForm} onClose={() => setShowForm(false)} title={editSchool ? 'Edit School' : 'Register School'}>
-        {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-4">{error}</div>}
-        <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-          {/* Basic info */}
-          <div>
-            <label className="label">School Name *</label>
-            <input className="input-field" required value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="e.g. Greenwood International School"/>
+      <Modal open={showForm} onClose={() => { setShowForm(false); setAdminCreds(null); }} title={editSchool ? 'Edit School' : 'Register School'}>
+
+        {/* Temp credentials banner — shown after successful creation */}
+        {adminCreds && (
+          <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 mb-4 space-y-2">
+            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">School registered successfully!</p>
+            <p className="text-xs text-emerald-600 dark:text-emerald-400">
+              A <strong>School Admin</strong> account has been created for this email. Share these credentials with the school administrator:
+            </p>
+            <div className="bg-white dark:bg-gray-900 rounded-lg px-3 py-2 space-y-1 font-mono text-xs border border-emerald-200 dark:border-emerald-800">
+              <p><span className="text-surface-400">Email:</span> <span className="font-semibold text-gray-900 dark:text-gray-100">{adminCreds.email}</span></p>
+              <p><span className="text-surface-400">Password:</span> <span className="font-semibold text-gray-900 dark:text-gray-100">{adminCreds.tempPassword}</span></p>
+            </div>
+            <p className="text-xs text-emerald-600 dark:text-emerald-400">The admin should change this password after first login.</p>
+            <button onClick={() => { setShowForm(false); setAdminCreds(null); }} className="btn-primary w-full mt-1 text-sm">Done</button>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Board Type</label>
-              <select className="input-field" value={form.boardType} onChange={e => setForm(f => ({...f, boardType: e.target.value}))}>
-                <option value="">Select board</option>
-                <option value="CBSE">CBSE</option>
-                <option value="ICSE">ICSE</option>
-                <option value="State">State Board</option>
-                <option value="IB">IB</option>
-                <option value="Cambridge">Cambridge</option>
-              </select>
-            </div>
-            <div>
-              <label className="label">Subscription Plan</label>
-              <select className="input-field" value={form.subscriptionPlan} onChange={e => setForm(f => ({...f, subscriptionPlan: e.target.value}))}>
-                <option value="basic">Basic</option>
-                <option value="standard">Standard</option>
-                <option value="premium">Premium</option>
-                <option value="enterprise">Enterprise</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Email</label>
-              <input type="email" className="input-field" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} placeholder="admin@school.com"/>
-            </div>
-            <div>
-              <label className="label">Phone</label>
-              <input className="input-field" value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))} placeholder="+91 98765 43210"/>
-            </div>
-          </div>
-          <div>
-            <label className="label">Address</label>
-            <textarea className="input-field resize-none" rows={2} value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="Full address..."/>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">City</label>
-              <input className="input-field" value={form.city} onChange={e => setForm(f => ({...f, city: e.target.value}))} placeholder="City"/>
-            </div>
-            <div>
-              <label className="label">State</label>
-              <input className="input-field" value={form.state} onChange={e => setForm(f => ({...f, state: e.target.value}))} placeholder="State"/>
-            </div>
-          </div>
-          <div>
-            <label className="label">Website</label>
-            <input className="input-field" value={form.website} onChange={e => setForm(f => ({...f, website: e.target.value}))} placeholder="https://school.edu.in"/>
-          </div>
-          {/* Location */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Latitude</label>
-              <input type="number" step="any" className="input-field" value={form.latitude} onChange={e => setForm(f => ({...f, latitude: e.target.value}))} placeholder="28.6139"/>
-            </div>
-            <div>
-              <label className="label">Longitude</label>
-              <input type="number" step="any" className="input-field" value={form.longitude} onChange={e => setForm(f => ({...f, longitude: e.target.value}))} placeholder="77.2090"/>
-            </div>
-          </div>
-          {/* Config source (only on create) */}
-          {!editSchool && schools.length > 0 && (
-            <div>
-              <label className="label">Clone Configuration From</label>
-              <select className="input-field" value={form.configSource} onChange={e => setForm(f => ({...f, configSource: e.target.value}))}>
-                <option value="">— Start fresh —</option>
-                {schools.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}{s.isDefault ? ' (Default)' : ''}</option>
-                ))}
-              </select>
-              <p className="text-xs text-surface-400 mt-1">Configurations are cloned once at creation and do not auto-update.</p>
-            </div>
-          )}
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving...' : editSchool ? 'Save Changes' : 'Register School'}</button>
-          </div>
-        </form>
+        )}
+
+        {!adminCreds && (
+          <>
+            {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-4">{error}</div>}
+            <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+              {/* Basic info */}
+              <div>
+                <label className="label">School Name *</label>
+                <input className="input-field" required value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="e.g. Greenwood International School"/>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Board Type</label>
+                  <select className="input-field" value={form.boardType} onChange={e => setForm(f => ({...f, boardType: e.target.value}))}>
+                    <option value="">Select board</option>
+                    <option value="CBSE">CBSE</option>
+                    <option value="ICSE">ICSE</option>
+                    <option value="State">State Board</option>
+                    <option value="IB">IB</option>
+                    <option value="Cambridge">Cambridge</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Subscription Plan</label>
+                  <select className="input-field" value={form.subscriptionPlan} onChange={e => setForm(f => ({...f, subscriptionPlan: e.target.value}))}>
+                    <option value="basic">Basic</option>
+                    <option value="standard">Standard</option>
+                    <option value="premium">Premium</option>
+                    <option value="enterprise">Enterprise</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Email <span className="text-surface-400 font-normal text-xs">(becomes School Admin login)</span></label>
+                  <input type="email" className="input-field" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} placeholder="admin@school.com"/>
+                </div>
+                <div>
+                  <label className="label">Phone</label>
+                  <input className="input-field" value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))} placeholder="+91 98765 43210"/>
+                </div>
+              </div>
+              <div>
+                <label className="label">Address</label>
+                <textarea className="input-field resize-none" rows={2} value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} placeholder="Full address..."/>
+              </div>
+
+              {/* Location — from sys type master */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">State</label>
+                  {states.length > 0 ? (
+                    <select className="input-field" value={form.state} onChange={e => setForm(f => ({...f, state: e.target.value, district: ''}))}>
+                      <option value="">Select state</option>
+                      {states.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                    </select>
+                  ) : (
+                    <input className="input-field" value={form.state} onChange={e => setForm(f => ({...f, state: e.target.value}))} placeholder="State"/>
+                  )}
+                </div>
+                <div>
+                  <label className="label">District</label>
+                  {states.length > 0 ? (
+                    <select
+                      className="input-field"
+                      value={form.district}
+                      onChange={e => setForm(f => ({...f, district: e.target.value}))}
+                      disabled={!form.state}
+                    >
+                      <option value="">{form.state ? 'Select district' : 'Select state first'}</option>
+                      {districts.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                    </select>
+                  ) : (
+                    <input className="input-field" value={form.district} onChange={e => setForm(f => ({...f, district: e.target.value}))} placeholder="District"/>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="label">City</label>
+                <input className="input-field" value={form.city} onChange={e => setForm(f => ({...f, city: e.target.value}))} placeholder="City / Locality"/>
+              </div>
+
+              <div>
+                <label className="label">Website</label>
+                <input className="input-field" value={form.website} onChange={e => setForm(f => ({...f, website: e.target.value}))} placeholder="https://school.edu.in"/>
+              </div>
+              {/* GPS Location */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Latitude</label>
+                  <input type="number" step="any" className="input-field" value={form.latitude} onChange={e => setForm(f => ({...f, latitude: e.target.value}))} placeholder="28.6139"/>
+                </div>
+                <div>
+                  <label className="label">Longitude</label>
+                  <input type="number" step="any" className="input-field" value={form.longitude} onChange={e => setForm(f => ({...f, longitude: e.target.value}))} placeholder="77.2090"/>
+                </div>
+              </div>
+              {/* Config source (only on create) */}
+              {!editSchool && schools.length > 0 && (
+                <div>
+                  <label className="label">Clone Configuration From</label>
+                  <select className="input-field" value={form.configSource} onChange={e => setForm(f => ({...f, configSource: e.target.value}))}>
+                    <option value="">— Start fresh —</option>
+                    {schools.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}{s.isDefault ? ' (Default)' : ''}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-surface-400 mt-1">Configurations are cloned once at creation and do not auto-update.</p>
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+                <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving...' : editSchool ? 'Save Changes' : 'Register School'}</button>
+              </div>
+            </form>
+          </>
+        )}
       </Modal>
     </div>
   );

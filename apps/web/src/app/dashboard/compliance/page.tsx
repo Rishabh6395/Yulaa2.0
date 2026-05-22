@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { COMPLIANCE_CATEGORIES, type ComplianceCategoryKey } from '@/modules/compliance/compliance.types';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ function AddItemModal({ onClose, onSaved, token }: { onClose: () => void; onSave
   });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  const fc = useFormConfig('add_compliance_form');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,45 +66,45 @@ function AddItemModal({ onClose, onSaved, token }: { onClose: () => void; onSave
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {err && <p className="text-sm text-red-600 dark:text-red-400">{err}</p>}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">Category</label>
+            {fc.visible('category') && <div>
+              <label className="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">{fc.label('category')}</label>
               <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value as ComplianceCategoryKey }))}
                 className="w-full px-3 py-2 rounded-xl border border-surface-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-300">
                 {COMPLIANCE_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
               </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">Status</label>
+            </div>}
+            {fc.visible('status') && <div>
+              <label className="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">{fc.label('status')}</label>
               <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
                 className="w-full px-3 py-2 rounded-xl border border-surface-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-300">
                 {STATUSES.map(s => <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>)}
               </select>
-            </div>
+            </div>}
           </div>
-          <div>
-            <label className="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">Title *</label>
-            <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+          {fc.visible('title') && <div>
+            <label className="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">{fc.label('title')} *</label>
+            <input required={fc.required('title') !== false} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
               placeholder="e.g. Fire NOC Certificate"
               className="w-full px-3 py-2 rounded-xl border border-surface-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-300" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">Description</label>
-            <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+          </div>}
+          {fc.visible('description') && <div>
+            <label className="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">{fc.label('description')}</label>
+            <textarea required={fc.required('description')} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               rows={2} placeholder="Optional details…"
               className="w-full px-3 py-2 rounded-xl border border-surface-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-300 resize-none" />
-          </div>
+          </div>}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">Due Date</label>
-              <input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
+            {fc.visible('dueDate') && <div>
+              <label className="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">{fc.label('dueDate')}</label>
+              <input type="date" required={fc.required('dueDate')} value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
                 className="w-full px-3 py-2 rounded-xl border border-surface-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-300" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">Notes</label>
-              <input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+            </div>}
+            {fc.visible('notes') && <div>
+              <label className="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">{fc.label('notes')}</label>
+              <input required={fc.required('notes')} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                 placeholder="Internal notes"
                 className="w-full px-3 py-2 rounded-xl border border-surface-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-300" />
-            </div>
+            </div>}
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-surface-200 dark:border-gray-700 text-sm font-medium text-surface-600 dark:text-gray-400 hover:bg-surface-50 dark:hover:bg-gray-800">Cancel</button>

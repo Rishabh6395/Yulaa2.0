@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Modal from '@/components/ui/Modal';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -67,6 +68,7 @@ export default function EventsPage() {
 
   const [msg,  setMsg]  = useState<{ type: string; text: string } | null>(null);
   const [role, setRole] = useState('');
+  const fc = useFormConfig('create_event_form');
 
   const isAdmin = ['school_admin', 'super_admin', 'principal'].includes(role);
 
@@ -405,48 +407,48 @@ export default function EventsPage() {
           {formError && (
             <div className="px-3 py-2 rounded-lg text-sm text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-400">{formError}</div>
           )}
-          <div>
-            <label className="label">Event Title *</label>
+          {fc.visible('title') && <div>
+            <label className="label">{fc.label('title')} *</label>
             <input className="input-field" required value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Annual Sports Day" />
-          </div>
+          </div>}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Event Type *</label>
+            {fc.visible('eventType') && <div>
+              <label className="label">{fc.label('eventType')}{fc.required('eventType') ? ' *' : ' *'}</label>
               <select className="input-field" required value={form.eventType}
                 onChange={e => setForm(f => ({ ...f, eventType: e.target.value }))}>
                 <option value="">Select type</option>
                 {eventTypes.map(t => <option key={t.code} value={t.code}>{t.name}</option>)}
               </select>
-            </div>
-            <div>
-              <label className="label">Academic Year</label>
-              <input className="input-field" value={form.academicYear}
+            </div>}
+            {fc.visible('academicYear') && <div>
+              <label className="label">{fc.label('academicYear')}</label>
+              <input className="input-field" required={fc.required('academicYear')} value={form.academicYear}
                 onChange={e => setForm(f => ({ ...f, academicYear: e.target.value }))} placeholder="2025-2026" />
-            </div>
+            </div>}
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Start Date *</label>
+            {fc.visible('startDate') && <div>
+              <label className="label">{fc.label('startDate')} *</label>
               <input type="date" className="input-field" required value={form.startDate}
                 onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
-            </div>
-            <div>
-              <label className="label">End Date</label>
-              <input type="date" className="input-field" value={form.endDate}
+            </div>}
+            {fc.visible('endDate') && <div>
+              <label className="label">{fc.label('endDate')}</label>
+              <input type="date" className="input-field" required={fc.required('endDate')} value={form.endDate}
                 onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} />
-            </div>
+            </div>}
           </div>
-          <div>
-            <label className="label">Venue</label>
-            <input className="input-field" value={form.venue}
+          {fc.visible('venue') && <div>
+            <label className="label">{fc.label('venue')}</label>
+            <input className="input-field" required={fc.required('venue')} value={form.venue}
               onChange={e => setForm(f => ({ ...f, venue: e.target.value }))} placeholder="e.g. School Grounds" />
-          </div>
-          <div>
-            <label className="label">Description</label>
-            <textarea className="input-field" rows={3} value={form.description}
+          </div>}
+          {fc.visible('description') && <div>
+            <label className="label">{fc.label('description')}</label>
+            <textarea className="input-field" rows={3} required={fc.required('description')} value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Event details..." />
-          </div>
+          </div>}
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Creating...' : 'Create Event'}</button>

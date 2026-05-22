@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useApi } from '@/hooks/useApi';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 const STATUS_CFG: Record<string, { label: string; cls: string; icon: string }> = {
   pending:     { label: 'Pending',     cls: 'badge-neutral',  icon: '⏳' },
@@ -13,6 +14,8 @@ const STATUS_CFG: Record<string, { label: string; cls: string; icon: string }> =
 const EMPTY_FORM = { grade: '', section: '', classId: '', subject: '', chapter: '', topic: '', orderNo: 0, academicYear: '', startDate: '', endDate: '' };
 
 export default function SyllabusPage() {
+  const fc = useFormConfig('add_syllabus_item_form');
+
   const [items,         setItems]         = useState<any[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [classFilter,   setClassFilter]   = useState('');
@@ -174,25 +177,25 @@ export default function SyllabusPage() {
   const ClassSectionSubjectFields = ({ isUpload = false }: { isUpload?: boolean }) => (
     <>
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="label">Grade *</label>
-          <select className="input-field" required value={form.grade} onChange={e => handleGradeChange(e.target.value)}>
+        {fc.visible('classId') && <div>
+          <label className="label">{fc.label('classId')} *</label>
+          <select className="input-field" required={fc.required('classId')} value={form.grade} onChange={e => handleGradeChange(e.target.value)}>
             <option value="">Select grade</option>
             {grades.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
-        </div>
-        <div>
+        </div>}
+        {fc.visible('classId') && <div>
           <label className="label">Section *</label>
-          <select className="input-field" required value={form.classId} onChange={e => handleSectionChange(e.target.value)} disabled={!form.grade}>
+          <select className="input-field" required={fc.required('classId')} value={form.classId} onChange={e => handleSectionChange(e.target.value)} disabled={!form.grade}>
             <option value="">{form.grade ? 'Select section' : 'Select grade first'}</option>
             {sectionsForGrade.map((c: any) => <option key={c.id} value={c.id}>{c.section || c.name}</option>)}
           </select>
-        </div>
+        </div>}
       </div>
-      <div>
-        <label className="label">Subject *</label>
+      {fc.visible('subject') && <div>
+        <label className="label">{fc.label('subject')} *</label>
         {subjects.length > 0 ? (
-          <select className="input-field" required value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} disabled={!form.classId}>
+          <select className="input-field" required={fc.required('subject')} value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} disabled={!form.classId}>
             <option value="">{form.classId ? 'Select subject' : 'Select section first'}</option>
             {subjects.map((s: any) => <option key={s.id} value={s.name}>{s.name}</option>)}
           </select>
@@ -201,7 +204,7 @@ export default function SyllabusPage() {
             {form.classId ? 'No subjects configured for this class — add subjects in Masters' : 'Select a section first'}
           </div>
         )}
-      </div>
+      </div>}
     </>
   );
 
@@ -331,33 +334,33 @@ export default function SyllabusPage() {
       <Modal open={showForm} onClose={() => setShowForm(false)} title="Add Syllabus Chapter">
         <form onSubmit={handleCreate} className="space-y-4">
           <ClassSectionSubjectFields />
-          <div>
-            <label className="label">Chapter *</label>
-            <input className="input-field" required value={form.chapter} onChange={e => setForm(f => ({...f, chapter: e.target.value}))} placeholder="e.g. Chapter 3: Laws of Motion" />
-          </div>
-          <div>
-            <label className="label">Topic (optional)</label>
-            <input className="input-field" value={form.topic} onChange={e => setForm(f => ({...f, topic: e.target.value}))} placeholder="Specific topic or subtopic" />
+          {fc.visible('chapter') && <div>
+            <label className="label">{fc.label('chapter')} *</label>
+            <input className="input-field" required={fc.required('chapter')} value={form.chapter} onChange={e => setForm(f => ({...f, chapter: e.target.value}))} placeholder="e.g. Chapter 3: Laws of Motion" />
+          </div>}
+          {fc.visible('topic') && <div>
+            <label className="label">{fc.label('topic')} (optional)</label>
+            <input className="input-field" required={fc.required('topic')} value={form.topic} onChange={e => setForm(f => ({...f, topic: e.target.value}))} placeholder="Specific topic or subtopic" />
+          </div>}
+          <div className="grid grid-cols-2 gap-4">
+            {fc.visible('startDate') && <div>
+              <label className="label">{fc.label('startDate')}</label>
+              <input type="date" className="input-field" required={fc.required('startDate')} value={form.startDate} onChange={e => setForm(f => ({...f, startDate: e.target.value}))} />
+            </div>}
+            {fc.visible('endDate') && <div>
+              <label className="label">{fc.label('endDate')}</label>
+              <input type="date" className="input-field" required={fc.required('endDate')} value={form.endDate} onChange={e => setForm(f => ({...f, endDate: e.target.value}))} />
+            </div>}
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Start Date</label>
-              <input type="date" className="input-field" value={form.startDate} onChange={e => setForm(f => ({...f, startDate: e.target.value}))} />
-            </div>
-            <div>
-              <label className="label">End Date</label>
-              <input type="date" className="input-field" value={form.endDate} onChange={e => setForm(f => ({...f, endDate: e.target.value}))} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Order No.</label>
-              <input type="number" className="input-field" value={form.orderNo} onChange={e => setForm(f => ({...f, orderNo: Number(e.target.value)}))} min={0} />
-            </div>
-            <div>
-              <label className="label">Academic Year</label>
-              <input className="input-field" value={form.academicYear} onChange={e => setForm(f => ({...f, academicYear: e.target.value}))} placeholder="2025-2026" />
-            </div>
+            {fc.visible('orderNo') && <div>
+              <label className="label">{fc.label('orderNo')}</label>
+              <input type="number" className="input-field" required={fc.required('orderNo')} value={form.orderNo} onChange={e => setForm(f => ({...f, orderNo: Number(e.target.value)}))} min={0} />
+            </div>}
+            {fc.visible('academicYear') && <div>
+              <label className="label">{fc.label('academicYear')}</label>
+              <input className="input-field" required={fc.required('academicYear')} value={form.academicYear} onChange={e => setForm(f => ({...f, academicYear: e.target.value}))} placeholder="2025-2026" />
+            </div>}
           </div>
           {msg && showForm && (
             <div className={`px-3 py-2 rounded-lg text-sm ${msg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{msg.text}</div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ConfigHelp } from '@/components/ui/ConfigHelp';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 type Consultant = {
   id: string;
@@ -41,6 +42,8 @@ const BLANK_FORM = {
 };
 
 export default function SuperAdminConsultantsPage() {
+  const fc = useFormConfig('create_consultant_form');
+
   const [consultants,  setConsultants]  = useState<Consultant[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [saving,       setSaving]       = useState<string | null>(null);
@@ -159,57 +162,57 @@ export default function SuperAdminConsultantsPage() {
         <div className="card p-6 border-2 border-brand-200 dark:border-brand-800 space-y-4">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">New Consultant Account</h2>
           <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="label">First Name *</label>
-              <input required className="input" value={form.first_name} onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))} />
-            </div>
-            <div>
-              <label className="label">Last Name *</label>
-              <input required className="input" value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} />
-            </div>
-            <div>
-              <label className="label">Email *</label>
-              <input required type="email" className="input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
-            </div>
-            <div>
-              <label className="label">Phone</label>
-              <input type="tel" className="input" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
-            </div>
-            <div>
-              <label className="label">Password</label>
-              <input type="password" className="input" placeholder="Default: Yulaa@2024" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
-            </div>
-            <div>
-              <label className="label">Specialization</label>
-              <input className="input" placeholder="e.g. College Admissions, STEM Careers" value={form.specialization} onChange={e => setForm(f => ({ ...f, specialization: e.target.value }))} />
-            </div>
-            <div>
+            {fc.visible('firstName') && <div>
+              <label className="label">{fc.label('firstName')} *</label>
+              <input required={fc.required('firstName')} className="input" value={form.first_name} onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))} />
+            </div>}
+            {fc.visible('lastName') && <div>
+              <label className="label">{fc.label('lastName')} *</label>
+              <input required={fc.required('lastName')} className="input" value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} />
+            </div>}
+            {fc.visible('email') && <div>
+              <label className="label">{fc.label('email')} *</label>
+              <input required={fc.required('email')} type="email" className="input" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+            </div>}
+            {fc.visible('phone') && <div>
+              <label className="label">{fc.label('phone')}</label>
+              <input type="tel" className="input" required={fc.required('phone')} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+            </div>}
+            {fc.visible('password') && <div>
+              <label className="label">{fc.label('password')}</label>
+              <input type="password" className="input" required={fc.required('password')} placeholder="Default: Yulaa@2024" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+            </div>}
+            {fc.visible('specialization') && <div>
+              <label className="label">{fc.label('specialization')}</label>
+              <input className="input" required={fc.required('specialization')} placeholder="e.g. College Admissions, STEM Careers" value={form.specialization} onChange={e => setForm(f => ({ ...f, specialization: e.target.value }))} />
+            </div>}
+            {fc.visible('sessionFee') && <div>
               <label className="label flex items-center">
-                Session Fee (₹)
+                {fc.label('sessionFee')}
                 <ConfigHelp text="Base fee per career counseling session in ₹. Schools see this rate when booking sessions. Set to 0 or leave empty for free / in-house consultants." />
               </label>
-              <input type="number" min="0" className="input" placeholder="Leave empty for free" value={form.session_fee} onChange={e => setForm(f => ({ ...f, session_fee: e.target.value }))} />
-            </div>
-            <div>
-              <label className="label">Experience (years)</label>
-              <input type="number" min="0" className="input" value={form.experience_years} onChange={e => setForm(f => ({ ...f, experience_years: e.target.value }))} />
-            </div>
-            <div className="col-span-2">
-              <label className="label">Qualifications</label>
-              <input className="input" placeholder="e.g. MBA, B.Ed" value={form.qualifications} onChange={e => setForm(f => ({ ...f, qualifications: e.target.value }))} />
-            </div>
-            <div className="col-span-2">
-              <label className="label">Bio</label>
-              <textarea rows={2} className="input resize-none" value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
-            </div>
+              <input type="number" min="0" className="input" required={fc.required('sessionFee')} placeholder="Leave empty for free" value={form.session_fee} onChange={e => setForm(f => ({ ...f, session_fee: e.target.value }))} />
+            </div>}
+            {fc.visible('experienceYears') && <div>
+              <label className="label">{fc.label('experienceYears')}</label>
+              <input type="number" min="0" className="input" required={fc.required('experienceYears')} value={form.experience_years} onChange={e => setForm(f => ({ ...f, experience_years: e.target.value }))} />
+            </div>}
+            {fc.visible('qualifications') && <div className="col-span-2">
+              <label className="label">{fc.label('qualifications')}</label>
+              <input className="input" required={fc.required('qualifications')} placeholder="e.g. MBA, B.Ed" value={form.qualifications} onChange={e => setForm(f => ({ ...f, qualifications: e.target.value }))} />
+            </div>}
+            {fc.visible('bio') && <div className="col-span-2">
+              <label className="label">{fc.label('bio')}</label>
+              <textarea rows={2} className="input resize-none" required={fc.required('bio')} value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
+            </div>}
             <div className="col-span-2 flex items-center gap-6 flex-wrap">
-              <label className="flex items-center gap-2 cursor-pointer">
+              {fc.visible('isExternal') && <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.is_external} onChange={e => setForm(f => ({ ...f, is_external: e.target.checked }))} />
                 <span className="text-sm flex items-center">
-                  External consultant (not exclusive to one school)
+                  {fc.label('isExternal')}
                   <ConfigHelp text="Internal consultants are employed by a specific school and only serve that school. External consultants are independent and can serve multiple schools based on their area scope." />
                 </span>
-              </label>
+              </label>}
               {form.is_external && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-surface-400 flex items-center">

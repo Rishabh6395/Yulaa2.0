@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { AppError, ConflictError } from '@/utils/errors';
 import * as repo from './super-admin.repo';
 import type { CreateSchoolInput, UpdateSchoolInput, CreateUserInput } from './super-admin.types';
@@ -10,12 +11,15 @@ export async function listSchools() {
 }
 
 export async function createSchool(body: Record<string, any>) {
-  const { name, email, phone, address, city, state, website, latitude, longitude, boardType, subscriptionPlan } = body;
+  const { name, email, phone, address, city, state, district, website, latitude, longitude, boardType, subscriptionPlan } = body;
   if (!name?.trim()) throw new AppError('School name is required');
+
+  // Compose city value: prefer district from master, fallback to city text
+  const cityValue = district?.trim() || city?.trim() || null;
 
   const school = await repo.createSchool({
     name, email: email || null, phone: phone || null, address: address || null,
-    city: city || null, state: state || null, website: website || null,
+    city: cityValue, state: state || null, website: website || null,
     latitude:  latitude  ? parseFloat(latitude)  : null,
     longitude: longitude ? parseFloat(longitude) : null,
     boardType: boardType || null,
@@ -25,7 +29,49 @@ export async function createSchool(body: Record<string, any>) {
   // Auto-sync form config + content types from default school (Super Admin template)
   try { await syncFormConfigToSchool(school.id); } catch { /* non-fatal */ }
 
-  return { school };
+  // Auto-create school admin user from the provided email
+  let adminUser: { email: string; tempPassword: string; isNew: boolean } | null = null;
+  if (email?.trim()) {
+    try { adminUser = await createSchoolAdminFromEmail(email.trim(), school.id); } catch { /* non-fatal */ }
+  }
+
+  return { school, adminUser };
+}
+
+async function createSchoolAdminFromEmail(email: string, schoolId: string) {
+  const schoolAdminRole = await repo.findRoleByCode('school_admin');
+  if (!schoolAdminRole) return null;
+
+  const existing = await repo.findUserByEmail(email);
+
+  if (existing) {
+    // User exists — just assign school_admin role for this school if not already assigned
+    const alreadyAssigned = await repo.findExistingUserRole(existing.id, schoolAdminRole.id, schoolId);
+    if (!alreadyAssigned) {
+      await repo.addUserRole(existing.id, schoolAdminRole.id, schoolId);
+    }
+    return { email: existing.email, tempPassword: '', isNew: false };
+  }
+
+  // Create new user with a temporary password
+  const tempPassword  = crypto.randomBytes(6).toString('base64url'); // ~8 chars, URL-safe
+  const passwordHash  = await bcrypt.hash(tempPassword, 12);
+  const nameParts     = email.split('@')[0].split('.');
+  const firstName     = nameParts[0] ? nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1) : 'School';
+  const lastName      = nameParts[1] ? nameParts[1].charAt(0).toUpperCase() + nameParts[1].slice(1) : 'Admin';
+
+  await repo.createUserWithRole({
+    firstName,
+    lastName,
+    email,
+    phone: null,
+    password: tempPassword,
+    passwordHash,
+    roleId: schoolAdminRole.id,
+    schoolId,
+  });
+
+  return { email, tempPassword, isNew: true };
 }
 
 export async function syncFormConfigToSchool(targetSchoolId: string) {
@@ -59,11 +105,15 @@ export async function syncFormConfigToSchool(targetSchoolId: string) {
 }
 
 export async function updateSchool(body: Record<string, any>) {
-  const { id, name, email, phone, address, city, state, website, latitude, longitude, boardType, subscriptionPlan, status } = body;
+  const { id, name, email, phone, address, city, state, district, website, latitude, longitude, boardType, subscriptionPlan, status } = body;
   if (!id) throw new AppError('id is required');
 
+  const cityValue = district?.trim() || city?.trim() || undefined;
+
   return repo.updateSchool({
-    id, name, email, phone, address, city, state, website,
+    id, name, email, phone, address,
+    city: cityValue !== undefined ? cityValue : city,
+    state, website,
     latitude:  latitude  !== undefined ? parseFloat(latitude)  : undefined,
     longitude: longitude !== undefined ? parseFloat(longitude) : undefined,
     boardType, subscriptionPlan, status,

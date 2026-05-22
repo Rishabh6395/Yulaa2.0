@@ -6,6 +6,7 @@ import PageError from '@/components/ui/PageError';
 import PageLoader from '@/components/ui/PageLoader';
 import EmptyState from '@/components/ui/EmptyState';
 import { useApi } from '@/hooks/useApi';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 const EMPTY_FORM = { class_id: '', subject: '', title: '', description: '', due_date: '', attachments: [] as string[] };
 
@@ -47,7 +48,19 @@ export default function HomeworkPage() {
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
   const user    = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+
+  // Subjects from StreamMaster for selected class
+  const [subjects, setSubjects] = useState<string[]>([]);
+  useEffect(() => {
+    if (!form.class_id || !token) { setSubjects([]); return; }
+    fetch(`/api/masters/streams?classId=${form.class_id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setSubjects((d.streamMasters ?? []).map((m: any) => m.name as string)))
+      .catch(() => setSubjects([]));
+  }, [form.class_id, token]);
+
   const isTeacherOrAdmin = ['teacher', 'school_admin', 'super_admin'].includes(user.primaryRole);
+  const fc = useFormConfig('add_homework_form');
   const isParent         = user.primaryRole === 'parent';
 
   // Include student_id when parent has active child so we get per-student status
@@ -290,32 +303,38 @@ export default function HomeworkPage() {
       <Modal open={showAddModal} onClose={() => { setShowAddModal(false); setForm({ ...EMPTY_FORM, attachments: [] }); }} title="Assign Homework">
         <form onSubmit={handleAdd} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Class *</label>
-              <select className="input-field" required value={form.class_id} onChange={e => setForm({...form, class_id: e.target.value})}>
+            {fc.visible('classId') && <div>
+              <label className="label">{fc.label('classId')}{fc.required('classId') ? ' *' : ''}</label>
+              <select className="input-field" required={fc.required('classId')} value={form.class_id} onChange={e => setForm({...form, class_id: e.target.value, subject: ''})}>
                 <option value="">Select</option>
                 {classes.map(c => <option key={c.id} value={c.id}>{c.grade} - {c.section}</option>)}
               </select>
-            </div>
-            <div>
-              <label className="label">Subject *</label>
-              <input className="input-field" required placeholder="e.g. Mathematics" value={form.subject} onChange={e => setForm({...form, subject: e.target.value})}/>
-            </div>
+            </div>}
+            {fc.visible('subject') && <div>
+              <label className="label">{fc.label('subject')}{fc.required('subject') ? ' *' : ''}</label>
+              <select className="input-field" required={fc.required('subject')} value={form.subject} onChange={e => setForm({...form, subject: e.target.value})}
+                disabled={!form.class_id || subjects.length === 0}>
+                <option value="">
+                  {!form.class_id ? 'Select class first' : subjects.length === 0 ? 'No subjects — configure in Masters → Streams' : '— Select Subject —'}
+                </option>
+                {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>}
           </div>
-          <div>
-            <label className="label">Title *</label>
-            <input className="input-field" required placeholder="Homework title" value={form.title} onChange={e => setForm({...form, title: e.target.value})}/>
-          </div>
-          <div>
-            <label className="label">Description</label>
-            <textarea className="input-field" rows={3} placeholder="Instructions for students…" value={form.description} onChange={e => setForm({...form, description: e.target.value})}/>
-          </div>
-          <div>
-            <label className="label">Due Date *</label>
-            <input type="date" className="input-field" required value={form.due_date} onChange={e => setForm({...form, due_date: e.target.value})}/>
-          </div>
-          <div>
-            <label className="label">Attachments</label>
+          {fc.visible('title') && <div>
+            <label className="label">{fc.label('title')}{fc.required('title') ? ' *' : ''}</label>
+            <input className="input-field" required={fc.required('title')} placeholder="Homework title" value={form.title} onChange={e => setForm({...form, title: e.target.value})}/>
+          </div>}
+          {fc.visible('description') && <div>
+            <label className="label">{fc.label('description')}</label>
+            <textarea className="input-field" rows={3} required={fc.required('description')} placeholder="Instructions for students…" value={form.description} onChange={e => setForm({...form, description: e.target.value})}/>
+          </div>}
+          {fc.visible('dueDate') && <div>
+            <label className="label">{fc.label('dueDate')}{fc.required('dueDate') ? ' *' : ''}</label>
+            <input type="date" className="input-field" required={fc.required('dueDate')} value={form.due_date} onChange={e => setForm({...form, due_date: e.target.value})}/>
+          </div>}
+          {fc.visible('attachments') && <div>
+            <label className="label">{fc.label('attachments')}</label>
             <label className="flex items-center gap-2 cursor-pointer border-2 border-dashed border-surface-200 dark:border-gray-700 rounded-xl px-4 py-3 hover:border-brand-400 transition-colors text-sm text-surface-400 hover:text-brand-500">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
               Add photos or files
@@ -342,7 +361,7 @@ export default function HomeworkPage() {
                 ))}
               </div>
             )}
-          </div>
+          </div>}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving…' : 'Assign'}</button>

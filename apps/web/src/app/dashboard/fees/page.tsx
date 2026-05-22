@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Modal from '@/components/ui/Modal';
 import PageError from '@/components/ui/PageError';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 // ─── Fee Type Master Modal ────────────────────────────────────────────────────
 
@@ -13,6 +14,7 @@ function FeeTypeMasterModal({ open, onClose, token }: { open: boolean; onClose: 
   const [form,       setForm]       = useState({ id: '', name: '', amount: '', frequency: 'monthly', classId: '' });
   const [saving,     setSaving]     = useState(false);
   const [msg,        setMsg]        = useState('');
+  const fc = useFormConfig('add_fee_type_form');
 
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
@@ -65,29 +67,29 @@ function FeeTypeMasterModal({ open, onClose, token }: { open: boolean; onClose: 
         <form onSubmit={handleSave} className="space-y-3 p-4 bg-surface-50 dark:bg-gray-800/40 rounded-xl border border-surface-200 dark:border-gray-700">
           <p className="text-xs font-semibold text-surface-500 uppercase tracking-wide">{form.id ? 'Edit Fee Type' : 'Add Fee Type'}</p>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Name *</label>
+            {fc.visible('name') && <div>
+              <label className="label">{fc.label('name')} *</label>
               <input className="input-field" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Tuition Fee" />
-            </div>
-            <div>
-              <label className="label">Amount (₹) *</label>
+            </div>}
+            {fc.visible('amount') && <div>
+              <label className="label">{fc.label('amount')} *</label>
               <input type="number" className="input-field" required min="1" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" />
-            </div>
+            </div>}
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Frequency</label>
+            {fc.visible('frequency') && <div>
+              <label className="label">{fc.label('frequency')}</label>
               <select className="input-field" value={form.frequency} onChange={e => setForm(f => ({ ...f, frequency: e.target.value }))}>
                 {FREQ_OPTS.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
               </select>
-            </div>
-            <div>
-              <label className="label">Class (optional)</label>
+            </div>}
+            {fc.visible('classId') && <div>
+              <label className="label">{fc.label('classId')}</label>
               <select className="input-field" value={form.classId} onChange={e => setForm(f => ({ ...f, classId: e.target.value }))}>
                 <option value="">All Classes</option>
                 {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-            </div>
+            </div>}
           </div>
           {msg && <p className="text-xs text-red-600">{msg}</p>}
           <div className="flex gap-2">

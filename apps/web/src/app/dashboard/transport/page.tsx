@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -559,6 +560,8 @@ function RidesDashboard({ role, onOpenRide, refresh }: {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function RoutesManager() {
+  const fcRoute = useFormConfig('add_transport_route_form');
+
   const [routes, setRoutes]   = useState<Route[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -700,18 +703,18 @@ function RoutesManager() {
             </div>
             <div className="overflow-y-auto flex-1 px-6 py-5 space-y-3">
               {error && <div className="text-xs text-red-600 p-2 bg-red-50 rounded-lg">{error}</div>}
-              <div><label className="label">Route Name *</label><input className="input" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Route A – North"/></div>
+              {fcRoute.visible('name') && <div><label className="label">{fcRoute.label('name')} *</label><input className="input" required={fcRoute.required('name')} value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Route A – North"/></div>}
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="label">Driver Name</label><input className="input" value={form.driverName} onChange={e=>setForm(f=>({...f,driverName:e.target.value}))} placeholder="Full name"/></div>
-                <div><label className="label">Driver Phone</label><input className="input" value={form.driverPhone} onChange={e=>setForm(f=>({...f,driverPhone:e.target.value}))} placeholder="+91 XXXXX"/></div>
+                {fcRoute.visible('driverName') && <div><label className="label">{fcRoute.label('driverName')}</label><input className="input" required={fcRoute.required('driverName')} value={form.driverName} onChange={e=>setForm(f=>({...f,driverName:e.target.value}))} placeholder="Full name"/></div>}
+                {fcRoute.visible('driverPhone') && <div><label className="label">{fcRoute.label('driverPhone')}</label><input className="input" required={fcRoute.required('driverPhone')} value={form.driverPhone} onChange={e=>setForm(f=>({...f,driverPhone:e.target.value}))} placeholder="+91 XXXXX"/></div>}
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="label">Vehicle No.</label><input className="input" value={form.vehicleNo} onChange={e=>setForm(f=>({...f,vehicleNo:e.target.value}))} placeholder="MH01AB1234"/></div>
-                <div><label className="label">Capacity</label><input className="input" type="number" value={form.capacity} onChange={e=>setForm(f=>({...f,capacity:e.target.value}))} placeholder="40"/></div>
+                {fcRoute.visible('vehicleNo') && <div><label className="label">{fcRoute.label('vehicleNo')}</label><input className="input" required={fcRoute.required('vehicleNo')} value={form.vehicleNo} onChange={e=>setForm(f=>({...f,vehicleNo:e.target.value}))} placeholder="MH01AB1234"/></div>}
+                {fcRoute.visible('capacity') && <div><label className="label">{fcRoute.label('capacity')}</label><input className="input" type="number" required={fcRoute.required('capacity')} value={form.capacity} onChange={e=>setForm(f=>({...f,capacity:e.target.value}))} placeholder="40"/></div>}
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="label">Morning Departure</label><input className="input" value={form.morningDeparture} onChange={e=>setForm(f=>({...f,morningDeparture:e.target.value}))} placeholder="07:00"/></div>
-                <div><label className="label">Evening Departure</label><input className="input" value={form.eveningDeparture} onChange={e=>setForm(f=>({...f,eveningDeparture:e.target.value}))} placeholder="16:30"/></div>
+                {fcRoute.visible('morningDeparture') && <div><label className="label">{fcRoute.label('morningDeparture')}</label><input className="input" required={fcRoute.required('morningDeparture')} value={form.morningDeparture} onChange={e=>setForm(f=>({...f,morningDeparture:e.target.value}))} placeholder="07:00"/></div>}
+                {fcRoute.visible('eveningDeparture') && <div><label className="label">{fcRoute.label('eveningDeparture')}</label><input className="input" required={fcRoute.required('eveningDeparture')} value={form.eveningDeparture} onChange={e=>setForm(f=>({...f,eveningDeparture:e.target.value}))} placeholder="16:30"/></div>}
               </div>
               <div>
                 <label className="label">Stops (one per line, optional time in parentheses)</label>
@@ -734,6 +737,8 @@ function RoutesManager() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function BusesManager() {
+  const fcBus = useFormConfig('add_transport_bus_form');
+
   const [buses, setBuses]     = useState<Bus[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -808,14 +813,14 @@ function BusesManager() {
             </div>
             <div className="px-6 py-5 space-y-4">
               {error && <div className="text-xs text-red-600 p-2 bg-red-50 rounded-lg">{error}</div>}
-              <div><label className="label">Bus / Vehicle Number *</label><input className="input" value={form.busNumber} onChange={e=>setForm(f=>({...f,busNumber:e.target.value}))} placeholder="Bus 12 / MH01AB1234"/></div>
-              <div><label className="label">Capacity (seats)</label><input className="input" type="number" value={form.capacity} onChange={e=>setForm(f=>({...f,capacity:e.target.value}))} placeholder="40"/></div>
-              <label className="flex items-center justify-between">
-                <span className="text-sm text-gray-800 dark:text-gray-200">GPS Tracking Enabled</span>
+              {fcBus.visible('busNumber') && <div><label className="label">{fcBus.label('busNumber')} *</label><input className="input" required={fcBus.required('busNumber')} value={form.busNumber} onChange={e=>setForm(f=>({...f,busNumber:e.target.value}))} placeholder="Bus 12 / MH01AB1234"/></div>}
+              {fcBus.visible('capacity') && <div><label className="label">{fcBus.label('capacity')}</label><input className="input" type="number" required={fcBus.required('capacity')} value={form.capacity} onChange={e=>setForm(f=>({...f,capacity:e.target.value}))} placeholder="40"/></div>}
+              {fcBus.visible('gpsEnabled') && <label className="flex items-center justify-between">
+                <span className="text-sm text-gray-800 dark:text-gray-200">{fcBus.label('gpsEnabled')}</span>
                 <div onClick={() => setForm(f=>({...f,gpsEnabled:!f.gpsEnabled}))} className={`w-10 h-5 rounded-full cursor-pointer relative transition-colors ${form.gpsEnabled ? 'bg-brand-500' : 'bg-surface-300 dark:bg-gray-600'}`}>
                   <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.gpsEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </div>
-              </label>
+              </label>}
               {form.gpsEnabled && <div><label className="label">GPS Device ID</label><input className="input" value={form.gpsDeviceId} onChange={e=>setForm(f=>({...f,gpsDeviceId:e.target.value}))} placeholder="Device serial / IMEI"/></div>}
             </div>
             <div className="px-6 py-4 border-t border-surface-100 dark:border-gray-700 flex gap-3 justify-end">

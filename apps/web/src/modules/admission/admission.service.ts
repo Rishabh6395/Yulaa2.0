@@ -134,7 +134,7 @@ export async function getWorkflow(schoolId: string) {
   return repo.findActiveWorkflow(schoolId);
 }
 
-export async function saveWorkflow(data: CreateWorkflowInput) {
+export async function saveWorkflow(data: CreateWorkflowInput & { sameForAllRoles?: boolean }) {
   if (!data.name) throw new AppError('Workflow name is required');
   if (!data.steps || data.steps.length === 0) throw new AppError('At least one step is required');
   return repo.createWorkflow(data);

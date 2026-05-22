@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 function getToken() {
   if (typeof document === 'undefined') return '';
@@ -38,6 +39,8 @@ export default function GradingTypesPage() {
   const schoolQ = effectiveSchoolId ? `&schoolId=${effectiveSchoolId}` : '';
 
   const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
+
+  const fc = useFormConfig('add_grading_type_form');
 
   const [examTypes,        setExamTypes]        = useState<any[]>([]);
   const [selectedExamType, setSelectedExamType] = useState('');
@@ -152,11 +155,11 @@ export default function GradingTypesPage() {
             </p>
             <form onSubmit={handleAdd} className="space-y-3">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                <div><label className="block text-xs font-medium text-surface-400 mb-1">Grade *</label><input value={form.grade} onChange={e => setForm(p => ({...p, grade: e.target.value}))} placeholder="e.g. A+" className={inp} /></div>
-                <div><label className="block text-xs font-medium text-surface-400 mb-1">Min % *</label><input type="number" value={form.minPercent} onChange={e => setForm(p => ({...p, minPercent: Number(e.target.value)}))} className={inp} /></div>
-                <div><label className="block text-xs font-medium text-surface-400 mb-1">Max % *</label><input type="number" value={form.maxPercent} onChange={e => setForm(p => ({...p, maxPercent: Number(e.target.value)}))} className={inp} /></div>
-                <div><label className="block text-xs font-medium text-surface-400 mb-1">Grade Points</label><input type="number" step="0.1" value={form.gradePoints} onChange={e => setForm(p => ({...p, gradePoints: e.target.value}))} placeholder="e.g. 9.0" className={inp} /></div>
-                <div><label className="block text-xs font-medium text-surface-400 mb-1">Description</label><input value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} placeholder="e.g. Excellent" className={inp} /></div>
+                {fc.visible('grade') && <div><label className="block text-xs font-medium text-surface-400 mb-1">{fc.label('grade')} *</label><input value={form.grade} onChange={e => setForm(p => ({...p, grade: e.target.value}))} required={fc.required('grade')} placeholder="e.g. A+" className={inp} /></div>}
+                {fc.visible('minPercent') && <div><label className="block text-xs font-medium text-surface-400 mb-1">{fc.label('minPercent')} *</label><input type="number" value={form.minPercent} onChange={e => setForm(p => ({...p, minPercent: Number(e.target.value)}))} required={fc.required('minPercent')} className={inp} /></div>}
+                {fc.visible('maxPercent') && <div><label className="block text-xs font-medium text-surface-400 mb-1">{fc.label('maxPercent')} *</label><input type="number" value={form.maxPercent} onChange={e => setForm(p => ({...p, maxPercent: Number(e.target.value)}))} required={fc.required('maxPercent')} className={inp} /></div>}
+                {fc.visible('gradePoints') && <div><label className="block text-xs font-medium text-surface-400 mb-1">{fc.label('gradePoints')}</label><input type="number" step="0.1" value={form.gradePoints} onChange={e => setForm(p => ({...p, gradePoints: e.target.value}))} required={fc.required('gradePoints')} placeholder="e.g. 9.0" className={inp} /></div>}
+                {fc.visible('description') && <div><label className="block text-xs font-medium text-surface-400 mb-1">{fc.label('description')}</label><input value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} required={fc.required('description')} placeholder="e.g. Excellent" className={inp} /></div>}
               </div>
               {err && !editId && <p className="text-xs text-red-500">{err}</p>}
               <button type="submit" disabled={saving} className="btn-primary text-sm px-4 py-2">{saving ? 'Saving…' : 'Add'}</button>

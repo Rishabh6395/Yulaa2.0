@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
-import { FORM_DEFINITIONS } from '@/lib/formDefinitions';
 
 const SEL_CLS = 'input text-sm w-full';
 
@@ -25,8 +24,6 @@ const MASTER_SECTIONS = [
   {
     title: 'Academic',
     items: [
-      { label: 'Classes',         href: '/dashboard/masters/classes',       icon: 'ListOrdered',    desc: 'Class / section records used across the school' },
-      { label: 'Subjects',        href: '/dashboard/masters/subjects',      icon: 'BookMarked',     desc: 'Subject catalog linked to grade / class levels' },
       { label: 'Exam Types',      href: '/dashboard/masters/exam-types',    icon: 'ClipboardCheck', desc: 'Types of exams / terms' },
       { label: 'Grading Types',   href: '/dashboard/masters/grading-types', icon: 'BarChart',       desc: 'Grade scales per exam type' },
     ],
@@ -135,8 +132,6 @@ const icons: Record<string, React.ReactNode> = {
   Shield:          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
 };
 
-const AVAILABLE_FORMS = FORM_DEFINITIONS.map(f => ({ id: f.id, label: f.label }));
-
 export default function MastersPage() {
   const searchParams  = useSearchParams();
   const schoolId      = searchParams.get('schoolId');
@@ -161,12 +156,9 @@ export default function MastersPage() {
   const suffix = effectiveSchoolId ? `?schoolId=${effectiveSchoolId}` : '';
 
   const [customTypes, setCustomTypes] = useState<any[]>([]);
-  const [showModal, setShowModal]     = useState(false);
-  const [form, setForm]               = useState({ name: '', description: '', formId: '', fieldSlot: '' });
-  const [saving, setSaving]           = useState(false);
-  const [error, setError]             = useState('');
-  const [seeding, setSeeding]         = useState(false);
-  const [seedResult, setSeedResult]   = useState('');
+  const [seeding,     setSeeding]     = useState(false);
+  const [seedResult,  setSeedResult]  = useState('');
+  const [seedIsError, setSeedIsError] = useState(false);
 
   const loadCustomTypes = useCallback(() => {
     const qs = effectiveSchoolId ? `?schoolId=${effectiveSchoolId}` : '';
@@ -179,7 +171,10 @@ export default function MastersPage() {
   useEffect(() => { loadCustomTypes(); }, [loadCustomTypes]);
 
   const handleSeedStandard = async () => {
-    setSeeding(true); setSeedResult('');
+    if (sa && !effectiveSchoolId) {
+      setSeedResult('Please select a school first.'); setSeedIsError(true); return;
+    }
+    setSeeding(true); setSeedResult(''); setSeedIsError(false);
     try {
       const body: any = {};
       if (effectiveSchoolId) body.schoolId = effectiveSchoolId;
@@ -189,35 +184,14 @@ export default function MastersPage() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) { setSeedResult(data.error ?? 'Seed failed'); return; }
+      if (!res.ok) { setSeedResult(data.error ?? 'Seed failed'); setSeedIsError(true); return; }
       setSeedResult(`Done — ${data.created} created, ${data.skipped} already existed.`);
+      setSeedIsError(false);
       loadCustomTypes();
-    } catch { setSeedResult('Network error'); }
+    } catch { setSeedResult('Network error'); setSeedIsError(true); }
     finally { setSeeding(false); }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true); setError('');
-    try {
-      const body: any = { name: form.name, description: form.description };
-      if (effectiveSchoolId) body.schoolId  = effectiveSchoolId;
-      if (form.formId)       body.formId    = form.formId;
-      if (form.fieldSlot) body.fieldSlot = form.fieldSlot;
-
-      const res  = await fetch('/api/masters/custom', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? 'Failed to create'); return; }
-      setShowModal(false);
-      setForm({ name: '', description: '', formId: '', fieldSlot: '' });
-      loadCustomTypes();
-    } catch { setError('Network error'); }
-    finally { setSaving(false); }
-  };
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -263,15 +237,12 @@ export default function MastersPage() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
               {seeding ? 'Initializing…' : 'Init Standard Masters'}
             </button>
-            {seedResult && <span className="text-xs text-emerald-600 dark:text-emerald-400">{seedResult}</span>}
+            {seedResult && (
+              <span className={`text-xs ${seedIsError ? 'text-red-500 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                {seedResult}
+              </span>
+            )}
           </div>
-          <button
-            onClick={() => { setShowModal(true); setError(''); }}
-            className="btn-primary flex items-center gap-2"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Master
-          </button>
         </div>
       </div>
 
@@ -325,7 +296,7 @@ export default function MastersPage() {
                   </p>
                   {ct.formId && (
                     <p className="text-xs text-purple-400 dark:text-purple-500 mt-0.5">
-                      Linked to: {AVAILABLE_FORMS.find(f => f.id === ct.formId)?.label ?? ct.formId}
+                      Linked to form: {ct.formId}
                     </p>
                   )}
                 </div>
@@ -336,86 +307,6 @@ export default function MastersPage() {
         </div>
       )}
 
-      {/* Add Master Type modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md border border-surface-200 dark:border-gray-700">
-            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-surface-100 dark:border-gray-800">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Create New Master Type</h2>
-              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-gray-800 text-surface-400 transition-colors">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleCreate} className="px-6 py-5 space-y-4">
-              <div>
-                <label className="label">Master Name <span className="text-red-500">*</span></label>
-                <input
-                  className="input-field"
-                  required
-                  placeholder="e.g. Religion, Caste, Category"
-                  value={form.name}
-                  onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                />
-                <p className="text-xs text-surface-400 mt-1">This will be the name shown in the Masters menu.</p>
-              </div>
-
-              <div>
-                <label className="label">Description</label>
-                <input
-                  className="input-field"
-                  placeholder="e.g. Religion options for students"
-                  value={form.description}
-                  onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                />
-              </div>
-
-              <div>
-                <label className="label">Link to Form (optional)</label>
-                <select
-                  className="input-field"
-                  value={form.formId}
-                  onChange={e => setForm(p => ({ ...p, formId: e.target.value, fieldSlot: '' }))}
-                >
-                  <option value="">— Not linked to any form —</option>
-                  {AVAILABLE_FORMS.map(f => (
-                    <option key={f.id} value={f.id}>{f.label}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-surface-400 mt-1">
-                  If linked, this master's values will appear as a dropdown in that form.
-                </p>
-              </div>
-
-              {form.formId && (
-                <div>
-                  <label className="label">Field Slot in Form</label>
-                  <input
-                    className="input-field"
-                    placeholder="e.g. religion, caste, category"
-                    value={form.fieldSlot}
-                    onChange={e => setForm(p => ({ ...p, fieldSlot: e.target.value }))}
-                  />
-                  <p className="text-xs text-surface-400 mt-1">
-                    The field identifier in the form where this dropdown will appear.
-                  </p>
-                </div>
-              )}
-
-              {error && (
-                <p className="text-sm text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">{error}</p>
-              )}
-
-              <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => setShowModal(false)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" disabled={saving} className="btn-primary flex-1">
-                  {saving ? 'Creating…' : 'Create Master'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

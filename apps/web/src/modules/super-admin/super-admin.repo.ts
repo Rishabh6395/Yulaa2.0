@@ -143,6 +143,17 @@ export async function findRoleById(roleId: string) {
   return prisma.role.findUnique({ where: { id: roleId } });
 }
 
+export async function findUserByEmail(email: string) {
+  return prisma.user.findUnique({
+    where: { email: email.trim().toLowerCase() },
+    select: { id: true, email: true, firstName: true, lastName: true },
+  });
+}
+
+export async function findRoleByCode(code: string) {
+  return prisma.role.findFirst({ where: { code } });
+}
+
 /** Creates a Teacher row if one doesn't already exist for this user+school. */
 export async function ensureTeacherRecord(userId: string, schoolId: string) {
   const existing = await prisma.teacher.findFirst({ where: { userId, schoolId } });

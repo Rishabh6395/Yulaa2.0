@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 type TimetableSlot = {
   id: string;
@@ -24,6 +25,7 @@ type Class = {
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export default function CreateOnlineClassPage() {
+  const fc     = useFormConfig('create_online_class_form');
   const router = useRouter();
   const [slots,    setSlots]    = useState<TimetableSlot[]>([]);
   const [classes,  setClasses]  = useState<Class[]>([]);
@@ -140,31 +142,29 @@ export default function CreateOnlineClassPage() {
 
       <form onSubmit={handleSubmit} className="card p-6 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="col-span-2">
-            <label className="label">Class Title</label>
-            <input required className="input" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Mathematics - Chapter 5" />
-          </div>
-          <div>
-            <label className="label">Subject</label>
-            {subjects.length > 0 ? (
-              <select className="input" value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}>
-                <option value="">— Select Subject —</option>
-                {subjects.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            ) : (
-              <input className="input" value={form.subject} placeholder={form.class_id ? 'Type subject name' : 'Select class first'}
-                onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} />
-            )}
-          </div>
-          <div>
-            <label className="label">For Class</label>
-            <select required className="input" value={form.class_id} onChange={e => setForm(f => ({ ...f, class_id: e.target.value }))}>
+          {fc.visible('title') && <div className="col-span-2">
+            <label className="label">{fc.label('title')}</label>
+            <input required={fc.required('title')} className="input" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Mathematics - Chapter 5" />
+          </div>}
+          {fc.visible('subject') && <div>
+            <label className="label">{fc.label('subject')}</label>
+            <select className="input" required={fc.required('subject')} value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
+              disabled={!form.class_id || subjects.length === 0}>
+              <option value="">
+                {!form.class_id ? 'Select class first' : subjects.length === 0 ? 'No subjects — configure in Masters → Streams' : '— Select Subject —'}
+              </option>
+              {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>}
+          {fc.visible('classId') && <div>
+            <label className="label">{fc.label('classId')}</label>
+            <select required={fc.required('classId')} className="input" value={form.class_id} onChange={e => setForm(f => ({ ...f, class_id: e.target.value }))}>
               <option value="">Select class…</option>
               {classes.map(c => <option key={c.id} value={c.id}>{c.grade}-{c.section} ({c.name})</option>)}
             </select>
-          </div>
-          <div>
-            <label className="label">Platform</label>
+          </div>}
+          {fc.visible('platform') && <div>
+            <label className="label">{fc.label('platform')}</label>
             <div className="flex gap-3 flex-wrap">
               {PLATFORMS.map(p => (
                 <label key={p.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all ${form.platform === p.id ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/40' : 'border-surface-200 dark:border-gray-700'}`}>
@@ -173,27 +173,27 @@ export default function CreateOnlineClassPage() {
                 </label>
               ))}
             </div>
-          </div>
-          <div>
-            <label className="label">Duration (minutes)</label>
-            <input type="number" min="10" max="180" className="input" value={form.duration_minutes} onChange={e => setForm(f => ({ ...f, duration_minutes: e.target.value }))} />
-          </div>
-          <div className="col-span-2">
-            <label className="label">Scheduled Date & Time</label>
-            <input required type="datetime-local" className="input" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} />
-          </div>
-          <div className="col-span-2">
-            <label className="label">Meeting Link</label>
-            <input type="url" className="input" placeholder="https://meet.google.com/..." value={form.meeting_link} onChange={e => setForm(f => ({ ...f, meeting_link: e.target.value }))} />
-          </div>
-          <div>
-            <label className="label">Meeting ID (optional)</label>
-            <input className="input" value={form.meeting_id} onChange={e => setForm(f => ({ ...f, meeting_id: e.target.value }))} />
-          </div>
-          <div>
-            <label className="label">Password / Passcode (optional)</label>
-            <input className="input" value={form.meeting_password} onChange={e => setForm(f => ({ ...f, meeting_password: e.target.value }))} />
-          </div>
+          </div>}
+          {fc.visible('durationMinutes') && <div>
+            <label className="label">{fc.label('durationMinutes')}</label>
+            <input type="number" min="10" max="180" className="input" required={fc.required('durationMinutes')} value={form.duration_minutes} onChange={e => setForm(f => ({ ...f, duration_minutes: e.target.value }))} />
+          </div>}
+          {fc.visible('scheduledAt') && <div className="col-span-2">
+            <label className="label">{fc.label('scheduledAt')}</label>
+            <input required={fc.required('scheduledAt')} type="datetime-local" className="input" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} />
+          </div>}
+          {fc.visible('meetingLink') && <div className="col-span-2">
+            <label className="label">{fc.label('meetingLink')}</label>
+            <input type="url" className="input" required={fc.required('meetingLink')} placeholder="https://meet.google.com/..." value={form.meeting_link} onChange={e => setForm(f => ({ ...f, meeting_link: e.target.value }))} />
+          </div>}
+          {fc.visible('meetingId') && <div>
+            <label className="label">{fc.label('meetingId')} (optional)</label>
+            <input className="input" required={fc.required('meetingId')} value={form.meeting_id} onChange={e => setForm(f => ({ ...f, meeting_id: e.target.value }))} />
+          </div>}
+          {fc.visible('meetingPassword') && <div>
+            <label className="label">{fc.label('meetingPassword')} (optional)</label>
+            <input className="input" required={fc.required('meetingPassword')} value={form.meeting_password} onChange={e => setForm(f => ({ ...f, meeting_password: e.target.value }))} />
+          </div>}
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}

@@ -6,6 +6,7 @@ import Modal from '@/components/ui/Modal';
 import StarsCard from '@/components/ui/StarsCard';
 import PageError from '@/components/ui/PageError';
 import { useApi } from '@/hooks/useApi';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,7 @@ export default function AnnouncementsPage() {
   const user    = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
   const isAdmin      = ['school_admin', 'super_admin'].includes(user.primaryRole);
   const isSuperAdmin = user.primaryRole === 'super_admin';
+  const fc = useFormConfig('new_announcement_form');
 
   const { data: schoolsData } = useApi<{ schools: { id: string; name: string }[] }>(
     isSuperAdmin ? '/api/super-admin/schools' : null,
@@ -219,22 +221,22 @@ export default function AnnouncementsPage() {
               </select>
             </div>
           )}
-          <div>
-            <label className="label">Title *</label>
-            <input className="input-field" required value={form.title}
+          {fc.visible('title') && <div>
+            <label className="label">{fc.label('title')}{fc.required('title') ? ' *' : ' *'}</label>
+            <input className="input-field" required={fc.required('title') !== false} value={form.title}
               onChange={e => setForm(f => ({...f, title: e.target.value}))}
               placeholder="Announcement title" />
-          </div>
-          <div>
-            <label className="label">Message *</label>
-            <textarea className="input-field" rows={4} required value={form.message}
+          </div>}
+          {fc.visible('message') && <div>
+            <label className="label">{fc.label('message')}{fc.required('message') ? ' *' : ' *'}</label>
+            <textarea className="input-field" rows={4} required={fc.required('message') !== false} value={form.message}
               onChange={e => setForm(f => ({...f, message: e.target.value}))}
               placeholder="Write your announcement..." />
-          </div>
+          </div>}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Type</label>
-              <select className="input-field" value={form.type} onChange={e => setForm(f => ({...f, type: e.target.value}))}>
+            {fc.visible('type') && <div>
+              <label className="label">{fc.label('type')}</label>
+              <select className="input-field" required={fc.required('type')} value={form.type} onChange={e => setForm(f => ({...f, type: e.target.value}))}>
                 <option value="general">General</option>
                 <option value="urgent">Urgent</option>
                 <option value="event">Event</option>
@@ -242,9 +244,9 @@ export default function AnnouncementsPage() {
                 <option value="exam">Exam</option>
                 <option value="fee_reminder">Fee Reminder</option>
               </select>
-            </div>
-            <div>
-              <label className="label">Audience</label>
+            </div>}
+            {fc.visible('audience') && <div>
+              <label className="label">{fc.label('audience')}</label>
               <select className="input-field" value={form.audience} onChange={e => { setForm(f => ({...f, audience: e.target.value})); setClassIds([]); }}>
                 <option value="all">All</option>
                 <option value="parent">Parents</option>
@@ -252,9 +254,9 @@ export default function AnnouncementsPage() {
                 <option value="student">Students</option>
                 <option value="class">Specific Class(es)</option>
               </select>
-            </div>
+            </div>}
           </div>
-          {form.audience === 'class' && (
+          {form.audience === 'class' && fc.visible('classIds') && (
             <div>
               <label className="label">Select Classes <span className="text-surface-400 font-normal">(click to toggle)</span></label>
               {classes.length === 0 ? (

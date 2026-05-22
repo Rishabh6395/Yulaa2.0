@@ -85,7 +85,9 @@ export async function PATCH(request: Request) {
     if (!user) throw new UnauthorizedError();
     const primaryRole = user.roles.find((r) => r.is_primary) ?? user.roles[0];
     if (!PRINCIPAL_ADMIN_ROLES.includes(primaryRole.role_code)) throw new ForbiddenError('Admin access required');
-    const invoice = await recordPayment(await request.json());
+    if (!primaryRole.school_id) throw new ForbiddenError('No school associated with this account');
+    // school_id comes from the verified JWT — prevents cross-school invoice modification
+    const invoice = await recordPayment(await request.json(), primaryRole.school_id);
     return Response.json({ invoice });
   } catch (err) { return handleError(err); }
 }

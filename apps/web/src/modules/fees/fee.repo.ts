@@ -105,10 +105,10 @@ export async function bulkCreateInvoices(invoices: {
   return { created, failed };
 }
 
-export async function findInvoiceById(id: string) {
-  return prisma.feeInvoice.findUnique({
-    where: { id },
-    select: { amount: true, paidAmount: true },
+export async function findInvoiceById(id: string, schoolId?: string) {
+  return prisma.feeInvoice.findFirst({
+    where: { id, ...(schoolId ? { schoolId } : {}) },
+    select: { amount: true, paidAmount: true, schoolId: true },
   });
 }
 

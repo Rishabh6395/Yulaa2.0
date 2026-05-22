@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 type Course = {
   id: string;
@@ -17,6 +18,7 @@ type Course = {
 };
 
 export default function ManageCoursesPage() {
+  const fc      = useFormConfig('create_course_form');
   const router  = useRouter();
   const [courses,   setCourses]   = useState<Course[]>([]);
   const [loading,   setLoading]   = useState(true);
@@ -89,39 +91,39 @@ export default function ManageCoursesPage() {
         <div className="card p-6 space-y-4 border-2 border-brand-200 dark:border-brand-800">
           <h2 className="font-semibold">New Course</h2>
           <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="label">Course Title</label>
-              <input required className="input" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
-            </div>
-            <div className="col-span-2">
-              <label className="label">Description</label>
-              <textarea className="input resize-none h-20" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-            </div>
-            <div>
-              <label className="label">Type</label>
-              <select className="input" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+            {fc.visible('title') && <div className="col-span-2">
+              <label className="label">{fc.label('title')}</label>
+              <input required={fc.required('title')} className="input" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+            </div>}
+            {fc.visible('description') && <div className="col-span-2">
+              <label className="label">{fc.label('description')}</label>
+              <textarea className="input resize-none h-20" required={fc.required('description')} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+            </div>}
+            {fc.visible('type') && <div>
+              <label className="label">{fc.label('type')}</label>
+              <select className="input" required={fc.required('type')} value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
                 <option value="recorded">Recorded</option>
                 <option value="live">Live</option>
                 <option value="hybrid">Hybrid</option>
               </select>
-            </div>
-            <div>
-              <label className="label">Price (₹)</label>
-              <input type="number" min="0" className="input" disabled={form.is_free} value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} />
-            </div>
-            <div>
-              <label className="label">Tags (comma separated)</label>
-              <input className="input" placeholder="maths, class10, cbse" value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} />
-            </div>
+            </div>}
+            {fc.visible('price') && <div>
+              <label className="label">{fc.label('price')}</label>
+              <input type="number" min="0" className="input" required={fc.required('price')} disabled={form.is_free} value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} />
+            </div>}
+            {fc.visible('tags') && <div>
+              <label className="label">{fc.label('tags')}</label>
+              <input className="input" required={fc.required('tags')} placeholder="maths, class10, cbse" value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} />
+            </div>}
             <div className="flex items-end pb-2 gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
+              {fc.visible('isFree') && <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.is_free} onChange={e => setForm(f => ({ ...f, is_free: e.target.checked }))} />
-                <span className="text-sm">Free Course</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+                <span className="text-sm">{fc.label('isFree')}</span>
+              </label>}
+              {fc.visible('certificateEnabled') && <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.certificate_enabled} onChange={e => setForm(f => ({ ...f, certificate_enabled: e.target.checked }))} />
-                <span className="text-sm">Certificate</span>
-              </label>
+                <span className="text-sm">{fc.label('certificateEnabled')}</span>
+              </label>}
             </div>
             {error && <p className="col-span-2 text-sm text-red-600">{error}</p>}
             <div className="col-span-2 flex gap-3">

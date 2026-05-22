@@ -38,14 +38,26 @@ export default function SubjectsMasterPage() {
   const effectiveSchoolId = schoolIdParam || pickedId || undefined;
   const schoolQ = effectiveSchoolId ? `schoolId=${effectiveSchoolId}&` : '';
 
-  // Grade options loaded from GradeMaster
+  // Grade options loaded from school's Class configuration (Class tab in school config)
   const [gradeOptions, setGradeOptions] = useState<string[]>([]);
   useEffect(() => {
     if (!effectiveSchoolId && isSA) return;
-    const q = effectiveSchoolId ? `?schoolId=${effectiveSchoolId}&includeInactive=true` : '?includeInactive=true';
-    fetch(`/api/masters/grades${q}`, { headers: { Authorization: `Bearer ${getToken()}` } })
+    const url = isSA && effectiveSchoolId
+      ? `/api/super-admin/schools/${effectiveSchoolId}/classes`
+      : '/api/classes';
+    fetch(url, { headers: { Authorization: `Bearer ${getToken()}` } })
       .then(r => r.json())
-      .then(d => setGradeOptions((d.gradeMasters ?? []).map((g: any) => g.name)));
+      .then(d => {
+        const classes: any[] = d.classes ?? [];
+        const unique = [...new Set(classes.map((c: any) => c.grade as string))]
+          .sort((a, b) => {
+            const na = parseInt(a, 10), nb = parseInt(b, 10);
+            if (!isNaN(na) && !isNaN(nb)) return na - nb;
+            return a.localeCompare(b);
+          });
+        setGradeOptions(unique);
+      })
+      .catch(() => setGradeOptions([]));
   }, [effectiveSchoolId, isSA]);
 
   // Also add 'all' option

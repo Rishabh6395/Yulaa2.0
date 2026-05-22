@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Modal from '@/components/ui/Modal';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 const CATEGORIES = [
   { value: 'furniture',    label: 'Furniture' },
@@ -45,6 +46,9 @@ export default function SchoolInventoryPage() {
   const [msg,        setMsg]        = useState<{ type: string; text: string } | null>(null);
   const [role,       setRole]       = useState('');
   const [lowCount,   setLowCount]   = useState(0);
+  const fcItem  = useFormConfig('school_inventory_form');
+  const fcPurch = useFormConfig('record_purchase_form');
+  const fcIssue = useFormConfig('record_issue_form');
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -353,30 +357,30 @@ export default function SchoolInventoryPage() {
       {/* Add Item Modal */}
       <Modal open={showItem} onClose={() => setShowItem(false)} title="Add Inventory Item">
         <form onSubmit={handleCreateItem} className="space-y-4">
-          <div>
-            <label className="label">Item Name *</label>
+          {fcItem.visible('name') && <div>
+            <label className="label">{fcItem.label('name')} *</label>
             <input className="input-field" required value={itemForm.name} onChange={e => setItemForm(f => ({...f, name: e.target.value}))} placeholder="e.g. Whiteboard Marker" />
-          </div>
+          </div>}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Category *</label>
+            {fcItem.visible('category') && <div>
+              <label className="label">{fcItem.label('category')} *</label>
               <select className="input-field" value={itemForm.category} onChange={e => setItemForm(f => ({...f, category: e.target.value}))}>
                 {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
-            </div>
-            <div>
-              <label className="label">Unit</label>
-              <input className="input-field" value={itemForm.unit} onChange={e => setItemForm(f => ({...f, unit: e.target.value}))} placeholder="piece / kg / box" />
-            </div>
+            </div>}
+            {fcItem.visible('unit') && <div>
+              <label className="label">{fcItem.label('unit')}</label>
+              <input className="input-field" required={fcItem.required('unit')} value={itemForm.unit} onChange={e => setItemForm(f => ({...f, unit: e.target.value}))} placeholder="piece / kg / box" />
+            </div>}
           </div>
-          <div>
-            <label className="label">Minimum Stock Alert</label>
-            <input type="number" className="input-field" value={itemForm.minStock} onChange={e => setItemForm(f => ({...f, minStock: e.target.value}))} min="0" />
-          </div>
-          <div>
-            <label className="label">Description</label>
-            <input className="input-field" value={itemForm.description} onChange={e => setItemForm(f => ({...f, description: e.target.value}))} placeholder="Optional notes" />
-          </div>
+          {fcItem.visible('minStock') && <div>
+            <label className="label">{fcItem.label('minStock')}</label>
+            <input type="number" className="input-field" required={fcItem.required('minStock')} value={itemForm.minStock} onChange={e => setItemForm(f => ({...f, minStock: e.target.value}))} min="0" />
+          </div>}
+          {fcItem.visible('description') && <div>
+            <label className="label">{fcItem.label('description')}</label>
+            <input className="input-field" required={fcItem.required('description')} value={itemForm.description} onChange={e => setItemForm(f => ({...f, description: e.target.value}))} placeholder="Optional notes" />
+          </div>}
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={() => setShowItem(false)} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Adding...' : 'Add Item'}</button>
@@ -387,29 +391,29 @@ export default function SchoolInventoryPage() {
       {/* Record Purchase Modal */}
       <Modal open={showPurch} onClose={() => setShowPurch(false)} title={`Record Purchase — ${activeItem?.name}`}>
         <form onSubmit={handlePurchase} className="space-y-4">
-          <div>
-            <label className="label">Vendor Name</label>
-            <input className="input-field" value={purchForm.vendorName} onChange={e => setPurchForm(f => ({...f, vendorName: e.target.value}))} placeholder="Vendor / Supplier name" />
-          </div>
+          {fcPurch.visible('vendorName') && <div>
+            <label className="label">{fcPurch.label('vendorName')}</label>
+            <input className="input-field" required={fcPurch.required('vendorName')} value={purchForm.vendorName} onChange={e => setPurchForm(f => ({...f, vendorName: e.target.value}))} placeholder="Vendor / Supplier name" />
+          </div>}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Quantity *</label>
+            {fcPurch.visible('quantity') && <div>
+              <label className="label">{fcPurch.label('quantity')} *</label>
               <input type="number" className="input-field" required value={purchForm.quantity} onChange={e => setPurchForm(f => ({...f, quantity: e.target.value}))} min="1" />
-            </div>
-            <div>
-              <label className="label">Unit Price (₹) *</label>
+            </div>}
+            {fcPurch.visible('unitPrice') && <div>
+              <label className="label">{fcPurch.label('unitPrice')} *</label>
               <input type="number" step="0.01" className="input-field" required value={purchForm.unitPrice} onChange={e => setPurchForm(f => ({...f, unitPrice: e.target.value}))} />
-            </div>
+            </div>}
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Purchase Date</label>
-              <input type="date" className="input-field" value={purchForm.purchaseDate} onChange={e => setPurchForm(f => ({...f, purchaseDate: e.target.value}))} />
-            </div>
-            <div>
-              <label className="label">Invoice No.</label>
-              <input className="input-field" value={purchForm.invoiceNo} onChange={e => setPurchForm(f => ({...f, invoiceNo: e.target.value}))} placeholder="Optional" />
-            </div>
+            {fcPurch.visible('purchaseDate') && <div>
+              <label className="label">{fcPurch.label('purchaseDate')}</label>
+              <input type="date" className="input-field" required={fcPurch.required('purchaseDate')} value={purchForm.purchaseDate} onChange={e => setPurchForm(f => ({...f, purchaseDate: e.target.value}))} />
+            </div>}
+            {fcPurch.visible('invoiceNo') && <div>
+              <label className="label">{fcPurch.label('invoiceNo')}</label>
+              <input className="input-field" required={fcPurch.required('invoiceNo')} value={purchForm.invoiceNo} onChange={e => setPurchForm(f => ({...f, invoiceNo: e.target.value}))} placeholder="Optional" />
+            </div>}
           </div>
           {purchForm.quantity && purchForm.unitPrice && (
             <p className="text-sm font-medium text-surface-600 dark:text-gray-400">
@@ -426,28 +430,28 @@ export default function SchoolInventoryPage() {
       {/* Issue Item Modal */}
       <Modal open={showIssue} onClose={() => setShowIssue(false)} title={`Issue Item — ${activeItem?.name} (${activeItem?.stock?.quantity ?? 0} available)`}>
         <form onSubmit={handleIssue} className="space-y-4">
-          <div>
-            <label className="label">Issued To (ID / Roll No.) *</label>
+          {fcIssue.visible('issuedToId') && <div>
+            <label className="label">{fcIssue.label('issuedToId')} *</label>
             <input className="input-field" required value={issueForm.issuedTo} onChange={e => setIssueForm(f => ({...f, issuedTo: e.target.value}))} placeholder="Teacher ID or student roll no." />
-          </div>
-          <div>
-            <label className="label">Name</label>
-            <input className="input-field" value={issueForm.issuedToName} onChange={e => setIssueForm(f => ({...f, issuedToName: e.target.value}))} placeholder="Name of recipient" />
-          </div>
+          </div>}
+          {fcIssue.visible('issuedToName') && <div>
+            <label className="label">{fcIssue.label('issuedToName')}</label>
+            <input className="input-field" required={fcIssue.required('issuedToName')} value={issueForm.issuedToName} onChange={e => setIssueForm(f => ({...f, issuedToName: e.target.value}))} placeholder="Name of recipient" />
+          </div>}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Quantity *</label>
+            {fcIssue.visible('quantity') && <div>
+              <label className="label">{fcIssue.label('quantity')} *</label>
               <input type="number" className="input-field" required value={issueForm.quantity} onChange={e => setIssueForm(f => ({...f, quantity: e.target.value}))} min="1" max={activeItem?.stock?.quantity ?? 999} />
-            </div>
-            <div>
-              <label className="label">Expected Return</label>
-              <input type="date" className="input-field" value={issueForm.expectedReturn} onChange={e => setIssueForm(f => ({...f, expectedReturn: e.target.value}))} />
-            </div>
+            </div>}
+            {fcIssue.visible('expectedReturnDate') && <div>
+              <label className="label">{fcIssue.label('expectedReturnDate')}</label>
+              <input type="date" className="input-field" required={fcIssue.required('expectedReturnDate')} value={issueForm.expectedReturn} onChange={e => setIssueForm(f => ({...f, expectedReturn: e.target.value}))} />
+            </div>}
           </div>
-          <div>
-            <label className="label">Purpose</label>
-            <input className="input-field" value={issueForm.purpose} onChange={e => setIssueForm(f => ({...f, purpose: e.target.value}))} placeholder="e.g. Class use, Lab experiment" />
-          </div>
+          {fcIssue.visible('purpose') && <div>
+            <label className="label">{fcIssue.label('purpose')}</label>
+            <input className="input-field" required={fcIssue.required('purpose')} value={issueForm.purpose} onChange={e => setIssueForm(f => ({...f, purpose: e.target.value}))} placeholder="e.g. Class use, Lab experiment" />
+          </div>}
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={() => setShowIssue(false)} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Issuing...' : 'Issue Item'}</button>

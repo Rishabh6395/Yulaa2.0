@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Modal from '@/components/ui/Modal';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -50,6 +51,8 @@ export default function TimetablePage() {
   const [hwForm,      setHwForm]      = useState({ enabled: false, title: '', dueDate: '', maxMarks: '', description: '' });
   const [showLog,     setShowLog]     = useState(false);
   const [saving,      setSaving]      = useState(false);
+  const fcLog      = useFormConfig('class_log_form');
+  const fcReassign = useFormConfig('reassign_class_form');
 
   // Reassign modal
   const [showReassign,      setShowReassign]      = useState(false);
@@ -372,18 +375,18 @@ export default function TimetablePage() {
       {/* Log Topic Modal */}
       <Modal open={showLog} onClose={() => setShowLog(false)} title={`Log Topic — ${activeSlot?.subject} (P${activeSlot?.periodNo})`}>
         <form onSubmit={handleSaveLog} className="space-y-4">
-          <div>
-            <label className="label">Topic Covered *</label>
+          {fcLog.visible('topic') && <div>
+            <label className="label">{fcLog.label('topic')} *</label>
             <input className="input-field" required value={logForm.topic}
               onChange={e => setLogForm(f => ({...f, topic: e.target.value}))}
               placeholder="e.g. Chapter 3: Laws of Motion" />
-          </div>
-          <div>
-            <label className="label">Notes / Observations</label>
-            <textarea className="input-field" rows={2} value={logForm.notes}
+          </div>}
+          {fcLog.visible('notes') && <div>
+            <label className="label">{fcLog.label('notes')}</label>
+            <textarea className="input-field" rows={2} required={fcLog.required('notes')} value={logForm.notes}
               onChange={e => setLogForm(f => ({...f, notes: e.target.value}))}
               placeholder="Any class notes, student queries, etc." />
-          </div>
+          </div>}
 
           {/* Homework section */}
           <div className="border border-surface-200 dark:border-gray-700 rounded-xl overflow-hidden">
@@ -402,31 +405,31 @@ export default function TimetablePage() {
             </button>
             {hwForm.enabled && (
               <div className="px-4 pb-4 pt-3 space-y-3 border-t border-surface-200 dark:border-gray-700">
-                <div>
-                  <label className="label">Homework Title *</label>
+                {fcLog.visible('hwTitle') && <div>
+                  <label className="label">{fcLog.label('hwTitle')} *</label>
                   <input className="input-field" value={hwForm.title}
                     onChange={e => setHwForm(f => ({...f, title: e.target.value}))}
                     placeholder="e.g. Exercise 3.2 — solve Q1 to Q10" />
-                </div>
+                </div>}
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="label">Due Date *</label>
+                  {fcLog.visible('hwDueDate') && <div>
+                    <label className="label">{fcLog.label('hwDueDate')} *</label>
                     <input type="date" className="input-field" value={hwForm.dueDate}
                       onChange={e => setHwForm(f => ({...f, dueDate: e.target.value}))} />
-                  </div>
-                  <div>
-                    <label className="label">Max Marks</label>
+                  </div>}
+                  {fcLog.visible('hwMaxMarks') && <div>
+                    <label className="label">{fcLog.label('hwMaxMarks')}</label>
                     <input type="number" className="input-field" value={hwForm.maxMarks}
                       onChange={e => setHwForm(f => ({...f, maxMarks: e.target.value}))}
                       placeholder="e.g. 10" min="0" />
-                  </div>
+                  </div>}
                 </div>
-                <div>
-                  <label className="label">Instructions</label>
+                {fcLog.visible('hwDesc') && <div>
+                  <label className="label">{fcLog.label('hwDesc')}</label>
                   <textarea className="input-field" rows={2} value={hwForm.description}
                     onChange={e => setHwForm(f => ({...f, description: e.target.value}))}
                     placeholder="Any specific instructions for students..." />
-                </div>
+                </div>}
               </div>
             )}
           </div>
@@ -446,8 +449,8 @@ export default function TimetablePage() {
             The selected substitute teacher will see this class on their timetable for the specified date range.
             You will still see it as <strong>Reassigned Away</strong> until the end date.
           </div>
-          <div>
-            <label className="label">Substitute Teacher *</label>
+          {fcReassign.visible('substituteTeacherId') && <div>
+            <label className="label">{fcReassign.label('substituteTeacherId')} *</label>
             <select className="input-field" required value={reassignForm.substituteTeacherId}
               onChange={e => setReassignForm(f => ({...f, substituteTeacherId: e.target.value}))}>
               <option value="">— Select a teacher —</option>
@@ -455,26 +458,27 @@ export default function TimetablePage() {
                 <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>
               ))}
             </select>
-          </div>
+          </div>}
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">From Date *</label>
+            {fcReassign.visible('startDate') && <div>
+              <label className="label">{fcReassign.label('startDate')} *</label>
               <input type="date" className="input-field" required value={reassignForm.startDate}
                 onChange={e => setReassignForm(f => ({...f, startDate: e.target.value}))} />
-            </div>
-            <div>
-              <label className="label">Until Date *</label>
+            </div>}
+            {fcReassign.visible('endDate') && <div>
+              <label className="label">{fcReassign.label('endDate')} *</label>
               <input type="date" className="input-field" required value={reassignForm.endDate}
                 min={reassignForm.startDate}
                 onChange={e => setReassignForm(f => ({...f, endDate: e.target.value}))} />
-            </div>
+            </div>}
           </div>
-          <div>
-            <label className="label">Reason (optional)</label>
+          {fcReassign.visible('reason') && <div>
+            <label className="label">{fcReassign.label('reason')}</label>
             <input className="input-field" placeholder="e.g. On leave / sick day"
+              required={fcReassign.required('reason')}
               value={reassignForm.reason}
               onChange={e => setReassignForm(f => ({...f, reason: e.target.value}))} />
-          </div>
+          </div>}
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={() => setShowReassign(false)} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={reassigning} className="btn-primary flex-1">{reassigning ? 'Reassigning...' : 'Confirm Reassignment'}</button>

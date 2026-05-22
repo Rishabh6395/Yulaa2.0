@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 type Product = {
   id: string;
@@ -18,6 +19,8 @@ type Product = {
 const DEFAULT_CATEGORIES = ['books', 'uniform', 'stationery', 'sports', 'lanyard', 'other'];
 
 export default function VendorProductsPage() {
+  const fc = useFormConfig('add_vendor_product_form');
+
   const [products,   setProducts]   = useState<Product[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [showForm,   setShowForm]   = useState(false);
@@ -96,38 +99,38 @@ export default function VendorProductsPage() {
         <div className="card p-6 space-y-4 border-2 border-brand-200 dark:border-brand-800">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">New Product</h2>
           <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="label">Product Name *</label>
-              <input required className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Class 10 Math Textbook" />
-            </div>
-            <div>
-              <label className="label">Category *</label>
-              <select required className="input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+            {fc.visible('name') && <div>
+              <label className="label">{fc.label('name')} *</label>
+              <input required={fc.required('name')} className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Class 10 Math Textbook" />
+            </div>}
+            {fc.visible('category') && <div>
+              <label className="label">{fc.label('category')} *</label>
+              <select required={fc.required('category')} className="input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                 {categories.map(c => (
                   <option key={c} value={c} className="capitalize">{c.charAt(0).toUpperCase() + c.slice(1)}</option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="label">Price (₹) *</label>
-              <input required type="number" min="0" className="input" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="350" />
-            </div>
-            <div>
-              <label className="label">MRP (₹)</label>
-              <input type="number" min="0" className="input" value={form.mrp} onChange={e => setForm(f => ({ ...f, mrp: e.target.value }))} placeholder="400" />
-            </div>
-            <div>
-              <label className="label">Stock Quantity</label>
-              <input type="number" min="0" className="input" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} placeholder="100" />
-            </div>
-            <div>
-              <label className="label">Unit</label>
-              <input className="input" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} placeholder="piece" />
-            </div>
-            <div className="col-span-2">
-              <label className="label">Description</label>
-              <textarea className="input" rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Brief product description…" />
-            </div>
+            </div>}
+            {fc.visible('price') && <div>
+              <label className="label">{fc.label('price')} *</label>
+              <input required={fc.required('price')} type="number" min="0" className="input" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="350" />
+            </div>}
+            {fc.visible('mrp') && <div>
+              <label className="label">{fc.label('mrp')}</label>
+              <input type="number" min="0" className="input" required={fc.required('mrp')} value={form.mrp} onChange={e => setForm(f => ({ ...f, mrp: e.target.value }))} placeholder="400" />
+            </div>}
+            {fc.visible('quantity') && <div>
+              <label className="label">{fc.label('quantity')}</label>
+              <input type="number" min="0" className="input" required={fc.required('quantity')} value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} placeholder="100" />
+            </div>}
+            {fc.visible('unit') && <div>
+              <label className="label">{fc.label('unit')}</label>
+              <input className="input" required={fc.required('unit')} value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} placeholder="piece" />
+            </div>}
+            {fc.visible('description') && <div className="col-span-2">
+              <label className="label">{fc.label('description')}</label>
+              <textarea className="input" rows={2} required={fc.required('description')} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Brief product description…" />
+            </div>}
             {error && <p className="col-span-2 text-sm text-red-600">{error}</p>}
             <div className="col-span-2 flex gap-3">
               <button type="submit" disabled={saving} className="btn btn-primary">{saving ? 'Saving…' : 'Create Product'}</button>

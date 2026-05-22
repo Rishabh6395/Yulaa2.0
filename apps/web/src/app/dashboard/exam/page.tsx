@@ -367,15 +367,13 @@ export default function ExamPage() {
               </div>
               <div>
                 <label className="label">Subject *</label>
-                {resSubjects.length > 0 ? (
-                  <select className="input-field" value={resSubject} onChange={e => setResSubject(e.target.value)}>
-                    <option value="">— Select Subject —</option>
-                    {resSubjects.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                ) : (
-                  <input className="input-field" value={resSubject} placeholder={resClassId ? 'Type subject name' : 'Select class first'}
-                    onChange={e => setResSubject(e.target.value)} />
-                )}
+                <select className="input-field" value={resSubject} onChange={e => setResSubject(e.target.value)}
+                  disabled={!resClassId || resSubjects.length === 0}>
+                  <option value="">
+                    {!resClassId ? 'Select class first' : resSubjects.length === 0 ? 'No subjects — configure in Masters → Streams' : '— Select Subject —'}
+                  </option>
+                  {resSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
               </div>
             </div>
 

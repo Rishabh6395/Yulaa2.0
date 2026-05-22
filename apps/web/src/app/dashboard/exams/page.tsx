@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useFormConfig } from '@/hooks/useFormConfig';
 
 type ClassItem = { id: string; name: string; grade: string; section: string };
 type Student   = { id: string; admission_no: string; first_name: string; last_name: string };
@@ -35,6 +36,8 @@ function activeAY() {
 }
 
 export default function ExamsPage() {
+  const fc = useFormConfig('create_exam_schedule_form');
+
   const token   = typeof window !== 'undefined' ? localStorage.getItem('token') ?? '' : '';
   const auth    = { Authorization: `Bearer ${token}` };
   const authJ   = { ...auth, 'Content-Type': 'application/json' };
@@ -258,43 +261,43 @@ export default function ExamsPage() {
         <div className="card p-6 max-w-xl space-y-4">
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">Create New Exam</h2>
           <form onSubmit={createExam} className="space-y-4">
-            <div>
-              <label className="label">Exam Title *</label>
-              <input className="input-field" required value={createForm.title}
+            {fc.visible('title') && <div>
+              <label className="label">{fc.label('title')} *</label>
+              <input className="input-field" required={fc.required('title')} value={createForm.title}
                 onChange={e => setCreateForm(f => ({...f, title: e.target.value}))}
                 placeholder="e.g. Unit Test 1 — Math" />
-            </div>
+            </div>}
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Exam Type *</label>
-                <input className="input-field" required value={createForm.exam_type}
+              {fc.visible('examType') && <div>
+                <label className="label">{fc.label('examType')} *</label>
+                <input className="input-field" required={fc.required('examType')} value={createForm.exam_type}
                   onChange={e => setCreateForm(f => ({...f, exam_type: e.target.value}))}
                   placeholder="e.g. Unit Test, Mid-Term" list="exam-types" />
                 <datalist id="exam-types">
                   {['Unit Test', 'Mid-Term', 'Final', 'Pre-Board', 'Internal Assessment'].map(t => <option key={t} value={t} />)}
                 </datalist>
-              </div>
-              <div>
-                <label className="label">Class (optional)</label>
-                <select className="input-field" value={createForm.class_id}
+              </div>}
+              {fc.visible('classId') && <div>
+                <label className="label">{fc.label('classId')} (optional)</label>
+                <select className="input-field" required={fc.required('classId')} value={createForm.class_id}
                   onChange={e => setCreateForm(f => ({...f, class_id: e.target.value}))}>
                   <option value="">All Classes</option>
                   {classes.map(c => <option key={c.id} value={c.id}>{c.name || `${c.grade}-${c.section}`}</option>)}
                 </select>
-              </div>
+              </div>}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Start Date *</label>
-                <input type="date" className="input-field" required value={createForm.start_date}
+              {fc.visible('startDate') && <div>
+                <label className="label">{fc.label('startDate')} *</label>
+                <input type="date" className="input-field" required={fc.required('startDate')} value={createForm.start_date}
                   onChange={e => setCreateForm(f => ({...f, start_date: e.target.value}))} />
-              </div>
-              <div>
-                <label className="label">End Date *</label>
-                <input type="date" className="input-field" required value={createForm.end_date}
+              </div>}
+              {fc.visible('endDate') && <div>
+                <label className="label">{fc.label('endDate')} *</label>
+                <input type="date" className="input-field" required={fc.required('endDate')} value={createForm.end_date}
                   min={createForm.start_date}
                   onChange={e => setCreateForm(f => ({...f, end_date: e.target.value}))} />
-              </div>
+              </div>}
             </div>
             <div className="flex gap-3 pt-1">
               <button type="button" onClick={() => setTab('list')} className="btn-secondary flex-1">Cancel</button>
