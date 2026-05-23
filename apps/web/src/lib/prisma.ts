@@ -1,13 +1,16 @@
-import { PrismaNeonHttp } from '@prisma/adapter-neon';
+import { neonConfig } from '@neondatabase/serverless';
+import { PrismaNeon } from '@prisma/adapter-neon';
 import { PrismaClient } from '@prisma/client';
 
-// PrismaNeonHttp uses Neon's HTTP fetch mode — queries go over HTTPS (port 443).
-// This works on networks that block PostgreSQL port 5432 and WebSocket connections.
+// WebSocket over port 443 — works on networks that block port 5432, and
+// unlike HTTP mode, supports prisma.$transaction().
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+neonConfig.webSocketConstructor = require('ws');
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
 function createPrismaClient() {
-  const adapter = new PrismaNeonHttp(process.env.DATABASE_URL!, {});
+  const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL! });
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
