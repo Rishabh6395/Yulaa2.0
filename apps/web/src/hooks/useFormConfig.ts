@@ -111,10 +111,10 @@ export function useFormConfig(formId: string) {
     rules,
     fields,
 
-    label(fieldId: string): string {
+    label(fieldId: string, defaultLabel?: string): string {
       const saved = rules[fieldId]?.label;
       if (saved) return saved;
-      return getDefaultLabel(formId, fieldId);
+      return getDefaultLabel(formId, fieldId) || defaultLabel || fieldId;
     },
 
     visible(fieldId: string): boolean {
