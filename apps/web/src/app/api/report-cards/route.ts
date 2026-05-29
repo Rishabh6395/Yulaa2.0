@@ -323,6 +323,8 @@ export async function POST(request: Request) {
     const created = await Promise.all(
       students.map(async (s) => {
         const snap = await buildSnapshot(s.id, schoolId, academicYear, ratingCfg);
+        if (!snap.academicData || !snap.attendanceData || !snap.behaviorData)
+          throw new AppError(`Incomplete snapshot for student ${s.id} — missing data sections`);
         return prisma.reportCard.create({
           data: {
             schoolId,

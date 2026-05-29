@@ -82,6 +82,7 @@ async function computeCycle(cycleId: string, triggeredBy: string) {
   });
 
   function getGrade(pct: number): string {
+    if (isNaN(pct) || !isFinite(pct)) return 'N/A';
     if (gradingBands.length > 0) {
       const band = gradingBands.find(b => pct >= Number(b.minPercent));
       if (band) return band.grade;

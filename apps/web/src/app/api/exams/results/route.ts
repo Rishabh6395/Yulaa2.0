@@ -159,6 +159,13 @@ export async function POST(request: Request) {
     const exam = await prisma.exam.findFirst({ where: { id: examId, schoolId } });
     if (!exam) throw new AppError('Exam not found', 404);
 
+    for (const r of results as any[]) {
+      const max = r.maxMarks ?? exam.maxMarks;
+      const marks = Number(r.marksObtained);
+      if (isNaN(marks)) throw new AppError(`Invalid marks value for student ${r.studentId}`);
+      if (marks < 0 || marks > max) throw new AppError(`Marks out of range (0–${max}) for student ${r.studentId}`, 422);
+    }
+
     await prisma.$transaction(
       results.map((r: any) =>
         prisma.examResult.upsert({

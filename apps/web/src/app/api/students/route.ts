@@ -51,7 +51,7 @@ export async function PATCH(request: Request) {
       return Response.json({ ok: true });
     }
 
-    const student = await updateStudent(body);
+    const student = await updateStudent(primaryRole.school_id!, body);
     return Response.json({ student });
   } catch (err) { return handleError(err); }
 }

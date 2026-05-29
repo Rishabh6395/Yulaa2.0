@@ -155,11 +155,13 @@ export async function createAndLinkParent(
   return parentRecord;
 }
 
-export async function updateStudent(body: Record<string, any>) {
+export async function updateStudent(schoolId: string, body: Record<string, any>) {
   const { id, admission_status } = body;
   if (!id || !admission_status) {
     throw new AppError('id and admission_status are required');
   }
+  const owned = await prisma.student.findFirst({ where: { id, schoolId } });
+  if (!owned) throw new AppError('Student not found in your school', 403);
   const student = await repo.updateStudentStatus(id, admission_status);
   // Invalidate all school student lists — we don't know schoolId here so use wildcard
   await cacheInvalidate('students:*');

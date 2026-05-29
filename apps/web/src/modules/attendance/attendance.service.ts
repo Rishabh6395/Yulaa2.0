@@ -80,6 +80,11 @@ export async function bulkUploadAttendance(
       return;
     }
     parsedDate.setUTCHours(0, 0, 0, 0);
+    const todayBulk = new Date(); todayBulk.setUTCHours(0, 0, 0, 0);
+    if (parsedDate > todayBulk) {
+      errors.push(`Row ${rowNum}: cannot mark attendance for future date "${row.date}"`);
+      return;
+    }
     valid.push({ student_id: row.student_id, status, remarks: row.remarks || undefined, date: parsedDate });
   });
 
@@ -245,6 +250,8 @@ export async function markAttendance(schoolId: string, markedBy: string, body: R
     }
     const parsedDate = new Date(dateStr);
     parsedDate.setUTCHours(0, 0, 0, 0);
+    const todayEmp = new Date(); todayEmp.setUTCHours(0, 0, 0, 0);
+    if (parsedDate > todayEmp) throw new AppError('Cannot mark attendance for a future date');
     for (const r of records) {
       let teacherId = r.teacher_id;
       if (!teacherId && r.user_id) {
@@ -266,6 +273,8 @@ export async function markAttendance(schoolId: string, markedBy: string, body: R
 
   const parsedDate = new Date(date);
   parsedDate.setUTCHours(0, 0, 0, 0);
+  const todayStu = new Date(); todayStu.setUTCHours(0, 0, 0, 0);
+  if (parsedDate > todayStu) throw new AppError('Cannot mark attendance for a future date');
 
   await repo.upsertAttendanceRecords({
     schoolId,

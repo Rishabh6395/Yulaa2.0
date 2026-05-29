@@ -54,26 +54,27 @@ export async function POST(request: Request) {
     const schoolId = await resolveSchoolId(user, sid);
     if (!studentId || !roomId || !academicYear) throw new AppError('studentId, roomId, academicYear required');
 
-    // Check existing active allocation
-    const existing = await prisma.hostelAllocation.findFirst({ where: { studentId, academicYear, status: 'active' } });
-    if (existing) throw new AppError('Student already has an active hostel allocation this year', 409);
+    // All checks + create inside a single transaction to prevent concurrent double-allocation
+    const allocation = await prisma.$transaction(async (tx) => {
+      const existing = await tx.hostelAllocation.findFirst({ where: { studentId, academicYear, status: 'active' } });
+      if (existing) throw new AppError('Student already has an active hostel allocation this year', 409);
 
-    // Check room capacity
-    const room = await prisma.hostelRoom.findFirst({ where: { id: roomId, schoolId } });
-    if (!room) throw new AppError('Room not found', 404);
-    const occupied = await prisma.hostelAllocation.count({ where: { roomId, status: 'active' } });
-    if (occupied >= room.capacity) throw new AppError('Room is at full capacity', 409);
+      const room = await tx.hostelRoom.findFirst({ where: { id: roomId, schoolId } });
+      if (!room) throw new AppError('Room not found', 404);
+      const occupied = await tx.hostelAllocation.count({ where: { roomId, status: 'active' } });
+      if (occupied >= room.capacity) throw new AppError('Room is at full capacity', 409);
 
-    const allocation = await prisma.hostelAllocation.create({
-      data: {
-        schoolId, studentId, roomId,
-        bedNo:        bedNo        ?? null,
-        academicYear,
-        joinDate:     joinDate ? new Date(joinDate) : new Date(),
-        mealPlan:     mealPlan     ?? null,
-        status:       'active',
-        createdById:  user.id,
-      },
+      return tx.hostelAllocation.create({
+        data: {
+          schoolId, studentId, roomId,
+          bedNo:        bedNo        ?? null,
+          academicYear,
+          joinDate:     joinDate ? new Date(joinDate) : new Date(),
+          mealPlan:     mealPlan     ?? null,
+          status:       'active',
+          createdById:  user.id,
+        },
+      });
     });
 
     return Response.json({ allocation }, { status: 201 });

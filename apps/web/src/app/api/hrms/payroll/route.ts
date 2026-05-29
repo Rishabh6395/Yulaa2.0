@@ -118,7 +118,7 @@ export async function POST(request: Request) {
       const esiEmployee = round2(gross * Number(cfg.esiPercent) / 100);
       const esiEmployer = round2(gross * Number(cfg.esiEmployer) / 100);
       const tds         = round2(Number(cfg.tdsMonthly));
-      const net         = round2(gross - pfEmployee - esiEmployee - tds);
+      const net         = round2(Math.max(0, gross - pfEmployee - esiEmployee - tds));
 
       const payroll = await prisma.staffPayroll.create({
         data: {
@@ -196,7 +196,7 @@ export async function PATCH(request: Request) {
       const tds     = data.tds     ?? Number(payroll.tds);
       const otherD  = data.otherDeductions ?? Number(payroll.otherDeductions);
       data.grossSalary = gross;
-      data.netSalary   = round2(gross - pfEmp - esiEmp - tds - otherD);
+      data.netSalary   = round2(Math.max(0, gross - pfEmp - esiEmp - tds - otherD));
     }
 
     const updated = await prisma.staffPayroll.update({ where: { id }, data });

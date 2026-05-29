@@ -92,8 +92,9 @@ export async function POST(request: Request) {
           issuedById: user.id,
         },
       }),
+      // Atomic: only decrements if availableCopies > 0 — prevents going negative under concurrent requests
       prisma.libraryBook.update({
-        where: { id: bookId },
+        where: { id: bookId, availableCopies: { gt: 0 } },
         data:  { availableCopies: { decrement: 1 } },
       }),
     ]);

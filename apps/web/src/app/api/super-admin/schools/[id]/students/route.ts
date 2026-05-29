@@ -30,7 +30,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   try {
     const user = await getUserFromRequest(request);
     assertSuperAdmin(user);
-    const student = await updateStudent(await request.json());
+    const schoolId = (await params).id;
+    const student = await updateStudent(schoolId, await request.json());
     return Response.json({ student });
   } catch (err) { return handleError(err); }
 }
