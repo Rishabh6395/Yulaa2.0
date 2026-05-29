@@ -533,6 +533,21 @@ function AdminDashboard({ data, feedReady = true, allowed, pending, userId = '' 
   const stats         = data?.stats;
   const announcements = data?.recentAnnouncements || [];
 
+  const [draftCards, setDraftCards]     = useState<number | null>(null);
+  const [activeCycles, setActiveCycles] = useState<number | null>(null);
+
+  useEffect(() => {
+    const t = typeof window !== 'undefined' ? localStorage.getItem('token') ?? '' : '';
+    const h = { Authorization: `Bearer ${t}` };
+    Promise.allSettled([
+      fetch('/api/report-cards?status=draft', { headers: h }).then(r => r.json()),
+      fetch('/api/performance/cycles', { headers: h }).then(r => r.json()),
+    ]).then(([cards, cycles]) => {
+      if (cards.status === 'fulfilled') setDraftCards(cards.value.reportCards?.length ?? 0);
+      if (cycles.status === 'fulfilled') setActiveCycles((cycles.value.cycles as any[])?.filter(c => c.isActive).length ?? 0);
+    }).catch(() => {});
+  }, []);
+
   const spotRef = useRef<HTMLDivElement>(null);
   function onSpotMove(e: React.MouseEvent<HTMLDivElement>) {
     const el = spotRef.current;
@@ -593,6 +608,26 @@ function AdminDashboard({ data, feedReady = true, allowed, pending, userId = '' 
           />
         </a>
       </div>
+
+      {/* Performance overview — Draft report cards + Active cycles */}
+      {(draftCards !== null || activeCycles !== null) && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <a href="/dashboard/performance" className="block sm:col-span-2">
+            <StatCard title="Draft Report Cards" value={draftCards ?? '—'}
+              subtext="pending publication"
+              iconBg="bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400"
+              icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>}
+            />
+          </a>
+          <a href="/dashboard/performance" className="block sm:col-span-2">
+            <StatCard title="Active Cycles" value={activeCycles ?? '—'}
+              subtext="performance cycles running"
+              iconBg="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400"
+              icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>}
+            />
+          </a>
+        </div>
+      )}
 
       {/* Calendar + Punch side by side */}
       {userId && (
@@ -674,6 +709,26 @@ function TeacherDashboard({ data, feedReady = true, allowed, pending, userId = '
   const className   = stats?.className   ? ` · ${stats.className}`   : '';
   const sectionName = stats?.sectionName ? ` ${stats.sectionName}`   : '';
 
+  const [classAvgScore, setClassAvgScore] = useState<number | null>(null);
+
+  useEffect(() => {
+    const t = typeof window !== 'undefined' ? localStorage.getItem('token') ?? '' : '';
+    const h = { Authorization: `Bearer ${t}` };
+    fetch('/api/performance/cycles', { headers: h })
+      .then(r => r.json())
+      .then(d => {
+        const latest = (d.cycles as any[] | undefined)?.find(c => c.isActive || c.status === 'locked');
+        if (!latest) return null;
+        return fetch(`/api/performance/compute?cycle_id=${latest.id}`, { headers: h }).then(r => r.json());
+      })
+      .then(d => {
+        if (!d?.acaSummaries?.length) return;
+        const avg = Math.round((d.acaSummaries as any[]).reduce((s: number, a: any) => s + Number(a.overallPercentage), 0) / d.acaSummaries.length);
+        setClassAvgScore(avg);
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -711,6 +766,19 @@ function TeacherDashboard({ data, feedReady = true, allowed, pending, userId = '
           />
         </a>
       </div>
+
+      {/* Class avg performance card */}
+      {classAvgScore !== null && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <a href="/dashboard/performance" className="block sm:col-span-2">
+            <StatCard title="Class Avg Score" value={`${classAvgScore}%`}
+              subtext="latest performance cycle"
+              iconBg="bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400"
+              icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>}
+            />
+          </a>
+        </div>
+      )}
 
       {/* Calendar + Punch side by side */}
       {userId && (

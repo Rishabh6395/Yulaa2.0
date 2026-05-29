@@ -1,6 +1,7 @@
 import './globals.css';
 import Script from 'next/script';
 import { ThemeProvider } from '@/components/providers/theme-provider';
+import { ToastProvider } from '@/components/ui/Toast';
 
 export const metadata = {
   title: 'Yulaa - Student Management System',
@@ -12,7 +13,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body className="font-body antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </ThemeProvider>
         <Script
           defer

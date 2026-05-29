@@ -8,7 +8,8 @@ export interface MenuItem {
 
 export const menuItems: Record<string, MenuItem[]> = {
   super_admin: [
-    { label: 'School Library',          href: '/dashboard/schools',                            icon: 'Building',      key: 'schools' },
+    { label: 'Schools',                 href: '/dashboard/super-admin/schools',                 icon: 'Building',      key: 'super_schools' },
+    { label: 'Analytics',               href: '/dashboard/super-admin/analytics',               icon: 'BarChart2',     key: 'super_analytics' },
     { label: 'Location Masters',        href: '/dashboard/super-admin/location-masters',        icon: 'Globe',         key: 'location_masters' },
     { label: 'Default School Settings', href: '/dashboard/schools/default',                    icon: 'Settings',      key: 'schools_default' },
     { label: 'All Consultants',         href: '/dashboard/super-admin/consultants',             icon: 'Briefcase',     key: 'super_consultants' },
@@ -81,6 +82,9 @@ export const menuItems: Record<string, MenuItem[]> = {
     { label: 'Career Sessions',      href: '/dashboard/career-sessions/manage', icon: 'Briefcase',   key: 'sessions' },
     { label: 'Vendor / Marketplace', href: '/dashboard/vendor/manage',          icon: 'ShoppingBag', key: 'vendor' },
     { label: 'Compliance',           href: '/dashboard/compliance',            icon: 'ShieldCheck',   key: 'compliance' },
+    { label: 'Hostel',               href: '/dashboard/hostel',                icon: 'Home',          key: 'hostel' },
+    { label: 'Library',              href: '/dashboard/library',               icon: 'BookOpen',      key: 'library' },
+    { label: 'HR & Payroll',         href: '/dashboard/hrms',                  icon: 'Wallet',        key: 'hrms' },
     { label: 'Reports',              href: '/dashboard/reports',               icon: 'BarChart',      key: 'reports' },
     { label: 'Profile',              href: '/dashboard/settings',              icon: 'UserCircle',    key: 'settings' },
   ],
@@ -117,6 +121,7 @@ export const menuItems: Record<string, MenuItem[]> = {
         { label: 'Year Book', href: '/dashboard/yearbook',  icon: 'BookMarked',   key: 'yearbook' },
       ],
     },
+    { label: 'Library', href: '/dashboard/library',  icon: 'BookOpen',      key: 'library' },
     { label: 'Queries', href: '/dashboard/queries',  icon: 'MessageSquare', key: 'queries' },
     { label: 'Profile', href: '/dashboard/settings', icon: 'UserCircle',    key: 'settings' },
   ],
@@ -282,6 +287,9 @@ export const menuItems: Record<string, MenuItem[]> = {
     { label: 'Transport',        href: '/dashboard/transport',             icon: 'Bus',           key: 'transport' },
     { label: 'Career Sessions',  href: '/dashboard/career-sessions/manage', icon: 'Briefcase',   key: 'sessions' },
     { label: 'Compliance',       href: '/dashboard/compliance',            icon: 'ShieldCheck',   key: 'compliance' },
+    { label: 'Hostel',           href: '/dashboard/hostel',                icon: 'Home',          key: 'hostel' },
+    { label: 'Library',          href: '/dashboard/library',               icon: 'BookOpen',      key: 'library' },
+    { label: 'HR & Payroll',     href: '/dashboard/hrms',                  icon: 'Wallet',        key: 'hrms' },
     { label: 'Reports',          href: '/dashboard/reports',               icon: 'BarChart',      key: 'reports' },
     { label: 'Profile',          href: '/dashboard/settings',              icon: 'UserCircle',    key: 'settings' },
   ],

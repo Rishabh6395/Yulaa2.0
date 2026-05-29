@@ -9,6 +9,7 @@
 import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
+import { invalidatePerformanceCache } from '@/lib/performanceSync';
 
 const ENTRY_ROLES    = ['teacher', 'school_admin', 'principal', 'hod', 'super_admin'];
 const APPROVAL_ROLES = ['school_admin', 'principal', 'hod', 'super_admin'];
@@ -228,6 +229,7 @@ export async function PATCH(request: Request) {
           data:  { status: 'approved', approvedById: user.id },
         }),
       ]);
+      invalidatePerformanceCache(schoolId).catch(() => {});
       return Response.json({ status: 'approved' });
     }
 

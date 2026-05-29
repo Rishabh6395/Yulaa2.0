@@ -75,6 +75,20 @@ async function computeCycle(cycleId: string, triggeredBy: string) {
   const computedAt = new Date();
   const log: string[] = [];
 
+  // Load configured grading bands (school-level, sorted highest first)
+  const gradingBands = await prisma.gradingTypeMaster.findMany({
+    where: { schoolId, isActive: true },
+    orderBy: { minPercent: 'desc' },
+  });
+
+  function getGrade(pct: number): string {
+    if (gradingBands.length > 0) {
+      const band = gradingBands.find(b => pct >= Number(b.minPercent));
+      if (band) return band.grade;
+    }
+    return pct >= 90 ? 'A+' : pct >= 80 ? 'A' : pct >= 70 ? 'B+' : pct >= 60 ? 'B' : pct >= 50 ? 'C' : pct >= 40 ? 'D' : 'F';
+  }
+
   // Load rating configs for this school
   const ratingCfgs = await prisma.kpiRatingConfig.findMany({ where: { schoolId } });
   const getCfg = (segment: string) => ratingCfgs.find(c => c.segment === segment);
@@ -217,7 +231,7 @@ async function computeCycle(cycleId: string, triggeredBy: string) {
         maxMarks:   rows[0].max,
         marks:      Math.round(rows.reduce((a, r) => a + r.marks, 0) / rows.length),
         percentage: avgPct,
-        grade:      avgPct >= 90 ? 'A+' : avgPct >= 80 ? 'A' : avgPct >= 70 ? 'B+' : avgPct >= 60 ? 'B' : avgPct >= 50 ? 'C' : avgPct >= 40 ? 'D' : 'F',
+        grade:      getGrade(avgPct),
         classRank:  rank,
         classAverage: classAvg,
         isWeak:     avgPct < classAvg - sd,
@@ -238,7 +252,7 @@ async function computeCycle(cycleId: string, triggeredBy: string) {
       classId:           s.classId,
       subjectsData:      JSON.stringify(subjectsData),
       overallPercentage: overallPct,
-      overallGrade:      overallPct >= 90 ? 'A+' : overallPct >= 80 ? 'A' : overallPct >= 70 ? 'B+' : overallPct >= 60 ? 'B' : 'C',
+      overallGrade:      getGrade(overallPct),
       weakSubjects,
       strongSubjects,
       rating:            getRating(overallPct, acaCfg ?? defaultCfg),
