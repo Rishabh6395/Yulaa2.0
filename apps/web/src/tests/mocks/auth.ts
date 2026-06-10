@@ -8,31 +8,35 @@ function role(code: string, schoolId: string | null = 'school-1', isPrimary = tr
 
 export const USERS = {
   superAdmin: {
-    id: 'user-super', first_name: 'Super', last_name: 'Admin',
+    id: 'user-super', email: 'super@yulaa.com', first_name: 'Super', last_name: 'Admin',
     roles: [role('super_admin', null)],
   },
   schoolAdmin: {
-    id: 'user-admin', first_name: 'School', last_name: 'Admin',
+    id: 'user-admin', email: 'admin@school1.com', first_name: 'School', last_name: 'Admin',
     roles: [role('school_admin', 'school-1')],
   },
   principal: {
-    id: 'user-principal', first_name: 'Principal', last_name: 'User',
+    id: 'user-principal', email: 'principal@school1.com', first_name: 'Principal', last_name: 'User',
     roles: [role('principal', 'school-1')],
   },
   hod: {
-    id: 'user-hod', first_name: 'HOD', last_name: 'User',
+    id: 'user-hod', email: 'hod@school1.com', first_name: 'HOD', last_name: 'User',
     roles: [role('hod', 'school-1')],
   },
   teacher: {
-    id: 'user-teacher', first_name: 'Teacher', last_name: 'User',
+    id: 'user-teacher', email: 'teacher@school1.com', first_name: 'Teacher', last_name: 'User',
     roles: [role('teacher', 'school-1')],
   },
   parent: {
-    id: 'user-parent', first_name: 'Parent', last_name: 'User',
+    id: 'user-parent', email: 'parent@example.com', first_name: 'Parent', last_name: 'User',
     roles: [role('parent', 'school-1')],
   },
+  student: {
+    id: 'user-student', email: 'stu001@yulaa.student', first_name: 'Student', last_name: 'User',
+    roles: [role('student', 'school-1')],
+  },
   wrongSchoolAdmin: {
-    id: 'user-other', first_name: 'Other', last_name: 'Admin',
+    id: 'user-other', email: 'admin@school99.com', first_name: 'Other', last_name: 'Admin',
     roles: [role('school_admin', 'school-99')],
   },
 };

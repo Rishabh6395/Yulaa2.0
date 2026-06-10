@@ -61,6 +61,64 @@ export async function getStudentSchoolId(studentId: string): Promise<string> {
   return student.schoolId;
 }
 
+/**
+ * Returns true if the user (identified by userId) is assigned to the given class,
+ * either as a class teacher or via at least one timetable slot.
+ * Used to enforce teacher-class access boundaries for attendance and student list.
+ */
+export async function isTeacherAssignedToClass(
+  userId: string,
+  schoolId: string,
+  classId: string,
+): Promise<boolean> {
+  const teacher = await prisma.teacher.findFirst({
+    where:  { userId, schoolId },
+    select: { id: true },
+  });
+  if (!teacher) return false;
+
+  const [slotCount, classTeacherCount] = await Promise.all([
+    prisma.timetableSlot.count({
+      where: { teacherId: teacher.id, timetable: { classId, schoolId } },
+    }),
+    prisma.class.count({
+      where: { id: classId, schoolId, classTeacherId: teacher.id },
+    }),
+  ]);
+
+  return slotCount > 0 || classTeacherCount > 0;
+}
+
+/**
+ * Returns all classIds where the teacher has a timetable slot or is the class teacher.
+ * Returns an empty array if the teacher record does not exist.
+ */
+export async function getTeacherClassIds(userId: string, schoolId: string): Promise<string[]> {
+  const teacher = await prisma.teacher.findFirst({
+    where:  { userId, schoolId },
+    select: { id: true },
+  });
+  if (!teacher) return [];
+
+  const [slots, ownedClasses] = await Promise.all([
+    prisma.timetableSlot.findMany({
+      where:  { teacherId: teacher.id, timetable: { schoolId } },
+      select: { timetable: { select: { classId: true } } },
+    }),
+    prisma.class.findMany({
+      where:  { schoolId, classTeacherId: teacher.id },
+      select: { id: true },
+    }),
+  ]);
+
+  return [
+    ...new Set([
+      ...slots.map((s) => s.timetable.classId),
+      ...ownedClasses.map((c) => c.id),
+    ]),
+  ];
+}
+
 /** Loads weekoff day numbers (0–6) from the school's HolidayCalendar config. */
 export async function getSchoolWeekoffDays(schoolId: string): Promise<number[]> {
   const entries = await prisma.holidayCalendar.findMany({

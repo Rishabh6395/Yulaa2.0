@@ -16,11 +16,14 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const auth = request.headers.get('authorization') ?? '';
-    if (auth !== `Bearer ${secret}`) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  // Fail closed: CRON_SECRET must be configured. Omitting it would leave this
+  // endpoint open to any caller, allowing unlimited precompute / Redis flood.
+  if (!secret) {
+    return Response.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
+  }
+  const auth = request.headers.get('authorization') ?? '';
+  if (auth !== `Bearer ${secret}`) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const started = Date.now();

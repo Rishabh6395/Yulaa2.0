@@ -1,7 +1,7 @@
 import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
-import { listApplications } from '@/modules/admission/admission.service';
-import { handleError, UnauthorizedError, ForbiddenError } from '@/utils/errors';
+import { listApplications, submitApplication } from '@/modules/admission/admission.service';
+import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 
 
@@ -49,5 +49,17 @@ export async function GET(request: Request) {
     }));
 
     return Response.json({ applications: rows, total: rows.length, page: 1, limit: rows.length, totalPages: 1 });
+  } catch (err) { return handleError(err); }
+}
+
+/** POST /api/admission/applications — parent submits a new application */
+export async function POST(request: Request) {
+  try {
+    const user = await getUserFromRequest(request);
+    if (!user) throw new UnauthorizedError();
+    const body = await request.json();
+    if (!body.schoolId) throw new AppError('schoolId is required', 400);
+    const result = await submitApplication({ ...body, parentUserId: user.id });
+    return Response.json(result, { status: 201 });
   } catch (err) { return handleError(err); }
 }

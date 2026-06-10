@@ -29,8 +29,9 @@ export async function GET(request: Request) {
       const requestedStudentId = searchParams.get('student_id');
       if (!requestedStudentId) return Response.json({ invoices: [], summary: { total: 0, collected: 0, pending: 0, overdue_count: 0, unpaid_count: 0 } });
       await assertParentOwnsStudent(user.id, requestedStudentId);
-    } else if (!PRINCIPAL_ADMIN_ROLES.includes(role) && role !== 'hod' && role !== 'teacher') {
-      throw new ForbiddenError();
+    } else if (!PRINCIPAL_ADMIN_ROLES.includes(role)) {
+      // Teachers and HODs have no legitimate need to see school-wide fee records (G-011).
+      throw new ForbiddenError('Fee records are accessible to admins, principals, students, and parents only');
     }
 
     const result = await listInvoices(schoolId!, scopedParams);

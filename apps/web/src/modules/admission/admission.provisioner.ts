@@ -3,6 +3,7 @@
  * Creates: User (parent), Parent profile, Student(s), ParentStudent links, UserRoles, FeeInvoice(s).
  */
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import prisma from '@/lib/prisma';
 
 function admissionNo(schoolId: string): string {
@@ -34,7 +35,9 @@ export async function provisionApprovedApplication(applicationId: string) {
     }
 
     if (!user) {
-      const hash = await bcrypt.hash(app.parentPhone, 12);
+      // Random temp password — never the phone number (G-007).
+      const tempPassword = randomBytes(10).toString('hex');
+      const hash = await bcrypt.hash(tempPassword, 12);
       const [firstName, ...rest] = app.parentName.trim().split(' ');
       user = await tx.user.create({
         data: {
@@ -47,6 +50,9 @@ export async function provisionApprovedApplication(applicationId: string) {
           status:            'active',
         },
       });
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[PROVISIONER] parent userId=${user.id} tempPassword=${tempPassword}`);
+      }
     }
 
     // ── 2. Find or create Parent profile ───────────────────────────────────
@@ -100,7 +106,9 @@ export async function provisionApprovedApplication(applicationId: string) {
         const studentUserEmail = `${student.admissionNo.toLowerCase()}@yulaa.student`;
         let sUser = await tx.user.findUnique({ where: { email: studentUserEmail } });
         if (!sUser) {
-          const hash = await bcrypt.hash(student.admissionNo, 12);
+          // Random temp password — never the admission number (G-007).
+          const tempPassword = randomBytes(10).toString('hex');
+          const hash = await bcrypt.hash(tempPassword, 12);
           sUser = await tx.user.create({
             data: {
               email:             studentUserEmail,
@@ -111,7 +119,13 @@ export async function provisionApprovedApplication(applicationId: string) {
               status:            'active',
             },
           });
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[PROVISIONER] student admissionNo=${student.admissionNo} tempPassword=${tempPassword}`);
+          }
         }
+        // Link Student → User so student-scoped queries (fees, attendance) can resolve the record.
+        await tx.student.update({ where: { id: student.id }, data: { userId: sUser.id } });
+
         const existingSR = await tx.userRole.findFirst({ where: { userId: sUser.id, roleId: studentRole.id, schoolId: app.schoolId } });
         if (!existingSR) {
           await tx.userRole.create({ data: { userId: sUser.id, roleId: studentRole.id, schoolId: app.schoolId, isPrimary: true } });

@@ -1,4 +1,5 @@
 import twilio from 'twilio';
+import { randomInt } from 'crypto';
 import { signToken, verifyToken } from '@/lib/auth';
 import { AppError } from '@/utils/errors';
 import * as repo from './otp.repo';
@@ -6,7 +7,7 @@ import * as repo from './otp.repo';
 const OTP_TTL_MINUTES = 10;
 
 function generateOtp(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return randomInt(100000, 1000000).toString();
 }
 
 /** Normalise phone: strip spaces/dashes, add +91 for bare 10-digit Indian numbers */

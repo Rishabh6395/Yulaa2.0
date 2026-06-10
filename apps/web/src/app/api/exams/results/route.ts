@@ -24,6 +24,14 @@ export async function GET(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
+    const primary = user.roles.find((r: any) => r.is_primary) ?? user.roles[0];
+    const role     = primary.role_code as string;
+
+    // Parents and students are not authorised to view the full class results grid (G-012).
+    // Students may only view their own results (handled below).
+    if (role === 'parent') throw new ForbiddenError('Parents cannot access the class results grid');
+    if (!ENTRY_ROLES.includes(role) && role !== 'student') throw new ForbiddenError();
+
     const { searchParams } = new URL(request.url);
     const examId  = searchParams.get('exam_id');
     const classId = searchParams.get('class_id');
@@ -35,7 +43,38 @@ export async function GET(request: Request) {
     const exam = await prisma.exam.findFirst({ where: { id: examId, schoolId } });
     if (!exam) throw new AppError('Exam not found', 404);
 
-    // Get students in class (or all school if no class)
+    // ── Student: return only their own result row ───────────────────────────
+    if (role === 'student') {
+      const ownStudent = await prisma.student.findFirst({
+        where: { userId: user.id, schoolId },
+        select: { id: true, firstName: true, lastName: true, admissionNo: true },
+      });
+      if (!ownStudent) return Response.json({ exam, grid: [], subjects: [], students: 0 });
+
+      const results = await prisma.examResult.findMany({ where: { examId, studentId: ownStudent.id } });
+      const entries = await prisma.examTimetableEntry.findMany({ where: { examId } });
+      const subjects = [...new Set(entries.map((e) => e.subject))];
+
+      const grid = [{
+        student: ownStudent,
+        subjects: subjects.map((subj) => {
+          const r = results.find((r) => r.subject === subj);
+          return {
+            subject:       subj,
+            maxMarks:      entries.find((e) => e.subject === subj)?.maxMarks ?? exam.maxMarks,
+            marksObtained: r ? Number(r.marksObtained) : null,
+            grade:         r?.grade   ?? null,
+            remarks:       r?.remarks ?? null,
+            approved:      r?.approved ?? false,
+            resultId:      r?.id ?? null,
+          };
+        }),
+      }];
+
+      return Response.json({ exam, grid, subjects, students: 1 });
+    }
+
+    // ── Staff / admin: full class grid ─────────────────────────────────────
     const students = await prisma.student.findMany({
       where: {
         schoolId,
@@ -46,26 +85,24 @@ export async function GET(request: Request) {
       select: { id: true, firstName: true, lastName: true, admissionNo: true },
     });
 
-    // Get existing results for this exam
     const results = await prisma.examResult.findMany({
-      where: { examId, studentId: { in: students.map(s => s.id) } },
+      where: { examId, studentId: { in: students.map((s) => s.id) } },
     });
 
-    // Build grid: one row per student × subject
     const entries = await prisma.examTimetableEntry.findMany({
       where: { examId, ...(classId ? { classId } : {}) },
     });
-    const subjects = [...new Set(entries.map(e => e.subject))];
+    const subjects = [...new Set(entries.map((e) => e.subject))];
 
-    const grid = students.map(s => ({
+    const grid = students.map((s) => ({
       student: s,
-      subjects: subjects.map(subj => {
-        const r = results.find(r => r.studentId === s.id && r.subject === subj);
+      subjects: subjects.map((subj) => {
+        const r = results.find((r) => r.studentId === s.id && r.subject === subj);
         return {
           subject:       subj,
-          maxMarks:      entries.find(e => e.subject === subj)?.maxMarks ?? exam.maxMarks,
+          maxMarks:      entries.find((e) => e.subject === subj)?.maxMarks ?? exam.maxMarks,
           marksObtained: r ? Number(r.marksObtained) : null,
-          grade:         r?.grade  ?? null,
+          grade:         r?.grade   ?? null,
           remarks:       r?.remarks ?? null,
           approved:      r?.approved ?? false,
           resultId:      r?.id ?? null,

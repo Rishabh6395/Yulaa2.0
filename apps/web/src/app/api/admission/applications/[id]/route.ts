@@ -50,8 +50,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       await prisma.admissionApplication.update({ where: { id: (await params).id }, data: parentUpdate });
     }
 
-    // Update individual children
+    // Update individual children — where clause binds child to this application,
+    // preventing IDOR writes to children belonging to other applications (G-009).
     if (Array.isArray(body.children)) {
+      const appId = (await params).id;
       for (const c of body.children) {
         if (!c.id) continue;
         const childUpdate: Record<string, any> = {};
@@ -63,7 +65,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         if (c.previousSchool !== undefined) childUpdate.previousSchool = c.previousSchool;
         if (c.section        !== undefined) childUpdate.section        = c.section;
         if (Object.keys(childUpdate).length > 0) {
-          await prisma.admissionChild.update({ where: { id: c.id }, data: childUpdate });
+          await prisma.admissionChild.update({
+            where: { id: c.id, applicationId: appId },
+            data:  childUpdate,
+          });
         }
       }
     }

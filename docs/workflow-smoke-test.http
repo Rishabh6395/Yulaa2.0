@@ -1,0 +1,394 @@
+# Yulaa 2.0 — Workflow Smoke Tests
+# VS Code REST Client format  (install "REST Client" extension by Huachao Mao)
+#
+# Usage:
+#   1. Set the variables below to match your environment
+#   2. Click "Send Request" above any ### block
+#   3. Run tests top-to-bottom for a full end-to-end smoke pass
+#
+# Run order:
+#   0. Seed defaults
+#   1–3. Admission flow
+#   4–6. Leave flow
+#   7–8. Attendance regularization
+#   9.   Generic workflow config check
+#   10.  Leave balance check
+
+@BASE_URL    = http://localhost:3000
+@ADMIN_TOKEN = REPLACE_WITH_SCHOOL_ADMIN_JWT
+@SUPER_TOKEN = REPLACE_WITH_SUPER_ADMIN_JWT
+@TEACHER_TOKEN = REPLACE_WITH_TEACHER_JWT
+@PRINCIPAL_TOKEN = REPLACE_WITH_PRINCIPAL_JWT
+@PARENT_TOKEN  = REPLACE_WITH_PARENT_JWT
+@SCHOOL_ID   = REPLACE_WITH_SCHOOL_UUID
+@APP_ID      = REPLACE_AFTER_STEP_1
+@LEAVE_ID    = REPLACE_AFTER_STEP_4
+@REG_ID      = REPLACE_AFTER_STEP_7
+@ATT_ID      = REPLACE_WITH_ATTENDANCE_RECORD_UUID
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 0 — Seed all default workflows (run once per school)
+# Expected: { "ok": true, seeded: { admissionWorkflow: "created", ... } }
+# Re-run is safe — all keys return "skipped" on second call
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 0a. Seed defaults (school admin)
+POST {{BASE_URL}}/api/admin/seed-workflows
+Authorization: Bearer {{ADMIN_TOKEN}}
+Content-Type: application/json
+
+{}
+
+###
+
+### 0b. Seed defaults (super admin targeting specific school)
+POST {{BASE_URL}}/api/admin/seed-workflows
+Authorization: Bearer {{SUPER_TOKEN}}
+Content-Type: application/json
+
+{
+  "schoolId": "{{SCHOOL_ID}}"
+}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 1 — ADMISSION: Submit application (as parent)
+# Expected: 201, { application: { id, status: "submitted", currentStep: 0 } }
+# Copy returned application id → set @APP_ID above
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 1. Submit admission application
+POST {{BASE_URL}}/api/admission/applications
+Authorization: Bearer {{PARENT_TOKEN}}
+Content-Type: application/json
+
+{
+  "schoolId":           "{{SCHOOL_ID}}",
+  "parentName":         "Priya Sharma",
+  "parentPhone":        "9876543210",
+  "parentEmail":        "priya@example.com",
+  "residentialAddress": "123 MG Road, Bengaluru",
+  "children": [
+    {
+      "firstName":    "Riya",
+      "lastName":     "Sharma",
+      "dateOfBirth":  "2015-04-12",
+      "gender":       "female",
+      "classApplying": "5"
+    }
+  ]
+}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 2 — ADMISSION: List pending applications (as admin)
+# Expected: 200, { applications: [...] } — should include the one from Step 1
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 2. List pending admission applications
+GET {{BASE_URL}}/api/admission/applications?status=pending
+Authorization: Bearer {{ADMIN_TOKEN}}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 3a — ADMISSION: Approve Step 1 (Admin Review)
+# Expected: 200, { application: { currentStep: 1, status: "step_approved" } }
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 3a. Approve admission Step 1 (Admin)
+POST {{BASE_URL}}/api/admission/applications/{{APP_ID}}/action
+Authorization: Bearer {{ADMIN_TOKEN}}
+Content-Type: application/json
+
+{
+  "action":  "approve",
+  "comment": "Documents verified"
+}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 3b — ADMISSION: Approve Step 2 (Principal Approval — isFinal)
+# Expected: 200, { application: { status: "approved" } }
+#           Student record auto-provisioned; fee invoice created
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 3b. Approve admission Step 2 (Principal — final)
+POST {{BASE_URL}}/api/admission/applications/{{APP_ID}}/action
+Authorization: Bearer {{PRINCIPAL_TOKEN}}
+Content-Type: application/json
+
+{
+  "action":  "approve",
+  "comment": "Admitted to Grade 5 - A"
+}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 3c — ADMISSION: Reject (alternative to approve)
+# Expected: 200, { application: { status: "rejected" } }
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 3c. Reject admission application
+POST {{BASE_URL}}/api/admission/applications/{{APP_ID}}/action
+Authorization: Bearer {{ADMIN_TOKEN}}
+Content-Type: application/json
+
+{
+  "action":  "reject",
+  "comment": "Documents incomplete"
+}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 4 — LEAVE: Submit leave request (as teacher)
+# Expected: 201, { leave: { id, status: "pending" } }
+# Copy returned leave id → set @LEAVE_ID above
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 4. Submit leave request (teacher)
+POST {{BASE_URL}}/api/leave
+Authorization: Bearer {{TEACHER_TOKEN}}
+Content-Type: application/json
+
+{
+  "leave_type": "CL",
+  "start_date": "2026-06-15",
+  "end_date":   "2026-06-16",
+  "reason":     "Personal work"
+}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 5 — LEAVE: List leave requests (as principal)
+# Expected: 200, { leaves: [...] } — should include the one from Step 4
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 5. List pending leave requests (principal view)
+GET {{BASE_URL}}/api/leave?status=pending
+Authorization: Bearer {{PRINCIPAL_TOKEN}}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 6a — LEAVE: Approve leave (as principal)
+# Expected: 200, { leave: { status: "approved" } }
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 6a. Approve leave request
+PATCH {{BASE_URL}}/api/leave
+Authorization: Bearer {{PRINCIPAL_TOKEN}}
+Content-Type: application/json
+
+{
+  "action":  "approved",
+  "id":      "{{LEAVE_ID}}",
+  "comment": "Approved"
+}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 6b — LEAVE: Reject leave (alternative)
+# Expected: 200, { leave: { status: "rejected" } }
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 6b. Reject leave request
+PATCH {{BASE_URL}}/api/leave
+Authorization: Bearer {{PRINCIPAL_TOKEN}}
+Content-Type: application/json
+
+{
+  "action":  "rejected",
+  "id":      "{{LEAVE_ID}}",
+  "comment": "School function on this date"
+}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 6c — LEAVE: Withdraw (by submitter)
+# Expected: 200, { leave: { status: "withdrawn" } }
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 6c. Withdraw leave (teacher)
+PATCH {{BASE_URL}}/api/leave
+Authorization: Bearer {{TEACHER_TOKEN}}
+Content-Type: application/json
+
+{
+  "action": "withdraw",
+  "id":     "{{LEAVE_ID}}"
+}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 7 — ATTENDANCE REGULARIZATION: Submit request (as teacher)
+# Prereq: @ATT_ID must be a real Attendance record ID from your DB
+# Expected: 201, { regularization: { id, status: "pending" } }
+# Copy returned id → set @REG_ID above
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 7. Submit attendance regularization
+POST {{BASE_URL}}/api/attendance/regularization
+Authorization: Bearer {{TEACHER_TOKEN}}
+Content-Type: application/json
+
+{
+  "attendanceId": "{{ATT_ID}}",
+  "studentId":    "REPLACE_WITH_STUDENT_UUID",
+  "toStatus":     "present",
+  "reason":       "Student attended but was incorrectly marked absent due to system error"
+}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 8a — ATTENDANCE REGULARIZATION: Approve (as principal)
+# Expected: 200, { regularization: { status: "approved" } }
+#           Attendance record updated to toStatus
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 8a. Approve regularization
+PATCH {{BASE_URL}}/api/attendance/regularization?id={{REG_ID}}
+Authorization: Bearer {{PRINCIPAL_TOKEN}}
+Content-Type: application/json
+
+{
+  "action":        "approved",
+  "reviewComment": "Verified with physical register"
+}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 8b — ATTENDANCE REGULARIZATION: Reject (alternative)
+# Expected: 200, { regularization: { status: "rejected" } }
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 8b. Reject regularization
+PATCH {{BASE_URL}}/api/attendance/regularization?id={{REG_ID}}
+Authorization: Bearer {{PRINCIPAL_TOKEN}}
+Content-Type: application/json
+
+{
+  "action":        "rejected",
+  "reviewComment": "Attendance records are accurate"
+}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 9 — GENERIC WORKFLOW CONFIG: Verify all types are configured
+# Expected: 200, { workflow: { id, stages: [...] } } for each type
+# If workflow: null → seed hasn't run yet or was skipped
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 9a. Check attendance workflow config
+GET {{BASE_URL}}/api/super-admin/schools/{{SCHOOL_ID}}/workflow?type=attendance
+Authorization: Bearer {{SUPER_TOKEN}}
+
+###
+
+### 9b. Check fee waiver workflow config
+GET {{BASE_URL}}/api/super-admin/schools/{{SCHOOL_ID}}/workflow?type=fee
+Authorization: Bearer {{SUPER_TOKEN}}
+
+###
+
+### 9c. Check parent query workflow config
+GET {{BASE_URL}}/api/super-admin/schools/{{SCHOOL_ID}}/workflow?type=query_parents
+Authorization: Bearer {{SUPER_TOKEN}}
+
+###
+
+### 9d. Check leave workflow config (teacher)
+GET {{BASE_URL}}/api/super-admin/schools/{{SCHOOL_ID}}/workflow?type=leave&role=teacher
+Authorization: Bearer {{SUPER_TOKEN}}
+
+###
+
+### 9e. Check admission workflow config
+GET {{BASE_URL}}/api/super-admin/schools/{{SCHOOL_ID}}/workflow?type=admission
+Authorization: Bearer {{SUPER_TOKEN}}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 10 — LEAVE BALANCE: Verify balances loaded
+# Expected: 200, { balances: [{ leaveTypeCode, daysAllowed, daysUsed, remaining }] }
+# If empty → leave types or balance policy not configured
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 10. Check leave balance (teacher)
+GET {{BASE_URL}}/api/leave/balance
+Authorization: Bearer {{TEACHER_TOKEN}}
+
+###
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EDGE CASES — Run these to validate error handling
+# ─────────────────────────────────────────────────────────────────────────────
+
+### E1. Idempotent seed (second run — all should return "skipped")
+POST {{BASE_URL}}/api/admin/seed-workflows
+Authorization: Bearer {{ADMIN_TOKEN}}
+Content-Type: application/json
+
+{}
+
+###
+
+### E2. Student role should be forbidden from seeding
+# Expected: 403 Forbidden
+POST {{BASE_URL}}/api/admin/seed-workflows
+Authorization: Bearer REPLACE_WITH_STUDENT_JWT
+Content-Type: application/json
+
+{}
+
+###
+
+### E3. Cross-school: school_admin targeting another school → 400 (schoolId ignored)
+POST {{BASE_URL}}/api/admin/seed-workflows
+Authorization: Bearer {{ADMIN_TOKEN}}
+Content-Type: application/json
+
+{
+  "schoolId": "different_school_uuid"
+}
+
+###
+
+### E4. Approve admission without valid app ID → 404
+POST {{BASE_URL}}/api/admission/applications/nonexistent_id/action
+Authorization: Bearer {{ADMIN_TOKEN}}
+Content-Type: application/json
+
+{
+  "action": "approve"
+}
+
+###
+
+### E5. Submit leave without leave types configured → 404 or empty
+# (Helps diagnose missing leave type master setup)
+POST {{BASE_URL}}/api/leave
+Authorization: Bearer {{TEACHER_TOKEN}}
+Content-Type: application/json
+
+{
+  "leaveTypeCode": "INVALID",
+  "startDate":     "2026-06-20",
+  "endDate":       "2026-06-20",
+  "reason":        "Test"
+}
+
+###

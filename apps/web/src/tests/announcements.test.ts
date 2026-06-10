@@ -48,7 +48,7 @@ describe('📢 ANNOUNCEMENTS MODULE', () => {
     });
 
     it('[+] can delete an announcement', async () => {
-      prismaMock.announcement.delete.mockResolvedValue(ANNOUNCEMENT as any);
+      prismaMock.announcement.deleteMany.mockResolvedValue({ count: 1 } as any);
       const req = makeRequest('DELETE', '/api/announcements', { id: 'ann-1' });
       const res = await DELETE(req);
       expect(res.status).toBe(200);

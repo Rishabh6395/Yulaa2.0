@@ -19,7 +19,7 @@ describe('🔐 AUTH MODULE', () => {
       const bcrypt = await import('bcryptjs');
       const hash = await bcrypt.hash('password123', 1);
 
-      prismaMock.user.findUnique.mockResolvedValue({
+      prismaMock.user.findFirst.mockResolvedValue({
         id: 'user-1', email: 'admin@test.com', firstName: 'Admin', lastName: 'Test',
         passwordHash: hash, status: 'active',
         userRoles: [{
@@ -43,7 +43,7 @@ describe('🔐 AUTH MODULE', () => {
       const bcrypt = await import('bcryptjs');
       const hash = await bcrypt.hash('superpass', 1);
 
-      prismaMock.user.findUnique.mockResolvedValue({
+      prismaMock.user.findFirst.mockResolvedValue({
         id: 'user-super', email: 'super@yulaa.com', firstName: 'Super', lastName: 'Admin',
         passwordHash: hash, status: 'active',
         userRoles: [{

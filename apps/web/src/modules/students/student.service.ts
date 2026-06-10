@@ -5,6 +5,7 @@ import { withCache, cacheInvalidate, CacheTTL } from '@/services/cache.service';
 import * as repo from './student.repo';
 import type { StudentRow } from './student.types';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import prisma from '@/lib/prisma';
 
 function studentListKey(schoolId: string, classId?: string | null, status?: string | null) {
@@ -114,7 +115,10 @@ export async function createAndLinkParent(
 
   let user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
-    const hash = await bcrypt.hash(parent.phone, 12);
+    // Use a cryptographically random temporary password — never the phone number,
+    // which is semi-public. mustResetPassword forces a change on first login.
+    const tempPassword = randomBytes(10).toString('hex'); // 20-char hex
+    const hash = await bcrypt.hash(tempPassword, 12);
     user = await prisma.user.create({
       data: {
         email,
@@ -126,6 +130,9 @@ export async function createAndLinkParent(
         status:            'active',
       },
     });
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[PARENT CREATED] phone=${parent.phone} tempPassword=${tempPassword} — share with parent, they must change on first login`);
+    }
   }
 
   let parentRecord = await prisma.parent.findUnique({ where: { userId: user.id } });
