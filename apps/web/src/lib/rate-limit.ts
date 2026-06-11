@@ -64,10 +64,17 @@ export async function rateLimit(
   };
 }
 
-/** Returns the client IP from standard proxy headers. */
+/**
+ * Returns the client IP from standard proxy headers.
+ * Prefers x-real-ip (set by Vercel/nginx from the true client).
+ * Falls back to the LAST entry in x-forwarded-for (added by our trusted proxy,
+ * not the client-controlled first entry) to prevent header spoofing.
+ */
 export function clientIp(request: Request): string {
-  return (
-    (request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() ||
-    'unknown'
-  );
+  const realIp = request.headers.get('x-real-ip')?.trim();
+  if (realIp) return realIp;
+
+  const forwarded = request.headers.get('x-forwarded-for') ?? '';
+  const ips = forwarded.split(',').map((s) => s.trim()).filter(Boolean);
+  return ips.at(-1) ?? 'unknown';
 }

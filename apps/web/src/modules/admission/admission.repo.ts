@@ -132,3 +132,18 @@ export async function updateWorkflow(id: string, data: { name?: string; isActive
 export async function linkChildToStudent(childId: string, studentId: string) {
   return prisma.admissionChild.update({ where: { id: childId }, data: { studentId } });
 }
+
+export async function findNextWaitlisted(schoolId: string) {
+  return prisma.admissionApplication.findFirst({
+    where:   { schoolId, status: 'waitlisted' },
+    orderBy: { waitlistPosition: 'asc' },
+    select:  { id: true, waitlistPosition: true },
+  });
+}
+
+export async function compactWaitlist(schoolId: string, removedPosition: number) {
+  await prisma.admissionApplication.updateMany({
+    where: { schoolId, status: 'waitlisted', waitlistPosition: { gt: removedPosition } },
+    data:  { waitlistPosition: { decrement: 1 } },
+  });
+}

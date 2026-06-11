@@ -1,5 +1,5 @@
 import { getUserFromRequest } from '@/lib/auth';
-import { handleError, UnauthorizedError, ForbiddenError, NotFoundError } from '@/utils/errors';
+import { handleError, UnauthorizedError, ForbiddenError, NotFoundError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 
 function getPrimary(user: any) {
@@ -87,11 +87,45 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const schoolId = getPrimary(user)?.school_id;
     if (schoolId && card.schoolId !== schoolId) throw new ForbiddenError('Access denied');
 
-    const { teacherRemarks } = await request.json();
+    const body = await request.json();
+
+    // Recall a published card back to draft
+    if (body.action === 'recall') {
+      if (card.status === 'draft') throw new AppError('Report card is already a draft');
+      const updated = await prisma.reportCard.update({
+        where: { id },
+        data:  { status: 'draft', viewedAt: null },
+      });
+      return Response.json({ reportCard: updated });
+    }
+
+    const { teacherRemarks } = body;
     const updated = await prisma.reportCard.update({
       where: { id },
       data:  { teacherRemarks: teacherRemarks ?? card.teacherRemarks },
     });
     return Response.json({ reportCard: updated });
+  } catch (err) { return handleError(err); }
+}
+
+// ── DELETE /api/report-cards/[id] ────────────────────────────────────────────
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const user = await getUserFromRequest(_request);
+    if (!user) throw new UnauthorizedError();
+    if (!canSend(user)) throw new ForbiddenError('Access denied');
+    const { id } = await params;
+
+    const card = await prisma.reportCard.findUnique({ where: { id } });
+    if (!card) throw new NotFoundError('Report card');
+
+    const schoolId = getPrimary(user)?.school_id;
+    if (schoolId && card.schoolId !== schoolId) throw new ForbiddenError('Access denied');
+
+    // Only draft or viewed cards can be deleted; sent cards must be recalled first
+    if (card.status === 'sent') throw new AppError('Recall the report card before deleting (PATCH with action: "recall")', 409);
+
+    await prisma.reportCard.delete({ where: { id } });
+    return Response.json({ ok: true });
   } catch (err) { return handleError(err); }
 }

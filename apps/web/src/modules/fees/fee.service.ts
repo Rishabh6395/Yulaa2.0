@@ -112,7 +112,7 @@ export async function applyBulkFees(schoolId: string, body: Record<string, any>)
 }
 
 export async function recordPayment(body: Record<string, any>, callerSchoolId: string) {
-  const { id, payment_amount, payment_method, transaction_ref } = body;
+  const { id, payment_amount, payment_method, transaction_ref, idempotency_key } = body;
   if (!id || !payment_amount) throw new AppError('id and payment_amount are required');
 
   // Verify the invoice belongs to the caller's school before any mutation
@@ -124,6 +124,7 @@ export async function recordPayment(body: Record<string, any>, callerSchoolId: s
     paymentAmount:  payment_amount,
     paymentMethod:  payment_method,
     transactionRef: transaction_ref,
+    idempotencyKey: idempotency_key || undefined,
   });
 
   if (!result) throw new NotFoundError('Invoice');

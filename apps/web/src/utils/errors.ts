@@ -1,6 +1,8 @@
 /** True only during local development — use to gate debug logs */
 export const isDev = process.env.NODE_ENV === 'development';
 
+import { logger } from '@/lib/logger';
+
 export class AppError extends Error {
   constructor(
     message: string,
@@ -98,14 +100,14 @@ export function handleError(err: unknown): Response {
 
   // Prisma connection failed
   if (prismaCode === 'P1001' || prismaCode === 'P1002') {
-    console.error('[DB Connection Error]', err);
+    logger.error({ err }, 'DB connection error');
     return Response.json(
       { error: 'Database connection failed — please try again shortly' },
       { status: 503 },
     );
   }
 
-  console.error('[API Error]', err);
+  logger.error({ err }, 'Unhandled API error');
   return Response.json(
     { error: isDev ? String((err as any)?.message ?? err) : 'Internal server error' },
     { status: 500 },

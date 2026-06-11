@@ -116,9 +116,19 @@ export async function recordPayment(data: RecordPaymentInput) {
   const invoice = await findInvoiceById(data.invoiceId);
   if (!invoice) return null;
 
-  const newPaid  = Number(invoice.paidAmount) + Number(data.paymentAmount);
-  const total    = Number(invoice.amount);
-  const status   = newPaid >= total ? 'paid' : newPaid > 0 ? 'partial' : 'unpaid';
+  // Idempotency: if this key was already used, return the existing invoice state
+  if (data.idempotencyKey) {
+    const existing = await prisma.feePayment.findUnique({
+      where: { idempotencyKey: data.idempotencyKey },
+    });
+    if (existing) {
+      return prisma.feeInvoice.findUnique({ where: { id: data.invoiceId } });
+    }
+  }
+
+  const newPaid = Number(invoice.paidAmount) + Number(data.paymentAmount);
+  const total   = Number(invoice.amount);
+  const status  = newPaid >= total ? 'paid' : newPaid > 0 ? 'partial' : 'unpaid';
 
   await prisma.feePayment.create({
     data: {
@@ -126,6 +136,7 @@ export async function recordPayment(data: RecordPaymentInput) {
       amount:         data.paymentAmount,
       paymentMethod:  data.paymentMethod  || 'online',
       transactionRef: data.transactionRef || null,
+      idempotencyKey: data.idempotencyKey || null,
     },
   });
 

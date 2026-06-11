@@ -2,6 +2,11 @@ import prisma from '@/lib/prisma';
 import { signToken } from '@/lib/auth';
 import { handleError, AppError, UnauthorizedError } from '@/utils/errors';
 import * as repo from '@/modules/otp/otp.repo';
+import { rateLimit, clientIp } from '@/lib/rate-limit';
+
+// 5 attempts per 10 minutes per IP+phone — blocks 6-digit OTP brute-force
+const RL_MAX    = 5;
+const RL_WINDOW = 10 * 60;
 
 function normalisePhone(raw: string): string {
   const cleaned = raw.replace(/[\s\-().]/g, '');
@@ -15,6 +20,17 @@ export async function POST(request: Request) {
   try {
     const { phone, otp } = await request.json();
     if (!phone || !otp) throw new AppError('phone and otp are required');
+
+    const ip     = clientIp(request);
+    const rlKey  = `rl:verify-otp:${ip}:${String(phone).slice(-6)}`;
+    const { allowed, resetAt } = await rateLimit(rlKey, RL_MAX, RL_WINDOW);
+    if (!allowed) {
+      const retryAfterSec = Math.ceil((resetAt - Date.now()) / 1000);
+      return Response.json(
+        { error: 'Too many OTP attempts. Please request a new OTP and try again.', retryAfterSec },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSec) } },
+      );
+    }
 
     const e164   = normalisePhone(phone);
     const record = await repo.findValidOtp(e164, otp);

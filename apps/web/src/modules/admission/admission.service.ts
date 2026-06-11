@@ -102,7 +102,18 @@ export async function processAction(input: ApplicationActionInput) {
     await repo.updateApplicationStatus(input.applicationId, 'rejected', app.currentStep);
     await repo.createAction(input.applicationId, input.actorUserId, app.currentStep, 'reject', input.comment);
     if (process.env.NODE_ENV === 'development') console.log(`[NOTIFY] Application ${input.applicationId} rejected`);
-    return { status: 'rejected' };
+
+    // Auto-promote the next waitlisted candidate for the same school
+    const nextWaitlisted = await repo.findNextWaitlisted(app.schoolId);
+    if (nextWaitlisted) {
+      await repo.updateApplicationStatus(nextWaitlisted.id, 'under_review', 0);
+      // Compact remaining waitlist positions
+      await repo.compactWaitlist(app.schoolId, nextWaitlisted.waitlistPosition ?? 0);
+      if (process.env.NODE_ENV === 'development')
+        console.log(`[NOTIFY] Waitlisted application ${nextWaitlisted.id} auto-promoted to under_review`);
+    }
+
+    return { status: 'rejected', promoted: nextWaitlisted?.id ?? null };
   }
 
   // Approve — check if more steps remain

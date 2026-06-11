@@ -62,3 +62,18 @@ export async function PATCH(request: Request) {
     return Response.json({ bloodGroupMaster: await patchBloodGroupMaster(id, data) });
   } catch (err) { return handleError(err); }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const user = await getUserFromRequest(request);
+    if (!user) throw new UnauthorizedError();
+    if (!user.roles.some((r) => ADMIN_ROLES.includes(r.role_code))) throw new ForbiddenError('Admin access required');
+    const id = new URL(request.url).searchParams.get('id');
+    if (!id) throw new AppError('id is required');
+    const schoolId = getSchoolId(user);
+    const record = await prisma.bloodGroupMaster.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!record) throw new AppError('Record not found', 404);
+    if (record.schoolId !== schoolId) throw new ForbiddenError();
+    return Response.json({ bloodGroupMaster: await patchBloodGroupMaster(id, { isActive: false }) });
+  } catch (err) { return handleError(err); }
+}

@@ -1,9 +1,24 @@
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { handleError, AppError } from '@/utils/errors';
+import { rateLimit, clientIp } from '@/lib/rate-limit';
+
+// 5 attempts per 15 minutes per IP — prevents OTP brute-force on reset flow
+const RL_MAX    = 5;
+const RL_WINDOW = 15 * 60;
 
 export async function POST(request: Request) {
   try {
+    const ip = clientIp(request);
+    const { allowed, resetAt } = await rateLimit(`rl:reset-pwd:${ip}`, RL_MAX, RL_WINDOW);
+    if (!allowed) {
+      const retryAfterSec = Math.ceil((resetAt - Date.now()) / 1000);
+      return Response.json(
+        { error: 'Too many attempts. Please try again later.', retryAfterSec },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSec) } },
+      );
+    }
+
     const { email, otp, newPassword } = await request.json();
     if (!email || !otp || !newPassword) throw new AppError('email, otp, and newPassword are required');
     if (newPassword.length < 8) throw new AppError('New password must be at least 8 characters');

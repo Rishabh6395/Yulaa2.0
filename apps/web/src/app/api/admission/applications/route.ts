@@ -1,8 +1,30 @@
+import { z } from 'zod';
 import { CORE_ADMIN_ROLES as ADMIN_ROLES } from '@/lib/roles';
 import { getUserFromRequest } from '@/lib/auth';
 import { listApplications, submitApplication } from '@/modules/admission/admission.service';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
+import { parseBody } from '@/lib/validate';
 import prisma from '@/lib/prisma';
+
+const ChildSchema = z.object({
+  firstName:      z.string().min(1),
+  lastName:       z.string().min(1),
+  dateOfBirth:    z.string().min(1),
+  gender:         z.string().min(1),
+  classApplying:  z.string().min(1),
+  aadhaarNo:      z.string().optional(),
+  previousSchool: z.string().optional(),
+});
+
+const ApplicationSchema = z.object({
+  schoolId:           z.string().uuid('schoolId must be a valid UUID'),
+  parentName:         z.string().min(1, 'parentName is required'),
+  parentPhone:        z.string().min(10, 'parentPhone is required'),
+  parentEmail:        z.union([z.string().email(), z.literal('')]).default(''),
+  residentialAddress: z.string().optional(),
+  permanentAddress:   z.string().optional(),
+  children:           z.array(ChildSchema).min(1, 'At least one child is required'),
+});
 
 
 /** GET /api/admission/applications */
@@ -57,9 +79,8 @@ export async function POST(request: Request) {
   try {
     const user = await getUserFromRequest(request);
     if (!user) throw new UnauthorizedError();
-    const body = await request.json();
-    if (!body.schoolId) throw new AppError('schoolId is required', 400);
-    const result = await submitApplication({ ...body, parentUserId: user.id });
+    const body = await parseBody(ApplicationSchema, request);
+    const result = await submitApplication({ ...body, parentEmail: body.parentEmail ?? '', parentUserId: user.id });
     return Response.json(result, { status: 201 });
   } catch (err) { return handleError(err); }
 }

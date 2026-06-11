@@ -247,3 +247,35 @@ export const placeOrder = (body: any) =>
 export const getMyOrders = () => apiFetch<any>('/api/vendor/orders?mine=true');
 export const rateVendor = (body: any) =>
   apiFetch<any>('/api/vendor/ratings', { method: 'POST', body: JSON.stringify(body) });
+
+// ─── Report Cards ─────────────────────────────────────────────────────────────
+export const getReportCards = (p?: string) => apiFetch<any>(`/api/report-cards${p ? '?' + p : ''}`);
+
+// ─── Gate Pass ────────────────────────────────────────────────────────────────
+export const getGatePasses      = (p?: string) => apiFetch<any>(`/api/attendance/gate-pass${p ? '?' + p : ''}`);
+export const issueGatePass      = (body: any)  => apiFetch<any>('/api/attendance/gate-pass', { method: 'POST', body: JSON.stringify(body) });
+export const updateGatePass     = (id: string, body: any) => apiFetch<any>(`/api/attendance/gate-pass/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+
+// ─── Attendance Regularization ───────────────────────────────────────────────
+export const getRegularizations   = (p?: string) => apiFetch<any>(`/api/attendance/regularization${p ? '?' + p : ''}`);
+export const submitRegularization = (body: any)  => apiFetch<any>('/api/attendance/regularization', { method: 'POST', body: JSON.stringify(body) });
+export const reviewRegularization = (body: any)  => apiFetch<any>('/api/attendance/regularization', { method: 'PATCH', body: JSON.stringify(body) });
+
+// ─── Class Diary ──────────────────────────────────────────────────────────────
+export const getDiaryEntries  = (p?: string) => apiFetch<any>(`/api/diary${p ? '?' + p : ''}`);
+export const createDiaryEntry = (body: any)  => apiFetch<any>('/api/diary', { method: 'POST', body: JSON.stringify(body) });
+
+// ─── HRMS / Payroll ───────────────────────────────────────────────────────────
+export const getPayroll      = (p?: string) => apiFetch<any>(`/api/hrms/payroll${p ? '?' + p : ''}`);
+export const getSalaryConfig = ()           => apiFetch<any>('/api/hrms/salary-config');
+
+// ─── Library ──────────────────────────────────────────────────────────────────
+export const getLibraryBooks  = (p?: string) => apiFetch<any>(`/api/library/books${p ? '?' + p : ''}`);
+export const getLibraryIssues = (p?: string) => apiFetch<any>(`/api/library/issues${p ? '?' + p : ''}`);
+
+// ─── Hostel ───────────────────────────────────────────────────────────────────
+export const getHostelInfo = (p?: string) => apiFetch<any>(`/api/hostel${p ? '?' + p : ''}`);
+
+// ─── Board Exam Tracker ───────────────────────────────────────────────────────
+export const getBoardExamTracker    = (p?: string) => apiFetch<any>(`/api/board-exam-tracker${p ? '?' + p : ''}`);
+export const updateBoardExamTracker = (id: string, body: any) => apiFetch<any>(`/api/board-exam-tracker/${id}`, { method: 'PATCH', body: JSON.stringify(body) });

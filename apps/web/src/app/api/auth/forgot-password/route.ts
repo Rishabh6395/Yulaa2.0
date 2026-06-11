@@ -1,8 +1,12 @@
 import prisma from '@/lib/prisma';
 import { handleError, AppError } from '@/utils/errors';
 import { sendPasswordResetOtpEmail } from '@/services/email.service';
+import { rateLimit, clientIp } from '@/lib/rate-limit';
 
 const OTP_TTL_MINUTES = 10;
+// 3 requests per hour per IP — prevents OTP flooding
+const RL_MAX    = 3;
+const RL_WINDOW = 60 * 60;
 
 function generateOtp(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -10,6 +14,16 @@ function generateOtp(): string {
 
 export async function POST(request: Request) {
   try {
+    const ip = clientIp(request);
+    const { allowed, resetAt } = await rateLimit(`rl:forgot-pwd:${ip}`, RL_MAX, RL_WINDOW);
+    if (!allowed) {
+      const retryAfterSec = Math.ceil((resetAt - Date.now()) / 1000);
+      return Response.json(
+        { error: 'Too many password reset requests. Please try again later.', retryAfterSec },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSec) } },
+      );
+    }
+
     const { email } = await request.json();
     if (!email) throw new AppError('Email is required');
 

@@ -30,8 +30,9 @@ export interface CreateInvoiceInput {
 }
 
 export interface RecordPaymentInput {
-  invoiceId:      string;
-  paymentAmount:  number;
-  paymentMethod?: string;
+  invoiceId:       string;
+  paymentAmount:   number;
+  paymentMethod?:  string;
   transactionRef?: string;
+  idempotencyKey?: string; // client-supplied; duplicate submissions return the existing record
 }

@@ -58,6 +58,15 @@ export function getTokenFromRequest(request: Request): string | null {
   return null;
 }
 
+/**
+ * Returns the primary role for a user.
+ * The primary role is the one marked is_primary; falls back to the first role.
+ * Centralised here to avoid the 40+ duplicated one-liners across route files.
+ */
+export function getPrimaryRole(user: AuthUser): UserRole {
+  return user.roles.find((r) => r.is_primary) ?? user.roles[0];
+}
+
 export async function getUserFromRequest(request: Request): Promise<AuthUser | null> {
   const token = getTokenFromRequest(request);
   if (!token) return null;

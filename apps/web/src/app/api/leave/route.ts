@@ -92,6 +92,23 @@ export async function PATCH(request: Request) {
 
     if (!REVIEWER_ROLES.includes(primary.role_code)) throw new ForbiddenError('Not authorised to review leaves');
     if (!primary.school_id) throw new ForbiddenError('No school associated with your account');
+
+    // Bulk review: { action: 'bulk_approved'|'bulk_rejected', ids: string[], comment?: string }
+    if (body.action === 'bulk_approved' || body.action === 'bulk_rejected') {
+      if (!Array.isArray(body.ids) || body.ids.length === 0) throw new AppError('ids[] required for bulk action');
+      const singleAction = body.action === 'bulk_approved' ? 'approved' : 'rejected';
+      const results: { id: string; status: string; error?: string }[] = [];
+      for (const id of body.ids as string[]) {
+        try {
+          const l = await reviewLeaveStep(user.id, primary.school_id, primary.role_code, { id, action: singleAction, comment: body.comment });
+          results.push({ id, status: l.status });
+        } catch (e: any) {
+          results.push({ id, status: 'error', error: e.message ?? 'failed' });
+        }
+      }
+      return Response.json({ results, processed: results.length, errors: results.filter(r => r.status === 'error').length });
+    }
+
     const leave = await reviewLeaveStep(user.id, primary.school_id, primary.role_code, body);
     return Response.json({ leave });
   } catch (err) { return handleError(err); }

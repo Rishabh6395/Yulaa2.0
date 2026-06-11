@@ -110,56 +110,57 @@ export async function createAndLinkParent(
 ) {
   const [firstName, ...rest] = parent.name.split(' ');
   const lastName = rest.join(' ') || '-';
-  // If no email, generate a unique placeholder so the unique constraint is satisfied
   const email = parent.email || `${parent.phone.replace(/\s+/g, '')}.${schoolId.slice(0, 6)}@noemail.local`;
 
-  let user = await prisma.user.findUnique({ where: { email } });
-  if (!user) {
-    // Use a cryptographically random temporary password — never the phone number,
-    // which is semi-public. mustResetPassword forces a change on first login.
-    const tempPassword = randomBytes(10).toString('hex'); // 20-char hex
-    const hash = await bcrypt.hash(tempPassword, 12);
-    user = await prisma.user.create({
-      data: {
-        email,
-        passwordHash:      hash,
-        firstName:         firstName ?? parent.name,
-        lastName,
-        phone:             parent.phone,
-        mustResetPassword: true,
-        status:            'active',
-      },
-    });
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[PARENT CREATED] phone=${parent.phone} tempPassword=${tempPassword} — share with parent, they must change on first login`);
-    }
-  }
+  // Pre-compute outside the transaction — bcrypt is CPU-heavy and should not hold a DB connection
+  const tempPassword = randomBytes(10).toString('hex');
+  const hash = await bcrypt.hash(tempPassword, 12);
 
-  let parentRecord = await prisma.parent.findUnique({ where: { userId: user.id } });
-  if (!parentRecord) {
-    parentRecord = await prisma.parent.create({ data: { userId: user.id } });
-  }
-
-  const parentRole = await prisma.role.findUnique({ where: { code: 'parent' } });
-  if (parentRole) {
-    const existingRole = await prisma.userRole.findFirst({
-      where: { userId: user.id, roleId: parentRole.id, schoolId },
-    });
-    if (!existingRole) {
-      await prisma.userRole.create({
-        data: { userId: user.id, roleId: parentRole.id, schoolId, isPrimary: true },
+  return prisma.$transaction(async (tx) => {
+    let user = await tx.user.findUnique({ where: { email } });
+    if (!user) {
+      user = await tx.user.create({
+        data: {
+          email,
+          passwordHash:      hash,
+          firstName:         firstName ?? parent.name,
+          lastName,
+          phone:             parent.phone,
+          mustResetPassword: true,
+          status:            'active',
+        },
       });
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[PARENT CREATED] phone=${parent.phone} tempPassword=${tempPassword} — share with parent, they must change on first login`);
+      }
     }
-  }
 
-  const existingLink = await prisma.parentStudent.findFirst({
-    where: { parentId: parentRecord.id, studentId },
+    let parentRecord = await tx.parent.findUnique({ where: { userId: user.id } });
+    if (!parentRecord) {
+      parentRecord = await tx.parent.create({ data: { userId: user.id } });
+    }
+
+    const parentRole = await tx.role.findUnique({ where: { code: 'parent' } });
+    if (parentRole) {
+      const existingRole = await tx.userRole.findFirst({
+        where: { userId: user.id, roleId: parentRole.id, schoolId },
+      });
+      if (!existingRole) {
+        await tx.userRole.create({
+          data: { userId: user.id, roleId: parentRole.id, schoolId, isPrimary: true },
+        });
+      }
+    }
+
+    const existingLink = await tx.parentStudent.findFirst({
+      where: { parentId: parentRecord.id, studentId },
+    });
+    if (!existingLink) {
+      await tx.parentStudent.create({ data: { parentId: parentRecord.id, studentId } });
+    }
+
+    return parentRecord;
   });
-  if (!existingLink) {
-    await prisma.parentStudent.create({ data: { parentId: parentRecord.id, studentId } });
-  }
-
-  return parentRecord;
 }
 
 export async function updateStudent(schoolId: string, body: Record<string, any>) {

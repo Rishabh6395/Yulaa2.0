@@ -79,25 +79,33 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
     ...(payload.toName ? { name: payload.toName } : {}),
   }));
 
-  const res = await fetch(BREVO_API_URL, {
-    method: 'POST',
-    headers: {
-      accept: 'application/json',
-      'api-key': apiKey,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      sender: SENDER,
-      to: toList,
-      subject: payload.subject,
-      htmlContent: payload.html,
-      ...(payload.text ? { textContent: payload.text } : {}),
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(BREVO_API_URL, {
+      method: 'POST',
+      signal: AbortSignal.timeout(10_000), // 10 s — prevents hung email calls from blocking function slots
+      headers: {
+        accept: 'application/json',
+        'api-key': apiKey,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: SENDER,
+        to: toList,
+        subject: payload.subject,
+        htmlContent: payload.html,
+        ...(payload.text ? { textContent: payload.text } : {}),
+      }),
+    });
+  } catch (fetchErr: any) {
+    // TimeoutError or network failure — log and fail gracefully so callers aren't hung
+    console.error('[EmailService] fetch failed (timeout or network):', fetchErr?.message ?? fetchErr);
+    throw new Error('Email delivery failed: network timeout');
+  }
 
   if (!res.ok) {
-    const err = await res.text();
-    console.error('[EmailService] Brevo error:', res.status, err);
+    const errBody = await res.text().catch(() => '');
+    console.error('[EmailService] Brevo error:', res.status, errBody);
     throw new Error(`Email delivery failed: ${res.status}`);
   }
 }

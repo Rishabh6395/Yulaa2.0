@@ -12,12 +12,15 @@ const PUBLIC_PREFIXES = [
   '/api/auth/verify-otp',
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
+  '/api/auth/refresh',
   '/api/admission/apply',
   '/api/admission/otp',
   '/api/admission/schools',
   '/api/admission/grades',
   '/api/admission/masters',
   '/api/form-config/public',
+  // Health probe — public for load balancers and uptime monitors
+  '/api/health',
   // Cron and debug routes authenticate via their own secrets / role checks.
   // They are still included here so middleware doesn't double-reject them,
   // but they must enforce their own auth inside the route handler.

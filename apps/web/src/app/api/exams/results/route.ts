@@ -10,6 +10,7 @@ import { getUserFromRequest } from '@/lib/auth';
 import { handleError, UnauthorizedError, ForbiddenError, AppError } from '@/utils/errors';
 import prisma from '@/lib/prisma';
 import { invalidatePerformanceCache } from '@/lib/performanceSync';
+import { isTeacherAssignedToClass, getTeacherClassIds } from '@/lib/school-utils';
 
 const ENTRY_ROLES    = ['teacher', 'school_admin', 'principal', 'hod', 'super_admin'];
 const APPROVAL_ROLES = ['school_admin', 'principal', 'hod', 'super_admin'];
@@ -72,6 +73,19 @@ export async function GET(request: Request) {
       }];
 
       return Response.json({ exam, grid, subjects, students: 1 });
+    }
+
+    // ── Teacher: scope to assigned classes only ────────────────────────────
+    if (role === 'teacher') {
+      const targetClass = classId ?? exam.classId;
+      if (targetClass) {
+        const assigned = await isTeacherAssignedToClass(user.id, schoolId, targetClass);
+        if (!assigned) throw new ForbiddenError('You are not assigned to this class');
+      } else {
+        // No class resolved — ensure teacher has at least one assigned class
+        const classIds = await getTeacherClassIds(user.id, schoolId);
+        if (classIds.length === 0) throw new ForbiddenError('You are not assigned to any class');
+      }
     }
 
     // ── Staff / admin: full class grid ─────────────────────────────────────

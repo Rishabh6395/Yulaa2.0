@@ -1,14 +1,21 @@
+import { z } from 'zod';
 import { login } from '@/modules/auth/auth.service';
 import { handleError, AppError } from '@/utils/errors';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
+import { parseBody } from '@/lib/validate';
 
 // 5 attempts per 15 minutes, keyed by IP + normalised identifier (G-006)
 const LOGIN_MAX     = 5;
 const LOGIN_WINDOW  = 15 * 60; // seconds
 
+const LoginSchema = z.object({
+  email:    z.string().min(1, 'Email or admission number is required'),
+  password: z.string().min(1, 'Password is required'),
+});
+
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = await parseBody(LoginSchema, request);
 
     const ip         = clientIp(request);
     const identifier = (body.email ?? '').toString().toLowerCase().trim();
